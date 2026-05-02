@@ -39,6 +39,7 @@
             <a href="#visual-oracle">Visual Oracle</a>
             <a href="#lessons">Key Engineering Lessons</a>
             <a href="#results">Results</a>
+            <a href="#code-walkthrough">Code Walkthrough</a>
             <a href="#limitations">Limitations</a>
             <a href="#next-steps">Next Steps</a>
           </nav>
@@ -355,6 +356,447 @@ DONE</pre>
                 Stepwise speed schedule used to keep gait stable during approach and retreat phases.
               </figcaption>
             </figure>
+          </section>
+
+          <section id="code-walkthrough">
+            <h2>Code Walkthrough: How the Baseline Is Wired Together</h2>
+            <p>
+              This section highlights the implementation seams that make the baseline modular. Each
+              snippet is intentionally small, showing how runtime orchestration, policy outputs, learned
+              controllers, and simulation helpers interlock without entangling responsibilities.
+            </p>
+            <div class="code-walkthrough-grid">
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Runtime Orchestration</h3>
+                  <span class="code-card-meta">run.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+ctrl = WalkerReacherController(
+    model, data, walker, croucher, rotator, config,
+    right_reacher=right_reacher,
+)
+
+grasp_backend = None
+if args.policy == "fsm":
+    rb_body_id = mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_BODY, "red_block"
+    )
+    grasp_backend = KinematicAttachment(
+        model, data, ctrl.right_palm_site_id, rb_body_id
+    )
+    policy = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+else:
+    policy = KeyboardPolicy(ctrl)</pre>
+                </div>
+                <p class="code-explanation">
+                  As the entry point, run.py loads MuJoCo model/data, loads the ONNX policies, builds the
+                  WalkerReacherController, selects either FSMPolicy or KeyboardPolicy, and optionally
+                  instantiates the KinematicAttachment for autonomous grasping before the loop runs. It
+                  exists to centralize the runtime wiring so the simulation loop always calls the same
+                  policy/controller/grasp backend interface regardless of mode. The design decision is
+                  to keep the controller agnostic to the policy source so manual and autonomous control
+                  share identical plumbing while the loop simply ticks policy, controller, and grasp
+                  backend in order.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Policy Contract</h3>
+                  <span class="code-card-meta">policies/base.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+@dataclass
+class PolicyOutput:
+    walk_cmd: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    reach_target: tuple[float, float, float] = (0.3, -0.2, 0.2)
+    reach_active: bool = False
+    grip_closed: bool = False</pre>
+                </div>
+                <p class="code-explanation">
+                  PolicyOutput is the shared vocabulary between high-level policies and the controller,
+                  carrying locomotion commands, reach targets, reach activation, and grip state. It
+                  exists to prevent policies from mutating controller internals directly and keeps
+                  policy logic decoupled from actuator specifics. The design choice is a narrow contract
+                  that makes swapping policies safe without reworking the controller.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Keyboard Baseline</h3>
+                  <span class="code-card-meta">policies/keyboard.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+class KeyboardPolicy(BasePolicy):
+    def __init__(self, controller):
+        self.controller = controller
+
+    def handle_key(self, key: int) -> None:
+        self.controller.key_callback(key)
+
+    def step(self) -> PolicyOutput:
+        return PolicyOutput(
+            walk_cmd=(
+                self.controller.lin_vel_x,
+                self.controller.lin_vel_y,
+                self.controller.ang_vel_z,
+            ),
+            reach_target=tuple(self.controller.reach_target),
+            reach_active=self.controller.reach_active,
+            grip_closed=self.controller.grip_closed,
+        )</pre>
+                </div>
+                <p class="code-explanation">
+                  The keyboard policy mirrors the original manual behavior by simply echoing controller
+                  fields into a PolicyOutput every tick. It exists so human input remains the regression
+                  baseline, allowing autonomous runs to be compared against a known-good manual driver.
+                  The design decision is to preserve manual control as a first-class policy rather than a
+                  special-case path.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>FSM Adapter</h3>
+                  <span class="code-card-meta">policies/fsm.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+out = self._fsm.tick(attached=self._grasp_backend.attached)
+self._controller.lin_vel_x, self._controller.lin_vel_y, self._controller.ang_vel_z = out.walk_cmd
+self._controller.reach_target[:] = out.reach_target
+self._controller.reach_active = out.reach_active
+self._controller.grip_closed = self._close_grip_command(out)</pre>
+                </div>
+                <p class="code-explanation">
+                  This adapter translates FSMCore outputs into controller fields and threads in the grasp
+                  backend attachment signal for grip safety. It exists to keep the FSM focused on task
+                  logic while the controller remains the single place that owns actuator commands, and it
+                  keeps the grip closed while the object is attached except during explicit release
+                  states. The design decision is to use a thin adapter layer so the FSM stays independent
+                  of controller implementation details.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>FSM Core</h3>
+                  <span class="code-card-meta">policies/fsm_core.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+class FSMState(Enum):
+    SETTLE = auto()
+    APPROACH_SOURCE = auto()
+    HOVER_SOURCE = auto()
+    DESCEND_SOURCE = auto()
+    CLOSE_GRIP = auto()
+    LIFT_SOURCE = auto()
+    APPROACH_TARGET = auto()
+    HOVER_TARGET = auto()
+    LOWER_TARGET = auto()
+    OPEN_GRIP = auto()
+    RETRACT = auto()
+    DONE = auto()</pre>
+                </div>
+                <div class="code-block">
+                  <pre>
+x_err = cyl[0] - APPROACH_TARGET_X
+
+if x_err &gt; 0.18:
+    vx = VX_FAST
+elif x_err &gt; 0.10:
+    vx = VX_MED
+elif x_err &gt; 0.04:
+    vx = VX_SLOW
+else:
+    vx = 0.0
+
+y_err = cyl[1] - (-0.05)
+vy = float(np.clip(K_VY * y_err, -VY_CAP, VY_CAP))
+
+heading = np.arctan2(cyl[1], max(cyl[0], 0.15))
+wz = float(np.clip(K_WZ * heading, -WZ_CAP, WZ_CAP))</pre>
+                </div>
+                <p class="code-explanation">
+                  FSMCore enumerates explicit task phases and emits a PolicyOutput each tick based on
+                  thresholds, debounce counters, attachment flags, and timeouts. The approach logic uses
+                  staircase speeds to keep the learned walker in stable command ranges as it closes on
+                  the source. The design decision is to make state transitions and speed scheduling
+                  explicit so the baseline stays debuggable and safe against overshoot.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Walker/Reacher Controller</h3>
+                  <span class="code-card-meta">common/controller.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+obs = np.concatenate([
+    lin_vel,
+    ang_vel,
+    proj_gravity,
+    joint_pos,
+    joint_vel,
+    self.last_action,
+    cmd,
+]).astype(np.float32)
+
+# The walker ONNX already handles normalization internally.
+action = self.walker_policy(obs)
+target_pos = self.default_joint_pos + action * self.action_scales</pre>
+                </div>
+                <div class="code-block">
+                  <pre>
+# Zero walker arm outputs — reacher writes these columns.
+for idx in self.arm_indices:
+    target_pos[idx] = self.default_joint_pos[idx]
+
+# Reacher always runs so the right arm stays in a known pose.
+if self.right_reacher_policy is not None:
+    reacher_obs = np.concatenate([
+        self.reach_target,
+        self.reach_orientation,
+        self._get_palm_pos_in_pelvis(),
+        self._get_palm_orientation_in_pelvis(),
+        self._get_arm_joint_positions(),
+        self._get_arm_joint_velocities(),
+        self.last_arm_action,
+        proj_gravity.astype(np.float32),
+    ]).astype(np.float32)
+
+    arm_action = self.right_reacher_policy(reacher_obs)</pre>
+                </div>
+                <p class="code-explanation">
+                  The controller builds the 99D walker observation, calls the walker ONNX without extra
+                  normalization, then merges the resulting joint targets with a dedicated right-arm
+                  reacher policy that runs every tick. It exists to translate high-level PolicyOutput
+                  fields into MuJoCo actuator targets while preserving the learned policy assumptions,
+                  including separate finger actuator targets. The design decision is to let the walker
+                  own body motion while the reacher overwrites arm joints so locomotion and manipulation
+                  can coexist in-distribution.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Kinematic Grasp Backend</h3>
+                  <span class="code-card-meta">common/grasp.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+ATTACH_DIST: float = 0.13
+SNAP_DIST: float = 0.03
+
+def tick(self, grip_closed: bool) -> bool:
+    if not self._is_attached:
+        if grip_closed:
+            palm = self._data.site_xpos[self._palm_id].copy()
+            obj = self._data.xpos[self._obj_id].copy()
+            if float(np.linalg.norm(palm - obj)) &lt;= self.ATTACH_DIST:
+                self._attach(palm, obj)
+    else:
+        if not grip_closed:
+            self._release()
+        else:
+            self._update_pose()
+    return self._is_attached</pre>
+                </div>
+                <div class="code-block">
+                  <pre>
+def _update_pose(self) -&gt; None:
+    palm_pos = self._data.site_xpos[self._palm_id].copy()
+    palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+    new_pos = palm_pos + palm_rot @ self._local_offset
+
+    self._data.qpos[self._qposadr:self._qposadr + 3] = new_pos
+    self._data.qpos[self._qposadr + 3:self._qposadr + 7] = [1.0, 0.0, 0.0, 0.0]
+    self._data.qvel[self._qveladr:self._qveladr + 6] = 0.0</pre>
+                </div>
+                <p class="code-explanation">
+                  The kinematic grasp backend attaches the cylinder when the palm is close and the grip
+                  is closed, clamps the local offset, disables collisions, and then updates pose and
+                  velocity directly each physics step until release restores collisions. It exists as a
+                  simulation shortcut so the rest of the pick-and-place sequence can be exercised
+                  without a full contact model. The design decision is to isolate this behavior behind a
+                  GraspBackend interface so it can be replaced later with physical grasping.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>ONNX Wrapper</h3>
+                  <span class="code-card-meta">common/onnx_policy.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+class ONNXPolicy:
+    def __init__(self, model_path: str | Path):
+        sess_options = ort.SessionOptions()
+        sess_options.intra_op_num_threads = 1
+        sess_options.inter_op_num_threads = 1
+        self.session = ort.InferenceSession(
+            str(model_path),
+            sess_options,
+            providers=["CPUExecutionProvider"],
+        )
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+
+    def __call__(self, obs: np.ndarray) -&gt; np.ndarray:
+        if obs.ndim == 1:
+            obs = obs.reshape(1, -1)
+        obs = obs.astype(np.float32)
+        return self.session.run(
+            [self.output_name],
+            {self.input_name: obs},
+        )[0][0]</pre>
+                </div>
+                <p class="code-explanation">
+                  ONNXPolicy encapsulates model loading and inference with a CPU-only provider for
+                  portability across machines. It exists to keep inference details out of the controller
+                  and runtime, making policy usage a simple callable. The design decision is to accept
+                  1D observations and always return a single output row so call sites stay consistent.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Scene Utilities</h3>
+                  <span class="code-card-meta">common/scene.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+def reset_robot(
+    model,
+    data,
+    config: dict,
+    joint_names: Iterable[str],
+    *,
+    base_pos=(-0.6, 0.0, 0.76),
+    base_quat=(1.0, 0.0, 0.0, 0.0),
+    reset_data=True,
+) -&gt; None:
+    if reset_data:
+        mujoco.mj_resetData(model, data)
+
+    data.qpos[0:3] = base_pos
+    data.qpos[3:7] = base_quat
+
+    for name, value in config["default_joint_pos"].items():
+        idx = joint_index.get(name)
+        if idx is not None:
+            data.qpos[7 + idx] = value
+
+    mujoco.mj_forward(model, data)</pre>
+                </div>
+                <p class="code-explanation">
+                  reset_robot provides a deterministic reset for scripts and tests by applying base pose
+                  and joint defaults before a forward pass, while CameraRenderer wraps MuJoCo offscreen
+                  rendering for shared visualization utilities. It exists so run.py, smoke tests, and
+                  headless checks all share the same reset semantics and rendering helpers. The design
+                  decision is to centralize reset behavior to avoid diverging initialization paths.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Smoke Test</h3>
+                  <span class="code-card-meta">scripts/smoke_env.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+checks = [
+    check_config(),
+    check_scene_loads(),
+    check_required_cameras(),
+    check_required_bodies(),
+    check_required_sites(),
+    check_config_joints_exist(),
+    check_onnx_warmup("walker.onnx"),
+    check_onnx_warmup("right_reacher.onnx"),
+]</pre>
+                </div>
+                <p class="code-explanation">
+                  The smoke test runs a battery of environment checks before anyone chases FSM bugs. It
+                  exists to validate model configuration, scene assets, cameras, bodies, sites, joints,
+                  and ONNX availability in one quick script that mirrors run.py assumptions. The design
+                  decision is to front-load environment validation so higher-level failures are easier
+                  to attribute.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>FSM Integration Test</h3>
+                  <span class="code-card-meta">scripts/test_fsm_approach.py</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+for tick in range(max_ticks):
+    policy.step()
+    target_pos = ctrl.step()
+    ctrl.apply_pd_control(target_pos)
+
+    for _ in range(decimation):
+        mujoco.mj_step(model, data)
+        if grasp_backend is not None:
+            grasp_backend.tick(ctrl.grip_closed)</pre>
+                </div>
+                <p class="code-explanation">
+                  This headless test drives the FSM without the interactive viewer, stepping MuJoCo and
+                  invoking the grasp backend on every decimated physics tick. It exists to verify that
+                  FSM state transitions and attachment logic work in isolation from UI concerns. The
+                  design decision is to call the grasp backend inside the decimation loop so the attached
+                  object stays glued to the palm between control ticks.
+                </p>
+              </article>
+
+              <article class="code-card">
+                <div class="code-card-header">
+                  <h3>Simulation Configuration</h3>
+                  <span class="code-card-meta">g1.xml, scene.xml, model_config.json</span>
+                </div>
+                <div class="code-block">
+                  <pre>
+{
+  "joint_names": [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "...",
+    "right_wrist_yaw_joint"
+  ],
+  "walker": {
+    "input_dim": 99,
+    "output_dim": 29
+  },
+  "right_reacher": {
+    "input_dim": 36,
+    "output_dim": 7
+  }
+}</pre>
+                </div>
+                <p class="code-explanation">
+                  g1.xml defines the robot joints, actuators, sites, and cameras, while scene.xml defines
+                  the tables, cylinder, and camera views. model_config.json fixes joint ordering, default
+                  poses, action scales, and ONNX metadata because the controller depends on those values
+                  matching the learned models. The design decision is to keep these definitions explicit
+                  so model changes are traceable and updateable without touching controller logic.
+                </p>
+              </article>
+            </div>
+            <p class="code-note">
+              This architecture made the project debuggable. The FSM could be changed without touching
+              ONNX inference, the controller could be tested without the viewer, and the grasp backend
+              could be swapped later for a more physical contact-based implementation.
+            </p>
           </section>
 
           <section id="limitations">
