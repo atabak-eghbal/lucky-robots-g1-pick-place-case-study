@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>policies/keyboard.py — Manual Regression Policy | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>policies/keyboard.py — Manual Regression Policy</h1>
+          <p class="subtitle">Preserves the manual control path as a first-class policy.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → policies/keyboard.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./policies-base.html">Previous file</a>
+            <a href="./policies-fsm.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> policies/keyboard.py</p>
+              <p>Maintains the original manual control path inside the unified policy interface.</p>
+            </div>
+            <div class="code-section">
+              <h2>Why it stayed</h2>
+              <ul class="bullet-list">
+                <li>Preserves the original keyboard behavior.</li>
+                <li>Provides a regression baseline for the refactor.</li>
+                <li>Uses the same runtime path as the FSM policy.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="handle">handle_key</button>
+                <button class="file-tab-button" data-tab-target="step">step output</button>
+                <button class="file-tab-button" data-tab-target="why">Why manual control stayed</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="handle">
+                <section class="code-section">
+                  <h2>handle_key</h2>
+                  <p>Keyboard input is forwarded directly to the controller.</p>
+                  <div class="code-block">
+                    <pre><code>class KeyboardPolicy(BasePolicy):
+    def __init__(self, controller):
+        self.controller = controller
+
+    def handle_key(self, key: int) -> None:
+        self.controller.key_callback(key)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="step">
+                <section class="code-section">
+                  <h2>step output</h2>
+                  <p>
+                    The policy mirrors controller state into a PolicyOutput so the runtime loop stays
+                    identical across policies.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>    def step(self) -> PolicyOutput:
+        return PolicyOutput(
+            walk_cmd=(
+                self.controller.lin_vel_x,
+                self.controller.lin_vel_y,
+                self.controller.ang_vel_z,
+            ),
+            reach_target=tuple(self.controller.reach_target),
+            reach_active=self.controller.reach_active,
+            grip_closed=self.controller.grip_closed,
+        )</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="why">
+                <section class="code-section">
+                  <h2>Why manual control stayed</h2>
+                  <p>
+                    Manual control is a regression path: it validates controller changes without relying
+                    on the FSM and keeps debugging interactive when automation fails.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

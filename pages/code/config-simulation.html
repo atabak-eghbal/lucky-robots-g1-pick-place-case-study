@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulation Configuration — g1.xml, scene.xml, model_config.json | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>Simulation Configuration — g1.xml, scene.xml, model_config.json</h1>
+          <p class="subtitle">The robot, scene, and policy I/O contract that every script relies on.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → g1.xml, scene.xml, model_config.json
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./scripts-test-fsm-approach.html">Previous file</a>
+            <a href="./dev-log.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>Configuration overview</h2>
+              <p>These files lock down physics, camera names, joint order, and policy dimensions.</p>
+            </div>
+            <div class="code-section">
+              <h2>Consistency notes</h2>
+              <ul class="bullet-list">
+                <li>timestep 0.005 → 200 Hz physics.</li>
+                <li>decimation=4 → 50 Hz control.</li>
+                <li>right_palm site anchors reaching and grasping.</li>
+                <li>model_config joint order must match ONNX outputs.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="g1-physics">g1.xml physics and robot</button>
+                <button class="file-tab-button" data-tab-target="g1-cameras">g1.xml cameras/sites</button>
+                <button class="file-tab-button" data-tab-target="scene">scene.xml tables/cylinder</button>
+                <button class="file-tab-button" data-tab-target="config">model_config.json joint contract</button>
+                <button class="file-tab-button" data-tab-target="why">Why config consistency matters</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="g1-physics">
+                <section class="code-section">
+                  <h2>g1.xml physics and robot</h2>
+                  <p>
+                    The timestep defines the physics rate, which interacts with the controller decimation.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>&lt;option integrator="implicitfast" timestep="0.005" gravity="0 0 -9.81"/&gt;
+&lt;camera name="head_cam" .../&gt;
+&lt;site name="right_palm" .../&gt;
+&lt;camera name="wrist_cam" .../&gt;</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="g1-cameras">
+                <section class="code-section">
+                  <h2>g1.xml cameras/sites</h2>
+                  <p>
+                    Named cameras and the right_palm site are required by the smoke tests, controller, and
+                    grasp backend.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="scene">
+                <section class="code-section">
+                  <h2>scene.xml tables/cylinder</h2>
+                  <p>
+                    scene.xml defines the source and target tables plus the freejoint cylinder object.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>&lt;body name="table" .../&gt;        &lt;!-- source table --&gt;
+&lt;body name="table_white" .../&gt; &lt;!-- target table --&gt;
+&lt;body name="red_block" ...&gt;
+  &lt;freejoint/&gt;
+&lt;/body&gt;
+&lt;camera name="overhead" .../&gt;</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="config">
+                <section class="code-section">
+                  <h2>model_config.json joint contract</h2>
+                  <p>
+                    The joint order and policy I/O dimensions must match the ONNX models exactly.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>{
+  "joint_names": ["left_hip_pitch_joint", "...", "right_wrist_yaw_joint"],
+  "walker": {"input_dim": 99, "output_dim": 29},
+  "right_reacher": {"input_dim": 36, "output_dim": 7}
+}</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="why">
+                <section class="code-section">
+                  <h2>Why config consistency matters</h2>
+                  <p>
+                    Any mismatch in joint order, camera names, or timestep breaks downstream logic. Keeping
+                    these files aligned is the difference between a runnable baseline and hours of
+                    debugging.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

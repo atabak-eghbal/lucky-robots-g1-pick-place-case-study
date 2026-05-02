@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>common/grasp.py — Kinematic Grasp Backend | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>common/grasp.py — Kinematic Grasp Backend</h1>
+          <p class="subtitle">A simulation shortcut that snaps the object to the palm while attached.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → common/grasp.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./common-controller.html">Previous file</a>
+            <a href="./common-onnx-policy.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> common/grasp.py</p>
+              <p>
+                A replaceable grasp backend that updates object pose directly when the grip is closed.
+              </p>
+            </div>
+            <div class="code-section">
+              <h2>Why it exists</h2>
+              <ul class="bullet-list">
+                <li>Provides deterministic pickup and release.</li>
+                <li>Isolates a simulation-only shortcut behind GraspBackend.</li>
+                <li>Disables collisions while attached, restores them on release.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="interface">Interface</button>
+                <button class="file-tab-button" data-tab-target="trigger">Attachment trigger</button>
+                <button class="file-tab-button" data-tab-target="snap">Snap offset and collision disabling</button>
+                <button class="file-tab-button" data-tab-target="pose">Pose update</button>
+                <button class="file-tab-button" data-tab-target="release">Release</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="interface">
+                <section class="code-section">
+                  <h2>Interface</h2>
+                  <p>
+                    The grasp backend is intentionally small so the kinematic shortcut can be replaced by
+                    a contact-based backend later.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>class GraspBackend(ABC):
+    @property
+    @abstractmethod
+    def attached(self) -> bool:
+        ...
+
+    @abstractmethod
+    def tick(self, grip_closed: bool) -> bool:
+        ...
+
+    @abstractmethod
+    def release(self) -> None:
+        ...</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="trigger">
+                <section class="code-section">
+                  <h2>Attachment trigger</h2>
+                  <p>
+                    Attachment happens only when the grip is closed and the object is within ATTACH_DIST.
+                    Otherwise the backend simply updates or releases when commanded.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>ATTACH_DIST: float = 0.13
+SNAP_DIST: float = 0.03
+
+def tick(self, grip_closed: bool) -> bool:
+    if not self._is_attached:
+        if grip_closed:
+            palm = self._data.site_xpos[self._palm_id].copy()
+            obj = self._data.xpos[self._obj_id].copy()
+            if float(np.linalg.norm(palm - obj)) <= self.ATTACH_DIST:
+                self._attach(palm, obj)
+    else:
+        if not grip_closed:
+            self._release()
+        else:
+            self._update_pose()
+    return self._is_attached</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="snap">
+                <section class="code-section">
+                  <h2>Snap offset and collision disabling</h2>
+                  <p>
+                    The local offset is computed in the palm frame and clamped if it exceeds SNAP_DIST. A
+                    valid attachment disables collisions and immediately updates the object pose.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _attach(self, palm_pos, obj_pos) -> None:
+    palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+    local = palm_rot.T @ (obj_pos - palm_pos)
+    d = float(np.linalg.norm(local))
+    if d > self.SNAP_DIST:
+        local = local * (self.SNAP_DIST / d)
+    self._local_offset = local
+    self._disable_collisions()
+    self._is_attached = True
+    self._update_pose()</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="pose">
+                <section class="code-section">
+                  <h2>Pose update</h2>
+                  <p>
+                    While attached, the backend overwrites the freejoint position and velocity directly.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _update_pose(self) -> None:
+    palm_pos = self._data.site_xpos[self._palm_id].copy()
+    palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+    new_pos = palm_pos + palm_rot @ self._local_offset
+
+    self._data.qpos[self._qposadr:self._qposadr + 3] = new_pos
+    self._data.qpos[self._qposadr + 3:self._qposadr + 7] = [1.0, 0.0, 0.0, 0.0]
+    self._data.qvel[self._qveladr:self._qveladr + 6] = 0.0</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="release">
+                <section class="code-section">
+                  <h2>Release</h2>
+                  <p>
+                    Releasing restores collision filters and lets physics take over again.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _release(self) -> None:
+    self._enable_collisions()
+    self._is_attached = False</code></pre>
+                  </div>
+                  <p class="small">The backend is intentionally replaceable for more realistic grasping.</p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

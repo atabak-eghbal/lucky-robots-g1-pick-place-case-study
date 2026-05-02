@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scripts/test_fsm_approach.py — Headless FSM Integration Test | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>scripts/test_fsm_approach.py — Headless FSM Integration Test</h1>
+          <p class="subtitle">Runs the FSM without a viewer to validate end-to-end state progression.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → scripts/test_fsm_approach.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./scripts-smoke-env.html">Previous file</a>
+            <a href="./config-simulation.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> scripts/test_fsm_approach.py</p>
+              <p>Runs the FSM loop headlessly to verify state progression and grasp timing.</p>
+            </div>
+            <div class="code-section">
+              <h2>Key checks</h2>
+              <ul class="bullet-list">
+                <li>Executes the full policy/controller loop.</li>
+                <li>Applies decimated physics steps.</li>
+                <li>Calls grasp ticks after every physics step.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="setup">Setup</button>
+                <button class="file-tab-button" data-tab-target="loop">Policy/controller loop</button>
+                <button class="file-tab-button" data-tab-target="physics">Decimated physics loop</button>
+                <button class="file-tab-button" data-tab-target="grasp">Grasp tick timing</button>
+                <button class="file-tab-button" data-tab-target="passfail">PASS/fail milestones</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="setup">
+                <section class="code-section">
+                  <h2>Setup</h2>
+                  <p>
+                    The test initializes model/data, resets the robot, loads ONNX policies, and
+                    constructs the controller plus KinematicAttachment before entering the loop.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="loop">
+                <section class="code-section">
+                  <h2>Policy/controller loop</h2>
+                  <p>
+                    Policy and controller steps stay in the same sequence as run.py, keeping the headless
+                    test faithful to runtime behavior.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>for tick in range(max_ticks):
+    policy.step()
+    target_pos = ctrl.step()
+    ctrl.apply_pd_control(target_pos)
+
+    for _ in range(decimation):
+        mujoco.mj_step(model, data)
+        if grasp_backend is not None:
+            grasp_backend.tick(ctrl.grip_closed)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="physics">
+                <section class="code-section">
+                  <h2>Decimated physics loop</h2>
+                  <p>
+                    A fixed decimation keeps control at 50 Hz while physics steps remain at 200 Hz.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="grasp">
+                <section class="code-section">
+                  <h2>Grasp tick timing</h2>
+                  <p>
+                    Grasp ticks live inside the physics loop so the attachment stays glued between
+                    controller updates.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="passfail">
+                <section class="code-section">
+                  <h2>PASS/fail milestones</h2>
+                  <p>
+                    The test prints PASS when the FSM reaches DONE, but downstream validation still
+                    requires post-settle checks on the target table.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>if policy.state == FSMState.DONE:
+    print("PASS — reached DONE")
+    break</code></pre>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

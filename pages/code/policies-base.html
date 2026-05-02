@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>policies/base.py — Policy Contract | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>policies/base.py — Policy Contract</h1>
+          <p class="subtitle">Defines the command packet and abstract interface shared by all policies.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → policies/base.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./common-scene.html">Previous file</a>
+            <a href="./policies-keyboard.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> policies/base.py</p>
+              <p>A lightweight contract that keeps policies decoupled from controller internals.</p>
+            </div>
+            <div class="code-section">
+              <h2>Contract principles</h2>
+              <ul class="bullet-list">
+                <li>Outputs are high-level commands, not actuator targets.</li>
+                <li>Frozen dataclass protects policy output immutability.</li>
+                <li>Keyboard and FSM policies share the same interface.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="output">PolicyOutput</button>
+                <button class="file-tab-button" data-tab-target="base">BasePolicy</button>
+                <button class="file-tab-button" data-tab-target="contract">Why this contract matters</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="output">
+                <section class="code-section">
+                  <h2>PolicyOutput</h2>
+                  <p>The command packet keeps walking, reaching, and grip intent explicit.</p>
+                  <div class="code-block">
+                    <pre><code>WalkCommand = tuple[float, float, float]
+ReachTarget = tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class PolicyOutput:
+  """High-level command output from a policy step.
+
+  walk_cmd: (lin_vel_x, lin_vel_y, ang_vel_z)
+  reach_target: (x, y, z) target coordinates in pelvis frame
+  reach_active: True to run the right-arm reacher ONNX overlay
+  grip_closed: True when the right-hand grip should be closed
+  """
+
+  walk_cmd: WalkCommand
+  reach_target: ReachTarget
+  grip_closed: bool
+  reach_active: bool = False</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="base">
+                <section class="code-section">
+                  <h2>BasePolicy</h2>
+                  <p>
+                    BasePolicy keeps runtime code simple and lets policies optionally respond to keyboard
+                    input.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>class BasePolicy(ABC):
+  """Abstract interface for policies that emit high-level commands."""
+
+  def handle_key(self, keycode: int) -> None:
+    """Optional keyboard hook for interactive policies."""
+    pass
+
+  @abstractmethod
+  def step(self) -> PolicyOutput:
+    """Return the latest policy output."""</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="contract">
+                <section class="code-section">
+                  <h2>Why this contract matters</h2>
+                  <p>
+                    The contract ensures policies never write actuator targets directly. That separation
+                    makes it easy to swap KeyboardPolicy and FSMPolicy while keeping a single runtime path.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

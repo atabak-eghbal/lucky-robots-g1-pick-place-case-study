@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>common/onnx_policy.py — ONNX Runtime Wrapper | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>common/onnx_policy.py — ONNX Runtime Wrapper</h1>
+          <p class="subtitle">A minimal CPU wrapper that makes policy inference predictable and portable.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → common/onnx_policy.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./common-grasp.html">Previous file</a>
+            <a href="./common-scene.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> common/onnx_policy.py</p>
+              <p>Wraps ONNX Runtime so policies can be called like simple Python functions.</p>
+            </div>
+            <div class="code-section">
+              <h2>Design goals</h2>
+              <ul class="bullet-list">
+                <li>CPUExecutionProvider for portability.</li>
+                <li>Single-thread inference for stable local runs.</li>
+                <li>Simple 1D observation handling.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="session">Session creation</button>
+                <button class="file-tab-button" data-tab-target="inference">Inference call</button>
+                <button class="file-tab-button" data-tab-target="rationale">Design rationale</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="session">
+                <section class="code-section">
+                  <h2>Session creation</h2>
+                  <p>SessionOptions force predictable CPU inference with a stable thread count.</p>
+                  <div class="code-block">
+                    <pre><code>class ONNXPolicy:
+    def __init__(self, model_path: str | Path):
+        sess_options = ort.SessionOptions()
+        sess_options.intra_op_num_threads = 1
+        sess_options.inter_op_num_threads = 1
+        self.session = ort.InferenceSession(
+            str(model_path),
+            sess_options,
+            providers=["CPUExecutionProvider"],
+        )
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="inference">
+                <section class="code-section">
+                  <h2>Inference call</h2>
+                  <p>
+                    The call wrapper handles 1D input by reshaping to a batch and returns the first output
+                    row for convenience.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        if obs.ndim == 1:
+            obs = obs.reshape(1, -1)
+        obs = obs.astype(np.float32)
+        return self.session.run(
+            [self.output_name],
+            {self.input_name: obs},
+        )[0][0]</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="rationale">
+                <section class="code-section">
+                  <h2>Design rationale</h2>
+                  <p>
+                    Keeping the wrapper small makes smoke tests and controller calls trivial. CPU-only
+                    inference plus a fixed thread count improves repeatability across laptops and CI.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

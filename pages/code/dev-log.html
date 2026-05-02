@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEV_LOG.md — Engineering Evidence | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>DEV_LOG.md — Engineering Evidence</h1>
+          <p class="subtitle">Short evidence snippets that shaped the baseline design decisions.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → DEV_LOG.md
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./config-simulation.html">Previous file</a>
+            <a href="./run.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> DEV_LOG.md</p>
+              <p>
+                The engineering log captures the reasoning behind thresholds, refactors, and test
+                artifacts.
+              </p>
+            </div>
+            <div class="code-section">
+              <h2>Evidence themes</h2>
+              <ul class="bullet-list">
+                <li>Modular refactor checkpoints.</li>
+                <li>Smoke test validation records.</li>
+                <li>Normalization pitfalls and reacher accuracy limits.</li>
+                <li>Kinematic grasp tuning evidence.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="skeleton">Modular skeleton</button>
+                <button class="file-tab-button" data-tab-target="smoke">Smoke test evidence</button>
+                <button class="file-tab-button" data-tab-target="normalization">Normalization trap</button>
+                <button class="file-tab-button" data-tab-target="always">Always-on reacher</button>
+                <button class="file-tab-button" data-tab-target="accuracy">Reacher accuracy floor</button>
+                <button class="file-tab-button" data-tab-target="grasp">Kinematic grasp evidence</button>
+                <button class="file-tab-button" data-tab-target="false">Target-side false positive</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="skeleton">
+                <section class="code-section">
+                  <h2>Modular skeleton</h2>
+                  <p>
+                    DEV_LOG captures the extraction of run.py, controller logic, and the FSM into separate
+                    modules so each piece could be debugged independently.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="smoke">
+                <section class="code-section">
+                  <h2>Smoke test evidence</h2>
+                  <p>
+                    The log records when the environment, cameras, and ONNX policies first passed the
+                    headless smoke test, establishing a known-good baseline.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="normalization">
+                <section class="code-section">
+                  <h2>Normalization trap</h2>
+                  <p>
+                    The normalization issue proved the ONNX models already normalize internally, so raw
+                    observations must be passed to the walker.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>raw zeros        → action max=0.628
+normalized zeros → action max=14.78</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="always">
+                <section class="code-section">
+                  <h2>Always-on reacher</h2>
+                  <p>
+                    DEV_LOG notes that the right reacher must run even when reach_active is false to keep
+                    arm joints inside the training distribution.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="accuracy">
+                <section class="code-section">
+                  <h2>Reacher accuracy floor</h2>
+                  <p>
+                    The reacher plateaued around 0.12–0.13 m, which shaped hover and descend thresholds
+                    near the grasp window.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="grasp">
+                <section class="code-section">
+                  <h2>Kinematic grasp evidence</h2>
+                  <p>
+                    The attachment snap distance was tuned to the measured reacher accuracy floor.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>Attach: dist=0.128 m
+snap_offset=0.030 m</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="false">
+                <section class="code-section">
+                  <h2>Target-side false positive</h2>
+                  <p>
+                    Early success checks only used reach windows and produced false positives, so world
+                    proximity and yaw gating were added to the target approach.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>
