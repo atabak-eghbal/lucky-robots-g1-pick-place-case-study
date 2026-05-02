@@ -1,69 +1,83 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  width="1100"
-  height="220"
-  viewBox="0 0 1100 220"
+  width="1320"
+  height="260"
+  viewBox="0 0 1320 260"
   role="img"
-  aria-label="Visual Oracle pipeline from camera input to frozen target estimate."
+  aria-label="Visual Oracle pipeline from camera inputs through deterministic estimation to FSM targets."
 >
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#64748b" />
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#5f6b7a" />
     </marker>
     <style>
       .box {
         fill: #ffffff;
-        stroke: #94a3b8;
+        stroke: #e1e5ea;
         stroke-width: 1.5;
       }
       .label {
-        font: 600 13px "Inter", "Segoe UI", sans-serif;
-        fill: #0f172a;
+        font: 600 12.5px "Inter", "Segoe UI", sans-serif;
+        fill: #161b22;
       }
       .sub {
         font: 500 11px "Inter", "Segoe UI", sans-serif;
-        fill: #475569;
+        fill: #5f6b7a;
       }
       .arrow {
-        stroke: #64748b;
+        stroke: #5f6b7a;
         stroke-width: 2;
         marker-end: url(#arrow);
+      }
+      .note {
+        font: 500 12px "Inter", "Segoe UI", sans-serif;
+        fill: #5f6b7a;
       }
     </style>
   </defs>
 
-  <rect class="box" x="20" y="60" width="140" height="70" rx="12" />
-  <text class="label" x="90" y="88" text-anchor="middle">Camera</text>
-  <text class="sub" x="90" y="106" text-anchor="middle">RGB / Depth</text>
+  <rect class="box" x="30" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="100" y="92" text-anchor="middle">Camera</text>
+  <text class="sub" x="100" y="112" text-anchor="middle">RGB + Depth</text>
 
-  <rect class="box" x="180" y="60" width="140" height="70" rx="12" />
-  <text class="label" x="250" y="88" text-anchor="middle">Red Cylinder</text>
-  <text class="sub" x="250" y="106" text-anchor="middle">Mask</text>
+  <rect class="box" x="190" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="260" y="90" text-anchor="middle">Red Cylinder</text>
+  <text class="sub" x="260" y="110" text-anchor="middle">Segmentation</text>
 
-  <rect class="box" x="340" y="60" width="150" height="70" rx="12" />
-  <text class="label" x="415" y="88" text-anchor="middle">Depth</text>
-  <text class="sub" x="415" y="106" text-anchor="middle">Back-Projection</text>
+  <rect class="box" x="350" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="420" y="90" text-anchor="middle">Depth Pixel</text>
+  <text class="sub" x="420" y="110" text-anchor="middle">Selection</text>
 
-  <rect class="box" x="510" y="60" width="150" height="70" rx="12" />
-  <text class="label" x="585" y="88" text-anchor="middle">World Coord</text>
-  <text class="sub" x="585" y="106" text-anchor="middle">Estimate</text>
+  <rect class="box" x="510" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="580" y="90" text-anchor="middle">Pinhole</text>
+  <text class="sub" x="580" y="110" text-anchor="middle">Back-Projection</text>
 
-  <rect class="box" x="680" y="60" width="130" height="70" rx="12" />
-  <text class="label" x="745" y="88" text-anchor="middle">EMA</text>
-  <text class="sub" x="745" y="106" text-anchor="middle">Smoothing</text>
+  <rect class="box" x="670" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="740" y="90" text-anchor="middle">World Coord</text>
+  <text class="sub" x="740" y="110" text-anchor="middle">Estimate</text>
 
-  <rect class="box" x="830" y="60" width="130" height="70" rx="12" />
-  <text class="label" x="895" y="88" text-anchor="middle">Frozen</text>
-  <text class="sub" x="895" y="106" text-anchor="middle">Estimate</text>
+  <rect class="box" x="830" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="900" y="90" text-anchor="middle">EMA</text>
+  <text class="sub" x="900" y="110" text-anchor="middle">Smoothing</text>
 
-  <rect class="box" x="980" y="60" width="100" height="70" rx="12" />
-  <text class="label" x="1030" y="86" text-anchor="middle">FSM</text>
-  <text class="sub" x="1030" y="104" text-anchor="middle">Source Target</text>
+  <rect class="box" x="990" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="1060" y="88" text-anchor="middle">Frozen</text>
+  <text class="sub" x="1060" y="108" text-anchor="middle">Estimate</text>
+  <text class="sub" x="1060" y="125" text-anchor="middle">During Grasp</text>
 
-  <line class="arrow" x1="160" y1="95" x2="180" y2="95" />
-  <line class="arrow" x1="320" y1="95" x2="340" y2="95" />
-  <line class="arrow" x1="490" y1="95" x2="510" y2="95" />
-  <line class="arrow" x1="660" y1="95" x2="680" y2="95" />
-  <line class="arrow" x1="810" y1="95" x2="830" y2="95" />
-  <line class="arrow" x1="960" y1="95" x2="980" y2="95" />
+  <rect class="box" x="1150" y="60" width="140" height="80" rx="12" />
+  <text class="label" x="1220" y="90" text-anchor="middle">FSM</text>
+  <text class="sub" x="1220" y="110" text-anchor="middle">Source Target</text>
+
+  <line class="arrow" x1="170" y1="100" x2="190" y2="100" />
+  <line class="arrow" x1="330" y1="100" x2="350" y2="100" />
+  <line class="arrow" x1="490" y1="100" x2="510" y2="100" />
+  <line class="arrow" x1="650" y1="100" x2="670" y2="100" />
+  <line class="arrow" x1="810" y1="100" x2="830" y2="100" />
+  <line class="arrow" x1="970" y1="100" x2="990" y2="100" />
+  <line class="arrow" x1="1130" y1="100" x2="1150" y2="100" />
+
+  <text class="note" x="660" y="198" text-anchor="middle">
+    Deterministic observer, not a learned detector.
+  </text>
 </svg>
