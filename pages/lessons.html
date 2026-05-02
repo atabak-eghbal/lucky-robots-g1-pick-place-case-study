@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lessons | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Lessons</p>
+          <h1>Key Engineering Lessons</h1>
+          <p class="subtitle">The decisions, pitfalls, and insights that shaped the baseline.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="./challenge.html">Challenge</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">Visual Oracle</a>
+            <a href="./lessons.html">Lessons</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Implementation</a>
+            <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <p>
+            These lessons capture the key decisions and failure modes that emerged while converting
+            the manual demo into a modular baseline.
+          </p>
+        </section>
+
+        <section>
+          <h2>Key Engineering Lessons</h2>
+          <div class="callout-grid">
+            <article class="callout callout--failure">
+              <span class="callout-label">Failure Mode</span>
+              <h3>The Normalization Trap</h3>
+              <p>
+                The walker ONNX policy already applied internal normalization. Adding external
+                normalization double-normalized observations, destabilized the gait, and caused
+                hard-to-trace drift.
+              </p>
+            </article>
+            <article class="callout callout--decision">
+              <span class="callout-label">Design Decision</span>
+              <h3>The Always-On Reacher</h3>
+              <p>
+                The walker observes arm joint positions, so the right reacher had to run
+                unconditionally. Keeping the arm in a known carry pose prevented
+                out-of-distribution walking behavior.
+              </p>
+            </article>
+            <article class="callout callout--limitation">
+              <span class="callout-label">Limitation</span>
+              <h3>The Reacher Accuracy Floor</h3>
+              <p>
+                The right reacher had a practical accuracy floor of ~12 cm. Grasp thresholds and
+                timeout fallbacks were tuned around that floor instead of assuming perfect
+                convergence.
+              </p>
+            </article>
+            <article class="callout callout--evidence">
+              <span class="callout-label">Evidence</span>
+              <h3>The Asymptotic Turn-Rate Problem</h3>
+              <p>
+                Target-side navigation required empirical tuning because the walker’s effective
+                angular response slowed as it aligned with the desired heading, stretching
+                approach time.
+              </p>
+            </article>
+            <article class="callout callout--insight">
+              <span class="callout-label">Key Insight</span>
+              <h3>The Visual Oracle Freeze</h3>
+              <p>
+                The vision estimate was frozen during descent and close-grip phases to avoid
+                self-occlusion jitter and preserve a consistent grasp target.
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>

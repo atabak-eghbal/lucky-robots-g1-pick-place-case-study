@@ -37,6 +37,18 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.hero--subpage {
+  padding: 2.5rem 6vw 2rem;
+}
+
+.hero--subpage h1 {
+  font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+}
+
+.hero--subpage .subtitle {
+  margin-bottom: 0;
+}
+
 .hero-content {
   max-width: 980px;
   margin: 0 auto;
@@ -79,12 +91,55 @@ h1 {
   font-weight: 600;
 }
 
+.top-nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 6vw;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.nav-title {
+  font-weight: 700;
+  color: var(--ink);
+  margin-right: 0.35rem;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-links a.active,
+.nav-links a:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .content {
   max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 2.5rem;
   padding: 2.5rem 6vw 4rem;
 }
 
@@ -172,6 +227,19 @@ h3 {
   border-radius: 14px;
   padding: 1.2rem;
   background: #fdfdfd;
+}
+
+.card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-link:hover {
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(31, 111, 235, 0.15);
+  transform: translateY(-2px);
 }
 
 .card p {
@@ -500,26 +568,8 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .content {
-    grid-template-columns: 1fr;
-  }
-
-  .toc {
-    position: static;
-  }
-
-  .toc-toggle {
-    display: inline-flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .toc-list {
-    display: none;
-  }
-
-  .toc.open .toc-list {
-    display: flex;
+  .nav-title {
+    flex-basis: 100%;
   }
 }
 

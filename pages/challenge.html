@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Challenge | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Challenge</p>
+          <h1>The G1 Pick-and-Place Task</h1>
+          <p class="subtitle">Why this autonomous baseline is harder than it first appears.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="./challenge.html">Challenge</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">Visual Oracle</a>
+            <a href="./lessons.html">Lessons</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Implementation</a>
+            <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <p>
+            This page frames the task and explains why the problem is harder than simply reaching for
+            a cylinder.
+          </p>
+        </section>
+
+        <section>
+          <h2>The Challenge</h2>
+          <p>
+            The Lucky Robots G1 Pick-and-Place Challenge asked for a red cylinder to be moved from a
+            source table to a target table using the Unitree G1 humanoid in MuJoCo. The original
+            repository shipped a manual keyboard-controlled demo with walker and reacher ONNX
+            policies, a full robot model, a configured scene, and multi-camera visibility. The task
+            here was to turn that demo into an autonomous baseline without hiding where the system
+            still fails.
+          </p>
+          <p>
+            The result is a modular controller: an explicit finite-state machine, a kinematic grasp
+            backend, and a lightweight Visual Oracle for source localization. It is intentionally a
+            baseline—not a production-ready stack—but it is structured for debugging and incremental
+            upgrades.
+          </p>
+        </section>
+
+        <section>
+          <h2>Why It Is Hard</h2>
+          <ul class="bullet-list">
+            <li>Humanoid locomotion and manipulation must be coordinated concurrently, not staged.</li>
+            <li>The reacher expects pelvis-frame targets, so world-frame goals require careful transforms.</li>
+            <li>Learned policies have narrow operating envelopes and drift under small distribution shifts.</li>
+            <li>Grasping is contact-rich, and fingertip alignment matters more than global pose accuracy.</li>
+            <li>Perception timing interacts with gait, causing jitter or occlusion at the worst moments.</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>
