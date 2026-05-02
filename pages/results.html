@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Results | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Results</p>
+          <h1>Simulation Milestones</h1>
+          <p class="subtitle">What the autonomous baseline demonstrated in MuJoCo.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="./challenge.html">Challenge</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">Visual Oracle</a>
+            <a href="./lessons.html">Lessons</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Implementation</a>
+            <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <h2>Results</h2>
+          <p>
+            The milestones below summarize what the autonomous baseline demonstrated in
+            simulation. The evidence comes from development logs, headless checks, and visual
+            inspection of reference runs.
+          </p>
+          <table class="milestone-table">
+            <thead>
+              <tr>
+                <th>Milestone</th>
+                <th>What it demonstrated</th>
+                <th>Outcome</th>
+                <th>Caveat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Headless smoke test</td>
+                <td>Environment and assets were ready for autonomous control.</td>
+                <td>Scene, cameras, bodies, sites, joints, and ONNX policy warmups were verified.</td>
+                <td>It validates loading, not task success.</td>
+              </tr>
+              <tr>
+                <td>Source approach</td>
+                <td>The walker could move the robot into a source-side reach corridor.</td>
+                <td>FSM reached HOVER_SOURCE after the settle and approach phases.</td>
+                <td>Ground-truth or Visual Oracle pose quality affects this transition.</td>
+              </tr>
+              <tr>
+                <td>Hover and descend</td>
+                <td>The right reacher could move toward hover and grasp-height targets.</td>
+                <td>Palm approached the object within the practical grasp window.</td>
+                <td>The reacher showed an empirical accuracy floor around 12 cm.</td>
+              </tr>
+              <tr>
+                <td>Kinematic grasp</td>
+                <td>A deterministic grasp backend could stabilize object pickup.</td>
+                <td>
+                  Attachment triggered near the close-grip window, with observed attach distance
+                  around 0.128 m in the reference run.
+                </td>
+                <td>This is a simulation shortcut, not physical finger contact.</td>
+              </tr>
+              <tr>
+                <td>Source lift</td>
+                <td>The attached object could be lifted and carried in the right hand.</td>
+                <td>The cylinder tracked the palm through lift and transport.</td>
+                <td>Lift height depends on reacher convergence and carry pose stability.</td>
+              </tr>
+              <tr>
+                <td>Target transport</td>
+                <td>The walker could transport the attached object toward the target side.</td>
+                <td>The robot carried the cylinder while maintaining the reacher carry pose.</td>
+                <td>Target-side navigation required empirical tuning.</td>
+              </tr>
+              <tr>
+                <td>Placement and release</td>
+                <td>The FSM could lower, open grip, detach, and retract.</td>
+                <td>The object was released above the target surface in the successful baseline.</td>
+                <td>On-table validation should be checked after post-release settling.</td>
+              </tr>
+              <tr>
+                <td>Visual Oracle source localization</td>
+                <td>
+                  Camera-based source localization could replace ground-truth lookup for the
+                  source-side phases.
+                </td>
+                <td>EMA-smoothed depth back-projection provided a stable source target.</td>
+                <td>
+                  It is deterministic segmentation/depth logic, not a learned detector, and
+                  occlusion remains a risk.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <figure class="figure">
+            <img
+              src="../assets/reacher-floor.svg"
+              alt="Reacher error over time flattening at the practical accuracy floor."
+              loading="lazy"
+            />
+            <figcaption>
+              Reacher accuracy floor showing radial error clustering around ~12 cm and the tuned
+              threshold window.
+            </figcaption>
+          </figure>
+          <figure class="figure">
+            <img
+              src="../assets/navigation-phase.svg"
+              alt="Heading error plot showing rapid initial turning and asymptotic slowdown."
+              loading="lazy"
+            />
+            <figcaption>
+              Walker heading vs. time during target-side alignment, highlighting the asymptotic
+              turn-rate slowdown.
+            </figcaption>
+          </figure>
+          <figure class="figure">
+            <img
+              src="../assets/staircase-speed.svg"
+              alt="Piecewise speed schedule showing slower velocities as distance closes."
+              loading="lazy"
+            />
+            <figcaption>
+              Stepwise speed schedule used to keep gait stable during approach and retreat phases.
+            </figcaption>
+          </figure>
+        </section>
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>

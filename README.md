@@ -1,7 +1,7 @@
 # Lucky Robots G1 Pick-and-Place Case Study
 
 ## What this repo is
-This repository hosts a static, single-page technical portfolio post about building a modular
+This repository hosts a static, multi-page technical portfolio site about building a modular
 pick-and-place baseline for the Unitree G1 humanoid in MuJoCo. It documents the FSM baseline, the
 Visual Oracle perception loop, and the engineering tradeoffs that made the autonomous demo
 repeatable in simulation.

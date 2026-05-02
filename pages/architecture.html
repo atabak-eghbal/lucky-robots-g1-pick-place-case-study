@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Architecture | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Architecture</p>
+          <h1>System Decomposition and Runtime Architecture</h1>
+          <p class="subtitle">A modular view of the baseline’s runtime, policies, and helpers.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="./challenge.html">Challenge</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">Visual Oracle</a>
+            <a href="./lessons.html">Lessons</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Implementation</a>
+            <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <h2>System Decomposition</h2>
+          <p>
+            The baseline is decomposed into narrow, testable modules so each subsystem can be tuned
+            in isolation while still supporting end-to-end runs. Each module exposes explicit logs
+            and thresholds for repeatable debugging.
+          </p>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Perception</h3>
+              <p>Depth + segmentation back-projection to recover a source-side object pose.</p>
+            </article>
+            <article class="card">
+              <h3>Locomotion</h3>
+              <p>ONNX walker policy handles coarse navigation and stance stability.</p>
+            </article>
+            <article class="card">
+              <h3>Manipulation</h3>
+              <p>ONNX right reacher overlays arm motion while the walker continues to step.</p>
+            </article>
+            <article class="card">
+              <h3>Grasp</h3>
+              <p>Kinematic attachment backend for deterministic pickup and release.</p>
+            </article>
+            <article class="card">
+              <h3>Sequencing</h3>
+              <p>Finite-state machine coordinates phases, checks, and timeouts.</p>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <h2>Architecture</h2>
+          <p>
+            The runtime keeps policy logic separate from control plumbing so each layer can be
+            instrumented independently. The core flow is intentionally simple: orchestration,
+            policy decisions, control synthesis, and simulation feedback.
+          </p>
+          <p>
+            The main design decision was to separate runtime orchestration, policy decisions,
+            controller synthesis, grasp logic, and validation scripts.
+          </p>
+          <ul class="bullet-list">
+            <li><strong>run.py</strong> as the runtime orchestrator and entry point.</li>
+            <li><strong>common/controller.py</strong> as the walker/reacher controller layer.</li>
+            <li><strong>common/grasp.py</strong> as the kinematic grasp backend.</li>
+            <li><strong>policies/fsm_core.py</strong> for the baseline state machine.</li>
+            <li><strong>policies/fsm_visual_oracle.py</strong> for the vision-augmented extension.</li>
+            <li><strong>vision/geometry.py</strong> and <strong>vision/observer.py</strong> for perception.</li>
+          </ul>
+          <figure class="figure">
+            <img
+              src="../assets/architecture.svg"
+              alt="Architecture diagram showing the runtime orchestrator feeding policy, controller, ONNX policies, and MuJoCo simulation with a vision observer input."
+              loading="lazy"
+            />
+            <figcaption>
+              Runtime orchestration from policy decisions to controller output, with the Vision
+              Observer feeding the FSM and Visual Oracle layers.
+            </figcaption>
+          </figure>
+        </section>
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>

@@ -1,34 +1,17 @@
-const toc = document.querySelector(".toc");
-const tocToggle = document.querySelector(".toc-toggle");
-const tocLinks = Array.from(document.querySelectorAll(".toc-list a"));
-const sections = tocLinks
-  .map((link) => document.querySelector(link.getAttribute("href")))
-  .filter(Boolean);
+const navLinks = Array.from(document.querySelectorAll(".nav-links a"));
 
-if (tocToggle && toc) {
-  tocToggle.addEventListener("click", () => {
-    const isOpen = toc.classList.toggle("open");
-    tocToggle.setAttribute("aria-expanded", String(isOpen));
-  });
-}
+if (navLinks.length) {
+  const currentUrl = new URL(window.location.href);
 
-if (sections.length) {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute("id");
-          tocLinks.forEach((link) => {
-            link.classList.toggle("active", link.getAttribute("href") === `#${id}`);
-          });
-        }
-      });
-    },
-    {
-      rootMargin: "-30% 0px -60% 0px",
-      threshold: 0.1,
+  navLinks.forEach((link) => {
+    const href = link.getAttribute("href");
+    if (!href) {
+      return;
     }
-  );
 
-  sections.forEach((section) => observer.observe(section));
+    const linkUrl = new URL(href, currentUrl);
+    if (linkUrl.pathname === currentUrl.pathname) {
+      link.classList.add("active");
+    }
+  });
 }
