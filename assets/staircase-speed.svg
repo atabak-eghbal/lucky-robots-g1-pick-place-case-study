@@ -1,0 +1,56 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="700"
+  height="320"
+  viewBox="0 0 700 320"
+  role="img"
+  aria-label="Piecewise forward velocity schedule versus distance error."
+>
+  <defs>
+    <style>
+      .axis {
+        stroke: #cbd5e1;
+        stroke-width: 1.5;
+      }
+      .grid {
+        stroke: #e5e7eb;
+        stroke-width: 1;
+      }
+      .line {
+        stroke: #1f6feb;
+        stroke-width: 3;
+        fill: none;
+      }
+      .label {
+        font: 500 12px "Inter", "Segoe UI", sans-serif;
+        fill: #5f6b7a;
+      }
+      .note {
+        font: 600 12px "Inter", "Segoe UI", sans-serif;
+        fill: #1f6feb;
+      }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="700" height="320" fill="#ffffff" />
+
+  <line class="axis" x1="60" y1="40" x2="60" y2="260" />
+  <line class="axis" x1="60" y1="260" x2="660" y2="260" />
+
+  <line class="grid" x1="60" y1="100" x2="660" y2="100" />
+  <line class="grid" x1="60" y1="160" x2="660" y2="160" />
+  <line class="grid" x1="60" y1="220" x2="660" y2="220" />
+
+  <path
+    class="line"
+    d="M60,90 L220,90 L220,130 L380,130 L380,180 L520,180 L520,240 L660,240"
+  />
+
+  <text class="note" x="100" y="80">far → fast</text>
+  <text class="note" x="250" y="120">medium → moderate</text>
+  <text class="note" x="410" y="170">near → slow</text>
+  <text class="note" x="520" y="232">inside reach window → zero</text>
+
+  <text class="label" x="30" y="50" text-anchor="end">Forward velocity</text>
+  <text class="label" x="660" y="290" text-anchor="end">Distance error</text>
+</svg>

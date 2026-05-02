@@ -1,60 +1,69 @@
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  width="900"
-  height="420"
-  viewBox="0 0 900 420"
+  width="960"
+  height="560"
+  viewBox="0 0 960 560"
   role="img"
-  aria-label="Architecture diagram showing orchestration, policy, controller, ONNX policies, and MuJoCo simulation with a vision observer input."
+  aria-label="Architecture diagram showing orchestration, policy, controller, and simulation layers with a vision observer input."
 >
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#64748b" />
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#5f6b7a" />
     </marker>
     <style>
       .box {
         fill: #ffffff;
-        stroke: #94a3b8;
+        stroke: #e1e5ea;
         stroke-width: 1.5;
       }
       .title {
         font: 600 16px "Inter", "Segoe UI", sans-serif;
-        fill: #0f172a;
+        fill: #161b22;
       }
-      .subtitle {
-        font: 500 12px "Inter", "Segoe UI", sans-serif;
-        fill: #475569;
+      .layer {
+        font: 600 15px "Inter", "Segoe UI", sans-serif;
+        fill: #1f6feb;
+      }
+      .item {
+        font: 500 13px "Inter", "Segoe UI", sans-serif;
+        fill: #5f6b7a;
       }
       .arrow {
-        stroke: #64748b;
+        stroke: #5f6b7a;
         stroke-width: 2;
         marker-end: url(#arrow);
       }
     </style>
   </defs>
 
-  <rect class="box" x="260" y="20" width="380" height="60" rx="12" />
-  <text class="title" x="450" y="55" text-anchor="middle">Runtime Orchestrator</text>
+  <rect class="box" x="130" y="30" width="700" height="70" rx="16" />
+  <text class="title" x="480" y="68" text-anchor="middle">Runtime Orchestrator</text>
 
-  <rect class="box" x="260" y="105" width="380" height="70" rx="12" />
-  <text class="title" x="450" y="140" text-anchor="middle">Policy Layer</text>
-  <text class="subtitle" x="450" y="160" text-anchor="middle">FSM / Visual Oracle</text>
+  <rect class="box" x="130" y="120" width="700" height="120" rx="16" />
+  <text class="layer" x="480" y="150" text-anchor="middle">Policy Layer</text>
+  <text class="item" x="480" y="178" text-anchor="middle">Keyboard Policy</text>
+  <text class="item" x="480" y="198" text-anchor="middle">FSM Policy</text>
+  <text class="item" x="480" y="218" text-anchor="middle">Visual Oracle FSM</text>
 
-  <rect class="box" x="260" y="200" width="380" height="60" rx="12" />
-  <text class="title" x="450" y="235" text-anchor="middle">Controller Layer</text>
+  <rect class="box" x="130" y="255" width="700" height="120" rx="16" />
+  <text class="layer" x="480" y="285" text-anchor="middle">Controller Layer</text>
+  <text class="item" x="480" y="313" text-anchor="middle">Walker/Reacher Controller</text>
+  <text class="item" x="480" y="333" text-anchor="middle">ONNX Walker</text>
+  <text class="item" x="480" y="353" text-anchor="middle">ONNX Right Reacher</text>
 
-  <rect class="box" x="260" y="285" width="380" height="60" rx="12" />
-  <text class="title" x="450" y="320" text-anchor="middle">ONNX Walker / ONNX Reacher</text>
+  <rect class="box" x="130" y="390" width="700" height="120" rx="16" />
+  <text class="layer" x="480" y="420" text-anchor="middle">MuJoCo Simulation</text>
+  <text class="item" x="480" y="448" text-anchor="middle">Unitree G1</text>
+  <text class="item" x="480" y="468" text-anchor="middle">Source/Target Tables</text>
+  <text class="item" x="480" y="488" text-anchor="middle">Red Cylinder</text>
 
-  <rect class="box" x="260" y="355" width="380" height="50" rx="12" />
-  <text class="title" x="450" y="385" text-anchor="middle">MuJoCo Simulation</text>
+  <rect class="box" x="20" y="150" width="190" height="70" rx="14" />
+  <text class="title" x="115" y="182" text-anchor="middle">Vision Observer</text>
+  <text class="item" x="115" y="202" text-anchor="middle">RGB + Depth</text>
 
-  <rect class="box" x="40" y="120" width="180" height="60" rx="12" />
-  <text class="title" x="130" y="150" text-anchor="middle">Vision Observer</text>
+  <line class="arrow" x1="480" y1="100" x2="480" y2="120" />
+  <line class="arrow" x1="480" y1="240" x2="480" y2="255" />
+  <line class="arrow" x1="480" y1="375" x2="480" y2="390" />
 
-  <line class="arrow" x1="450" y1="80" x2="450" y2="105" />
-  <line class="arrow" x1="450" y1="175" x2="450" y2="200" />
-  <line class="arrow" x1="450" y1="260" x2="450" y2="285" />
-  <line class="arrow" x1="450" y1="345" x2="450" y2="355" />
-
-  <line class="arrow" x1="220" y1="150" x2="260" y2="140" />
+  <line class="arrow" x1="210" y1="185" x2="130" y2="195" />
 </svg>

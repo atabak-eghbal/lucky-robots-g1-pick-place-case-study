@@ -15,7 +15,11 @@ repeatable in simulation.
 2. In **Settings → Pages**, choose the `main` branch and `/ (root)` directory.
 3. Save the settings and wait for the Pages build to complete.
 
+## How to publish
+For a project site, the URL will look like:
+`https://USERNAME.github.io/lucky-robots-g1-pick-place-case-study/`
+
 ## Links
-- Original implementation repo: [TBD](https://example.com/original-repo)
-- Demo video: [TBD](https://example.com/demo-video)
-- Final write-up PDF (optional): [TBD](https://example.com/final-writeup.pdf)
+- Original implementation repo: TBD
+- Demo video: TBD
+- Final write-up PDF: Optional / TBD

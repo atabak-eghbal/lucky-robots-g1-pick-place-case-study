@@ -1,0 +1,60 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="700"
+  height="320"
+  viewBox="0 0 700 320"
+  role="img"
+  aria-label="Reacher error curve decreasing over time and flattening around 0.12 meters."
+>
+  <defs>
+    <style>
+      .axis {
+        stroke: #cbd5e1;
+        stroke-width: 1.5;
+      }
+      .grid {
+        stroke: #e5e7eb;
+        stroke-width: 1;
+      }
+      .line {
+        stroke: #1f6feb;
+        stroke-width: 3;
+        fill: none;
+      }
+      .label {
+        font: 500 12px "Inter", "Segoe UI", sans-serif;
+        fill: #5f6b7a;
+      }
+      .note {
+        font: 600 12px "Inter", "Segoe UI", sans-serif;
+        fill: #1f6feb;
+      }
+      .dash {
+        stroke: #94a3b8;
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
+      }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="700" height="320" fill="#ffffff" />
+
+  <line class="axis" x1="60" y1="40" x2="60" y2="260" />
+  <line class="axis" x1="60" y1="260" x2="660" y2="260" />
+
+  <line class="grid" x1="60" y1="90" x2="660" y2="90" />
+  <line class="grid" x1="60" y1="140" x2="660" y2="140" />
+  <line class="grid" x1="60" y1="190" x2="660" y2="190" />
+
+  <path
+    class="line"
+    d="M60,70 C160,150 260,190 340,210 S520,225 660,226"
+  />
+
+  <line class="dash" x1="60" y1="226" x2="660" y2="226" />
+  <text class="note" x="420" y="216">practical reacher floor</text>
+
+  <text class="label" x="30" y="50" text-anchor="end">Error (m)</text>
+  <text class="label" x="660" y="290" text-anchor="end">Time</text>
+  <text class="label" x="35" y="230" text-anchor="end">0.12</text>
+</svg>
