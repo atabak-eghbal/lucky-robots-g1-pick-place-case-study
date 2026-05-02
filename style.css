@@ -206,11 +206,119 @@ h3 {
   font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   font-size: 0.9rem;
   color: #1f2937;
+  overflow-x: auto;
 }
 
 .code-block pre {
   margin: 0;
   white-space: pre-wrap;
+  min-width: max-content;
+}
+
+.code-details {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fdfdfd;
+  overflow: hidden;
+}
+
+.code-details + .code-details {
+  margin-top: 1rem;
+}
+
+.code-details summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 1rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  background: #f8f9fc;
+  border-bottom: 1px solid var(--border);
+}
+
+.code-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.code-details summary span {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.code-details summary code {
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0.2rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.code-details[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.code-details > p,
+.code-details > .code-block,
+.code-details > .code-deep-notes,
+.code-details > .mini-card-grid {
+  margin-left: 1.2rem;
+  margin-right: 1.2rem;
+}
+
+.code-details > p:first-of-type {
+  margin-top: 1rem;
+}
+
+.code-deep-notes {
+  background: #fbfcff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.code-deep-notes h4 {
+  margin: 0.8rem 0 0.25rem;
+}
+
+.code-deep-notes h4:first-child {
+  margin-top: 0;
+}
+
+.code-deep-notes p {
+  margin: 0 0 0.7rem;
+  color: var(--muted);
+}
+
+.mini-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.mini-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: #ffffff;
+}
+
+.mini-card h4 {
+  margin: 0 0 0.4rem;
+}
+
+.mini-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.code-details .code-block pre {
+  white-space: pre;
 }
 
 .code-walkthrough-grid {
