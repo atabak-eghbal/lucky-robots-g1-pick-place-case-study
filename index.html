@@ -13,8 +13,8 @@
           <p class="eyebrow">Technical Case Study</p>
           <h1>Engineering a Modular Pick-and-Place Baseline for the Unitree G1 Humanoid</h1>
           <p class="subtitle">
-            A technical case study on turning a manual MuJoCo robot demo into an autonomous FSM and
-            Visual Oracle pipeline.
+            A portfolio-style case study on turning a manual MuJoCo demo into a modular FSM baseline
+            with a Visual Oracle perception loop.
           </p>
           <ul class="badge-list">
             <li>MuJoCo</li>
@@ -32,7 +32,7 @@
           <button class="toc-toggle" type="button" aria-expanded="false">Table of contents</button>
           <nav class="toc-list">
             <a href="#challenge">The Challenge</a>
-            <a href="#why-hard">Why This Is Hard</a>
+            <a href="#why-hard">Why It Is Hard</a>
             <a href="#system-decomposition">System Decomposition</a>
             <a href="#architecture">Architecture</a>
             <a href="#fsm-baseline">FSM Baseline</a>
@@ -41,7 +41,6 @@
             <a href="#results">Results</a>
             <a href="#limitations">Limitations</a>
             <a href="#next-steps">Next Steps</a>
-            <a href="#closing">Closing</a>
           </nav>
         </aside>
 
@@ -49,45 +48,51 @@
           <section id="challenge">
             <h2>The Challenge</h2>
             <p>
-              The goal was simple to describe and hard to implement: move a red cylinder from a
+              The Lucky Robots G1 Pick-and-Place Challenge asked for a red cylinder to be moved from a
               source table to a target table using the Unitree G1 humanoid in MuJoCo. The original
-              repository shipped with manual keyboard control, walker and reacher ONNX policies, the
-              robot model, a predefined scene, and multi-camera observability. The case study was
-              about turning that demo into an autonomous baseline without losing clarity on what was
-              failing.
+              repository shipped a manual keyboard-controlled demo with walker and reacher ONNX
+              policies, a full robot model, a configured scene, and multi-camera visibility. The task
+              here was to turn that demo into an autonomous baseline without hiding where the system
+              still fails.
+            </p>
+            <p>
+              The result is a modular controller: an explicit finite-state machine, a kinematic grasp
+              backend, and a lightweight Visual Oracle for source localization. It is intentionally a
+              baseline—not a production-ready stack—but it is structured for debugging and
+              incremental upgrades.
             </p>
           </section>
 
           <section id="why-hard">
-            <h2>Why This Is Hard</h2>
+            <h2>Why It Is Hard</h2>
             <ul class="bullet-list">
-              <li>Humanoid locomotion and manipulation must be coordinated, not staged.</li>
-              <li>The reacher policy consumes pelvis-frame targets, not world-frame goals.</li>
-              <li>Grasping is contact-rich and highly sensitive to fingertip pose.</li>
-              <li>Learned policies behave empirically and can drift outside expected regimes.</li>
-              <li>Perception and manipulation timing determine whether the grasp is stable.</li>
+              <li>Humanoid locomotion and manipulation must be coordinated concurrently, not staged.</li>
+              <li>The reacher expects pelvis-frame targets, so world-frame goals require careful transforms.</li>
+              <li>Learned policies have narrow operating envelopes and drift under small distribution shifts.</li>
+              <li>Grasping is contact-rich, and fingertip alignment matters more than global pose accuracy.</li>
+              <li>Perception timing interacts with gait, causing jitter or occlusion at the worst moments.</li>
             </ul>
           </section>
 
           <section id="system-decomposition">
             <h2>System Decomposition</h2>
             <p>
-              A modular stack allowed each subsystem to be debugged in isolation while still
-              supporting an end-to-end task. The pipeline is split into perception, locomotion,
-              manipulation, grasping, and sequencing.
+              The baseline is decomposed into narrow, testable modules so each subsystem can be tuned
+              in isolation while still supporting end-to-end runs. Each module exposes explicit logs
+              and thresholds for repeatable debugging.
             </p>
             <div class="card-grid">
               <article class="card">
                 <h3>Perception</h3>
-                <p>Depth + segmentation back-projection to recover object pose.</p>
+                <p>Depth + segmentation back-projection to recover a source-side object pose.</p>
               </article>
               <article class="card">
                 <h3>Locomotion</h3>
-                <p>ONNX walker policy drives coarse navigation and stance control.</p>
+                <p>ONNX walker policy handles coarse navigation and stance stability.</p>
               </article>
               <article class="card">
                 <h3>Manipulation</h3>
-                <p>ONNX right reacher overlays arm motion on top of gait.</p>
+                <p>ONNX right reacher overlays arm motion while the walker continues to step.</p>
               </article>
               <article class="card">
                 <h3>Grasp</h3>
@@ -95,35 +100,45 @@
               </article>
               <article class="card">
                 <h3>Sequencing</h3>
-                <p>Finite-state machine coordinates all modules and timeouts.</p>
+                <p>Finite-state machine coordinates phases, checks, and timeouts.</p>
               </article>
             </div>
-            <div class="visual-placeholder">[Visual: Modular architecture diagram]</div>
           </section>
 
           <section id="architecture">
             <h2>Architecture</h2>
             <p>
-              The baseline connects policy logic to MuJoCo through a small set of focused modules
-              that encapsulate control and perception:
+              The runtime keeps policy logic separate from control plumbing so each layer can be
+              instrumented independently. The core flow is intentionally simple: orchestration,
+              policy decisions, control synthesis, and simulation feedback.
             </p>
             <ul class="bullet-list">
-              <li><strong>run.py</strong> as the runtime orchestrator.</li>
-              <li><strong>common/controller.py</strong> as the walker/reacher controller.</li>
-              <li><strong>common/grasp.py</strong> as the grasp backend.</li>
-              <li><strong>policies/fsm_core.py</strong> as the FSM logic.</li>
-              <li><strong>policies/fsm_visual_oracle.py</strong> as the visual extension.</li>
-              <li><strong>vision/geometry.py</strong> and <strong>observer.py</strong> as the perception layer.</li>
+              <li><strong>run.py</strong> as the runtime orchestrator and entry point.</li>
+              <li><strong>common/controller.py</strong> as the walker/reacher controller layer.</li>
+              <li><strong>common/grasp.py</strong> as the kinematic grasp backend.</li>
+              <li><strong>policies/fsm_core.py</strong> for the baseline state machine.</li>
+              <li><strong>policies/fsm_visual_oracle.py</strong> for the vision-augmented extension.</li>
+              <li><strong>vision/geometry.py</strong> and <strong>vision/observer.py</strong> for perception.</li>
             </ul>
-            <div class="visual-placeholder">[Visual: Layered architecture from policy to MuJoCo]</div>
+            <figure class="figure">
+              <img
+                src="assets/architecture.svg"
+                alt="Architecture diagram showing the runtime orchestrator feeding policy, controller, ONNX policies, and MuJoCo simulation with a vision observer input."
+                loading="lazy"
+              />
+              <figcaption>
+                Runtime orchestration from policy decisions to controller output, with the Vision
+                Observer feeding the FSM and Visual Oracle layers.
+              </figcaption>
+            </figure>
           </section>
 
           <section id="fsm-baseline">
             <h2>FSM Baseline</h2>
             <p>
-              The first autonomous version used an explicit finite-state machine so that each phase
-              of the task could be inspected and tuned without conflating locomotion, perception,
-              and grasping issues.
+              The first autonomous version used an explicit finite-state machine so each phase could
+              be tuned independently. The state ordering also makes timeouts and fallback paths
+              visible during debugging.
             </p>
             <div class="code-block">
               <pre>
@@ -141,60 +156,92 @@ RETRACT
 DONE</pre>
             </div>
             <p class="small">
-              FSMs were chosen over end-to-end RL for the initial baseline because they are easier
-              to debug, easier to test, better for isolating locomotion vs. manipulation failures,
-              and more reliable when time is limited.
+              FSMs were selected over end-to-end RL because they make locomotion, perception, and
+              grasping failures separable and traceable within a short development cycle.
             </p>
-            <div class="visual-placeholder">[Visual: FSM state-transition diagram]</div>
+            <figure class="figure">
+              <img
+                src="assets/fsm-diagram.svg"
+                alt="Finite-state machine diagram showing source approach, grasp, transport, and placement phases."
+                loading="lazy"
+              />
+              <figcaption>
+                FSM sequencing with debounce, timeout fallback, attach/release events, and frozen
+                vision estimates during the close-grip window.
+              </figcaption>
+            </figure>
           </section>
 
           <section id="visual-oracle">
             <h2>Visual Oracle</h2>
             <p>
-              A ground-truth lookup was used first to debug behavior quickly. The Visual Oracle then
-              replaced source-side object lookup by estimating the cylinder pose from camera depth
-              and segmentation. The estimate is EMA-smoothed and frozen during descent and
-              close-grip phases to avoid last-moment jitter.
+              The baseline started with a ground-truth lookup to validate motion control. The Visual
+              Oracle replaces that lookup by estimating the cylinder pose from RGB segmentation and
+              depth back-projection, then smoothing the estimate with an EMA.
             </p>
-            <div class="visual-placeholder">[Visual: camera depth back-projection pipeline]</div>
+            <p>
+              The estimator is deliberately lightweight and deterministic; it is not a learned
+              detector. The pose is frozen during descent and close-grip phases to avoid
+              self-occlusion jitter.
+            </p>
+            <figure class="figure">
+              <img
+                src="assets/visual-oracle.svg"
+                alt="Visual Oracle pipeline diagram showing camera inputs, masking, back-projection, smoothing, freezing, and FSM target output."
+                loading="lazy"
+              />
+              <figcaption>
+                Visual Oracle pipeline from camera input to EMA-smoothed and frozen target pose for
+                source-side reaching.
+              </figcaption>
+            </figure>
           </section>
 
           <section id="lessons">
             <h2>Key Engineering Lessons</h2>
             <div class="callout-grid">
-              <article class="callout">
+              <article class="callout callout--failure">
+                <span class="callout-label">Failure Mode</span>
                 <h3>The Normalization Trap</h3>
                 <p>
-                  Mixing raw MuJoCo coordinates with normalized policy inputs can silently poison
-                  reacher targets. A single canonical frame prevented hidden offsets.
+                  The walker ONNX policy already applied internal normalization. Adding external
+                  normalization double-normalized observations, destabilized the gait, and caused
+                  hard-to-trace drift.
                 </p>
               </article>
-              <article class="callout">
+              <article class="callout callout--decision">
+                <span class="callout-label">Design Decision</span>
                 <h3>The Always-On Reacher</h3>
                 <p>
-                  Leaving the reacher engaged across walking phases caused drift. Gating the reacher
-                  by FSM state stabilized navigation.
+                  The walker observes arm joint positions, so the right reacher had to run
+                  unconditionally. Keeping the arm in a known carry pose prevented
+                  out-of-distribution walking behavior.
                 </p>
               </article>
-              <article class="callout">
+              <article class="callout callout--limitation">
+                <span class="callout-label">Limitation</span>
                 <h3>The Reacher Accuracy Floor</h3>
                 <p>
-                  Even with perfect targets, the reacher has a minimum error bound. The grasp logic
-                  needed to tolerate that floor.
+                  The right reacher had a practical accuracy floor of ~12 cm. Grasp thresholds and
+                  timeout fallbacks were tuned around that floor instead of assuming perfect
+                  convergence.
                 </p>
               </article>
-              <article class="callout">
+              <article class="callout callout--evidence">
+                <span class="callout-label">Evidence</span>
                 <h3>The Asymptotic Turn-Rate Problem</h3>
                 <p>
-                  The walker can slow as it nears alignment, stretching approach time. Explicit
-                  timeouts ensured state transitions still progressed.
+                  Target-side navigation required empirical tuning because the walker’s effective
+                  angular response slowed as it aligned with the desired heading, stretching
+                  approach time.
                 </p>
               </article>
-              <article class="callout">
-                <h3>Why Timeouts Were Necessary</h3>
+              <article class="callout callout--insight">
+                <span class="callout-label">Key Insight</span>
+                <h3>The Visual Oracle Freeze</h3>
                 <p>
-                  Perception glitches and contact noise made some phases non-terminating. Timeouts
-                  bounded retries and simplified debugging.
+                  The vision estimate was frozen during descent and close-grip phases to avoid
+                  self-occlusion jitter and preserve a consistent grasp target.
                 </p>
               </article>
             </div>
@@ -202,102 +249,116 @@ DONE</pre>
 
           <section id="results">
             <h2>Results</h2>
+            <p>
+              The milestones below summarize what the autonomous baseline reliably demonstrated in
+              simulation. Evidence comes from logs, overlay traces, and recorded runs.
+            </p>
             <table class="milestone-table">
               <thead>
                 <tr>
                   <th>Milestone</th>
+                  <th>What it demonstrated</th>
                   <th>Outcome</th>
-                  <th>Evidence</th>
                   <th>Caveat</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td>Headless smoke test</td>
-                  <td>Simulation booted and policies loaded reliably.</td>
-                  <td>Run logs and frame captures.</td>
+                  <td>Core loop boots, policies load, and telemetry streams.</td>
+                  <td>Stable initialization with repeatable logs and captures.</td>
                   <td>Manual inspection only.</td>
                 </tr>
                 <tr>
                   <td>Source approach</td>
-                  <td>Walker aligned to source table within tolerance.</td>
-                  <td>Trajectory overlays in debug view.</td>
-                  <td>Slow turn-in on tight angles.</td>
+                  <td>Walker can align with the source table pose.</td>
+                  <td>Reached approach corridor with consistent yaw control.</td>
+                  <td>Turn-in slows near alignment.</td>
                 </tr>
                 <tr>
-                  <td>Hover/descend</td>
-                  <td>Hand pose stabilized above target.</td>
-                  <td>Depth-aligned reacher traces.</td>
-                  <td>Sensitive to target jitter.</td>
+                  <td>Hover and descend</td>
+                  <td>Reacher can hold a stable hover and descend window.</td>
+                  <td>Hand stabilized above the cylinder with tuned thresholds.</td>
+                  <td>Sensitive to perception jitter.</td>
                 </tr>
                 <tr>
                   <td>Kinematic grasp</td>
-                  <td>Object attached consistently.</td>
-                  <td>Attachment events in logs.</td>
+                  <td>Attachment backend triggers on alignment.</td>
+                  <td>Object attaches consistently at the close-grip window.</td>
                   <td>Not a physical grasp.</td>
                 </tr>
                 <tr>
                   <td>Source lift</td>
-                  <td>Object cleared table with safe margin.</td>
-                  <td>Lift height snapshots.</td>
-                  <td>Requires stable wrist posture.</td>
+                  <td>FSM clears the object from the table safely.</td>
+                  <td>Lifted with repeatable clearance margins.</td>
+                  <td>Depends on carry pose stability.</td>
                 </tr>
                 <tr>
                   <td>Target transport</td>
-                  <td>Object carried across scene.</td>
-                  <td>Path overlays and video clips.</td>
-                  <td>Occasional sway at gait transitions.</td>
+                  <td>Walker carries the object across the scene.</td>
+                  <td>Consistent transport with the arm in carry pose.</td>
+                  <td>Sway during gait transitions.</td>
                 </tr>
                 <tr>
-                  <td>Placement</td>
-                  <td>Object released above target surface.</td>
-                  <td>Release sequence debug steps.</td>
+                  <td>Placement and release</td>
+                  <td>Release sequence opens the gripper and detaches.</td>
+                  <td>Object released above the target surface.</td>
                   <td>Drop height is conservative.</td>
                 </tr>
                 <tr>
                   <td>Visual Oracle source localization</td>
-                  <td>Object pose estimated without ground-truth lookup.</td>
-                  <td>Perception layer traces.</td>
-                  <td>Needs robustness for edge cases.</td>
+                  <td>Vision pipeline replaces the ground-truth lookup.</td>
+                  <td>EMA-smoothed pose drives source-side reach targets.</td>
+                  <td>Occlusion cases remain brittle.</td>
                 </tr>
               </tbody>
             </table>
-            <div class="visual-placeholder">[Plot: Reacher accuracy floor]</div>
-            <div class="visual-placeholder">[Plot: Navigation phase behavior]</div>
-            <div class="visual-placeholder">[Plot: Staircase speed logic]</div>
+            <figure class="plot-placeholder">
+              <div class="plot-frame">Plot placeholder: Reacher accuracy floor</div>
+              <figcaption>
+                Reacher accuracy floor showing radial error clustering around ~12 cm and the tuned
+                threshold window.
+              </figcaption>
+            </figure>
+            <figure class="plot-placeholder">
+              <div class="plot-frame">Plot placeholder: Navigation phase behavior</div>
+              <figcaption>
+                Walker heading vs. time during target-side alignment, highlighting the asymptotic
+                turn-rate slowdown.
+              </figcaption>
+            </figure>
+            <figure class="plot-placeholder">
+              <div class="plot-frame">Plot placeholder: Staircase speed logic</div>
+              <figcaption>
+                Stepwise speed schedule used to keep gait stable during approach and retreat phases.
+              </figcaption>
+            </figure>
           </section>
 
           <section id="limitations">
             <h2>Limitations</h2>
             <ul class="bullet-list">
+              <li>The baseline is a modular controller, not a production-ready robotics stack.</li>
               <li>Kinematic grasping is a shortcut that hides contact dynamics.</li>
-              <li>The Visual Oracle is not a learned detector.</li>
-              <li>Target-side robustness still needs improvement.</li>
-              <li>On-table checks need post-settle evaluation.</li>
+              <li>The Visual Oracle is deterministic and is not a learned detector.</li>
+              <li>Target-side alignment still relies on empirical tuning.</li>
+              <li>On-table checks still need robust post-settle validation.</li>
               <li>The wrist camera is not fully exploited yet.</li>
-              <li>Sim-to-real transfer will require additional work.</li>
+              <li>Sim-to-real transfer will require additional work and validation.</li>
             </ul>
           </section>
 
           <section id="next-steps">
             <h2>Next Steps</h2>
             <ul class="bullet-list">
-              <li>Introduce a learned detector such as YOLO for object localization.</li>
-              <li>Apply domain randomization to improve robustness.</li>
-              <li>Add contact-aware grasping and slip detection.</li>
-              <li>Refine target navigation for tighter placement accuracy.</li>
-              <li>Include post-DONE settling checks to validate success.</li>
-              <li>Build a richer robustness dashboard for debugging.</li>
-              <li>Integrate a demo video alongside the case study.</li>
+              <li>Introduce a learned detector (for example, YOLO) for object localization.</li>
+              <li>Apply domain randomization and sensor noise for robustness.</li>
+              <li>Add contact-aware grasping, slip detection, and physical release checks.</li>
+              <li>Refine target-side navigation for tighter placement accuracy.</li>
+              <li>Include post-DONE settling checks to validate success criteria.</li>
+              <li>Expand dashboards for timing, failure recovery, and pose drift.</li>
+              <li>Publish a demo video alongside the case study.</li>
             </ul>
-          </section>
-
-          <section id="closing">
-            <h2>Closing</h2>
-            <p>
-              The result is not a final production robot policy, but a strong modular autonomous
-              baseline that demonstrates decomposition, debugging, and iteration.
-            </p>
           </section>
         </main>
       </div>
