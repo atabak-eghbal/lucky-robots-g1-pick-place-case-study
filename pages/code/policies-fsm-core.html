@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>policies/fsm_core.py — Autonomous Task Brain | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>policies/fsm_core.py — Autonomous Task Brain</h1>
+          <p class="subtitle">FSMCore reads MuJoCo state and emits PolicyOutput for every phase.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → policies/fsm_core.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./policies-fsm.html">Previous file</a>
+            <a href="./scripts-smoke-env.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> policies/fsm_core.py</p>
+              <p>
+                The autonomous brain that sequences approach, grasp, transport, and placement without
+                writing actuator targets directly.
+              </p>
+            </div>
+            <div class="code-section">
+              <h2>Design notes</h2>
+              <ul class="bullet-list">
+                <li>Every phase includes thresholds and timeouts.</li>
+                <li>World goals are converted to pelvis-frame reach targets.</li>
+                <li>Target-side navigation needed extra validation to avoid false positives.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="state">State enum</button>
+                <button class="file-tab-button" data-tab-target="dispatch">Tick dispatch</button>
+                <button class="file-tab-button" data-tab-target="source">Source approach</button>
+                <button class="file-tab-button" data-tab-target="reach">Reach window and debounce</button>
+                <button class="file-tab-button" data-tab-target="hover">Hover/descend geometry</button>
+                <button class="file-tab-button" data-tab-target="conversion">World-to-pelvis reach conversion</button>
+                <button class="file-tab-button" data-tab-target="grip">Close grip and lift</button>
+                <button class="file-tab-button" data-tab-target="drop">Target drop point</button>
+                <button class="file-tab-button" data-tab-target="nav">Target navigation phases</button>
+                <button class="file-tab-button" data-tab-target="place">Placement and release</button>
+                <button class="file-tab-button" data-tab-target="done">Done and validation caveats</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="state">
+                <section class="code-section">
+                  <h2>State enum</h2>
+                  <p>Explicit states make it easy to trace autonomy decisions over time.</p>
+                  <div class="code-block">
+                    <pre><code>class FSMState(Enum):
+    SETTLE = auto()
+    APPROACH_SOURCE = auto()
+    HOVER_SOURCE = auto()
+    DESCEND_SOURCE = auto()
+    CLOSE_GRIP = auto()
+    LIFT_SOURCE = auto()
+    APPROACH_TARGET = auto()
+    HOVER_TARGET = auto()
+    LOWER_TARGET = auto()
+    OPEN_GRIP = auto()
+    RETRACT = auto()
+    DONE = auto()</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="dispatch">
+                <section class="code-section">
+                  <h2>Tick dispatch</h2>
+                  <p>
+                    FSMCore reads MuJoCo state each tick and dispatches to a per-state handler that emits a
+                    PolicyOutput instead of direct actuator commands.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def tick(self, attached: bool = False) -> PolicyOutput:
+    self._tick_total += 1
+    self._tick_state += 1
+    self._attached = attached
+
+    if self.state == FSMState.SETTLE:
+        return self._settle()
+    if self.state == FSMState.APPROACH_SOURCE:
+        return self._approach_source()
+    if self.state == FSMState.HOVER_SOURCE:
+        return self._hover_source()
+    ...</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="source">
+                <section class="code-section">
+                  <h2>Source approach</h2>
+                  <p>
+                    The source approach uses a staircase velocity schedule to keep forward speed high
+                    while still settling near the reach window.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>x_err = cyl[0] - APPROACH_TARGET_X
+
+if x_err > 0.18:
+    vx = VX_FAST
+elif x_err > 0.10:
+    vx = VX_MED
+elif x_err > 0.04:
+    vx = VX_SLOW
+else:
+    vx = 0.0
+
+y_err = cyl[1] - (-0.05)
+vy = float(np.clip(K_VY * y_err, -VY_CAP, VY_CAP))
+
+heading = np.arctan2(cyl[1], max(cyl[0], 0.15))
+wz = float(np.clip(K_WZ * heading, -WZ_CAP, WZ_CAP))</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="reach">
+                <section class="code-section">
+                  <h2>Reach window and debounce</h2>
+                  <p>
+                    Reach windows are guarded with debounce counters so transient alignment does not
+                    trigger premature transitions.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>TARGET_NEAR_EDGE_INSET = 0.05
+TARGET_REACH_DEBOUNCE = 8
+TARGET_APPROACH_TIMEOUT = 900</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="hover">
+                <section class="code-section">
+                  <h2>Hover/descend geometry</h2>
+                  <p>
+                    Source-side hover and descend targets are defined in world space relative to the table
+                    surface, then handed to the reach converter.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _palm_world(self):
+    return self._data.site_xpos[self._palm_id].copy()
+
+def _table_surface_z(self):
+    return (
+        self._data.geom_xpos[self._tbl_geom_id][2]
+        + self._model.geom_size[self._tbl_geom_id][2]
+    )
+
+def _source_hover_world(self):
+    cyl = self._cylinder_world()
+    return np.array([cyl[0], cyl[1], self._table_surface_z() + 0.18])
+
+def _source_grasp_world(self):
+    cyl = self._cylinder_world()
+    return np.array([cyl[0], cyl[1], self._table_surface_z() + 0.06])</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="conversion">
+                <section class="code-section">
+                  <h2>World-to-pelvis reach conversion</h2>
+                  <p>
+                    World-frame targets are translated into the pelvis frame with a right-arm bias so
+                    commands stay in the reachable workspace.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _reach_from_world(self, world_point, right_bias=-0.08):
+    pos, quat = self._pelvis_pose()
+    local = self._world_to_pelvis(pos, quat, world_point).copy()
+    local[1] = min(local[1], right_bias)
+    return self._clip_reach_target(local)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="grip">
+                <section class="code-section">
+                  <h2>Close grip and lift</h2>
+                  <p>
+                    CLOSE_GRIP waits for attachment while LIFT_SOURCE returns the arm to a carry pose.
+                    These phases rely on attachment state rather than pure distance checks.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>CLOSE_GRIP = auto()
+LIFT_SOURCE = auto()</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="drop">
+                <section class="code-section">
+                  <h2>Target drop point</h2>
+                  <p>
+                    Placement height is anchored to the target table surface, mirroring the source-side
+                    hover/descend geometry.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _table_surface_z(self):
+    return (
+        self._data.geom_xpos[self._tbl_geom_id][2]
+        + self._model.geom_size[self._tbl_geom_id][2]
+    )</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="nav">
+                <section class="code-section">
+                  <h2>Target navigation phases</h2>
+                  <p>
+                    Target-side navigation uses stand distance, yaw checks, and phased velocities because
+                    a simple reach window produced false positives.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>VX_P1 = 0.12
+WZ_P1 = 1.0
+PHASE1_ALIGN_TOL = 0.40
+TARGET_STAND_DIST = 0.24
+TARGET_APPROACH_DIST_THRESH = 0.08</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="place">
+                <section class="code-section">
+                  <h2>Placement and release</h2>
+                  <p>
+                    The placement sequence hovers, lowers, opens the grip, retracts, and then marks the
+                    run as DONE once the object is released.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>HOVER_TARGET
+LOWER_TARGET
+OPEN_GRIP
+RETRACT
+DONE</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="done">
+                <section class="code-section">
+                  <h2>Done and validation caveats</h2>
+                  <p>
+                    DONE is not enough on its own: target-side validation needed proximity and yaw checks,
+                    plus post-settle on-table confirmation to avoid false positives.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>policies/fsm.py — FSM Adapter and Grip Safety | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>policies/fsm.py — FSM Adapter and Grip Safety</h1>
+          <p class="subtitle">Bridges FSMCore outputs into controller state and guards grip commands.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → policies/fsm.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./policies-keyboard.html">Previous file</a>
+            <a href="./policies-fsm-core.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> policies/fsm.py</p>
+              <p>Adapts FSMCore outputs into controller state and integrates grasp backend state.</p>
+            </div>
+            <div class="code-section">
+              <h2>Key responsibilities</h2>
+              <ul class="bullet-list">
+                <li>Pass attachment state into FSMCore.</li>
+                <li>Write walk and reach targets into the controller.</li>
+                <li>Guard grip commands to prevent accidental drops.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="construction">FSMPolicy construction</button>
+                <button class="file-tab-button" data-tab-target="adapter">step adapter</button>
+                <button class="file-tab-button" data-tab-target="guard">close grip guard</button>
+                <button class="file-tab-button" data-tab-target="release">release-state exemption</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="construction">
+                <section class="code-section">
+                  <h2>FSMPolicy construction</h2>
+                  <p>
+                    FSMPolicy keeps a reference to the controller, the grasp backend, and a dedicated
+                    FSMCore instance.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>class FSMPolicy(BasePolicy):
+    def __init__(self, controller, grasp_backend=None):
+        self._controller = controller
+        self._grasp_backend = grasp_backend
+        self._fsm = FSMCore(controller.model, controller.data)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="adapter">
+                <section class="code-section">
+                  <h2>step adapter</h2>
+                  <p>
+                    The adapter reads the current attachment state, ticks the FSM, and writes high-level
+                    commands into controller fields.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>    def step(self) -> PolicyOutput:
+        attached = (
+            self._grasp_backend.attached
+            if self._grasp_backend is not None
+            else False
+        )
+
+        out = self._fsm.tick(attached=attached)
+
+        self._controller.lin_vel_x, self._controller.lin_vel_y, self._controller.ang_vel_z = out.walk_cmd
+        self._controller.reach_target[:] = out.reach_target
+        self._controller.reach_active = out.reach_active
+        self._controller.grip_closed = self._close_grip_command(out)
+
+        return out</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="guard">
+                <section class="code-section">
+                  <h2>close grip guard</h2>
+                  <p>
+                    The guard keeps the grip closed while attached so accidental drop commands do not
+                    release the object mid-transport.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _close_grip_command(self, out: PolicyOutput) -> bool:
+    if self._grasp_backend is None:
+        return out.grip_closed
+
+    if self._fsm.state in _RELEASE_STATES:
+        return out.grip_closed
+
+    if self._grasp_backend.attached:
+        return True
+
+    return out.grip_closed</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="release">
+                <section class="code-section">
+                  <h2>release-state exemption</h2>
+                  <p>
+                    Release states are explicitly exempt from the guard so the FSM can open the grip when
+                    it reaches the target table.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>_RELEASE_STATES = frozenset({
+    FSMState.OPEN_GRIP,
+    FSMState.RETRACT,
+    FSMState.DONE,
+})</code></pre>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

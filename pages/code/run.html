@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>run.py — Runtime Orchestration | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>run.py — Runtime Orchestration</h1>
+          <p class="subtitle">The thin entry point that wires models, policies, control, and simulation.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → run.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./dev-log.html">Previous file</a>
+            <a href="./common-controller.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> run.py</p>
+              <p>
+                The runtime shell that loads assets, selects a policy, and keeps the control loop moving.
+              </p>
+            </div>
+            <div class="code-section">
+              <h2>Key responsibilities</h2>
+              <ul class="bullet-list">
+                <li>Load model, config, and ONNX policies.</li>
+                <li>Select KeyboardPolicy or FSMPolicy.</li>
+                <li>Bridge PolicyOutput into controller state.</li>
+                <li>Advance MuJoCo and the grasp backend.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="imports">Imports and refactor boundary</button>
+                <button class="file-tab-button" data-tab-target="bridge">Policy output bridge</button>
+                <button class="file-tab-button" data-tab-target="wiring">Controller/policy/grasp wiring</button>
+                <button class="file-tab-button" data-tab-target="loop">Simulation loop</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="imports">
+                <section class="code-section">
+                  <h2>Imports and refactor boundary</h2>
+                  <p>
+                    run.py is intentionally thin. Its imports show what moved out into common helpers and
+                    policy modules so the entry point remains a small orchestration layer.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>import argparse
+import json
+import time
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+from common.controller import WalkerReacherController
+from common.grasp import KinematicAttachment
+from common.onnx_policy import ONNXPolicy
+from common.scene import CameraRenderer, reset_robot
+from policies.fsm import FSMPolicy
+from policies.keyboard import KeyboardPolicy
+
+SCRIPT_DIR = Path(__file__).resolve().parent</code></pre>
+                  </div>
+                  <p class="small">
+                    Viewer setup, camera UI, and timing helpers live here too, but are intentionally kept
+                    out of the code snippets.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="bridge">
+                <section class="code-section">
+                  <h2>Policy output bridge</h2>
+                  <p>
+                    The bridge keeps PolicyOutput immutable and feeds the controller with a small command
+                    packet. This keeps run.py from reaching into FSM internals.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>def _apply_policy_output(ctrl, out) -> None:
+  """Write a PolicyOutput into controller state before ctrl.step() runs."""
+  ctrl.lin_vel_x, ctrl.lin_vel_y, ctrl.ang_vel_z = out.walk_cmd
+  ctrl.reach_target[:] = out.reach_target
+  ctrl.reach_active    = out.reach_active
+  ctrl.grip_closed     = out.grip_closed</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="wiring">
+                <section class="code-section">
+                  <h2>Controller/policy/grasp wiring</h2>
+                  <p>
+                    The runtime loads ONNX policies, builds the controller, and chooses between manual
+                    and autonomous policies. KinematicAttachment is only constructed for the FSM path.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>ctrl = WalkerReacherController(
+    model, data, walker, croucher, rotator, config,
+    right_reacher=right_reacher,
+)
+
+grasp_backend = None
+if args.policy == "fsm":
+    rb_body_id = mujoco.mj_name2id(
+        model, mujoco.mjtObj.mjOBJ_BODY, "red_block"
+    )
+    grasp_backend = KinematicAttachment(
+        model, data, ctrl.right_palm_site_id, rb_body_id
+    )
+    policy = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+else:
+    policy = KeyboardPolicy(ctrl)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="loop">
+                <section class="code-section">
+                  <h2>Simulation loop</h2>
+                  <p>
+                    The loop is always policy → controller → PD control → MuJoCo step → grasp tick. Viewer
+                    timing and camera updates are present but not shown here to keep the focus on the core
+                    runtime sequence.
+                  </p>
+                  <div class="code-block">
+                    <pre><code>out = policy.step()
+_apply_policy_output(ctrl, out)
+
+target_pos = ctrl.step()
+ctrl.apply_pd_control(target_pos)
+
+mujoco.mj_step(model, data)
+
+if grasp_backend is not None:
+    grasp_backend.tick(ctrl.grip_closed)</code></pre>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

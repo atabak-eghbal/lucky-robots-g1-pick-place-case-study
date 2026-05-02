@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>scripts/smoke_env.py — Headless Environment Smoke Test | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Implementation</p>
+          <h1>scripts/smoke_env.py — Headless Environment Smoke Test</h1>
+          <p class="subtitle">Validates the scene, cameras, bodies, and ONNX models before debugging the FSM.</p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="breadcrumb">
+          <a href="../implementation-deep-dive.html">Implementation</a> → scripts/smoke_env.py
+        </div>
+
+        <div class="code-subnav">
+          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <div class="next-prev-nav">
+            <a href="./policies-fsm-core.html">Previous file</a>
+            <a href="./scripts-test-fsm-approach.html">Next file</a>
+          </div>
+        </div>
+
+        <div class="code-page-layout">
+          <aside class="code-sidebar">
+            <div class="code-section">
+              <h2>File overview</h2>
+              <p><strong>Path:</strong> scripts/smoke_env.py</p>
+              <p>Ensures the environment is valid before running autonomy.</p>
+            </div>
+            <div class="code-section">
+              <h2>Why it mattered</h2>
+              <ul class="bullet-list">
+                <li>Validates 29 joints and required scene assets.</li>
+                <li>Confirms walker and right_reacher ONNX warm up.</li>
+                <li>Prevents debugging FSM logic on a broken scene.</li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="code-main">
+            <div class="file-tabs">
+              <div class="file-tab-buttons">
+                <button class="file-tab-button" data-tab-target="config">Config checks</button>
+                <button class="file-tab-button" data-tab-target="scene">Scene checks</button>
+                <button class="file-tab-button" data-tab-target="cameras">Cameras/bodies/sites</button>
+                <button class="file-tab-button" data-tab-target="onnx">ONNX warmup</button>
+                <button class="file-tab-button" data-tab-target="why">Why this mattered</button>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="config">
+                <section class="code-section">
+                  <h2>Config checks</h2>
+                  <p>
+                    The smoke test verifies joint counts and configuration dimensions before any policies
+                    are loaded.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="scene">
+                <section class="code-section">
+                  <h2>Scene checks</h2>
+                  <p>
+                    Bodies, sites, and cameras are validated early so missing assets are caught without
+                    stepping the FSM.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="cameras">
+                <section class="code-section">
+                  <h2>Cameras, bodies, and sites</h2>
+                  <p>Named resources are checked explicitly to fail fast.</p>
+                  <div class="code-block">
+                    <pre><code>required_cameras = ["head_cam", "wrist_cam", "overhead", "side_view", "tracking"]
+required_bodies = ["pelvis", "red_block", "table", "table_white"]
+required_sites = ["right_palm", "imu_in_pelvis", "left_foot", "right_foot"]
+
+for name in required_cameras:
+    check_id(model, mujoco.mjtObj.mjOBJ_CAMERA, name)
+
+for name in required_bodies:
+    check_id(model, mujoco.mjtObj.mjOBJ_BODY, name)
+
+for name in required_sites:
+    check_id(model, mujoco.mjtObj.mjOBJ_SITE, name)</code></pre>
+                  </div>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="onnx">
+                <section class="code-section">
+                  <h2>ONNX warmup</h2>
+                  <p>
+                    The script warms up walker and right_reacher models to confirm they load and return
+                    outputs before any FSM logic runs.
+                  </p>
+                </section>
+              </div>
+
+              <div class="file-tab-panel" data-tab-panel="why">
+                <section class="code-section">
+                  <h2>Why this mattered</h2>
+                  <p>
+                    This smoke test prevented hours of FSM debugging when the scene or model assets were
+                    missing. It became the first gate for every new environment change.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>
