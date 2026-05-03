@@ -81,12 +81,21 @@
                 approach time.
               </p>
             </article>
+            <article class="callout callout--failure">
+              <span class="callout-label">Validation Bug</span>
+              <h3>Target-Side False Positive</h3>
+              <p>
+                Early target-approach success checks relied only on reach-window distance. This
+                produced false positives before the robot was correctly positioned. World proximity
+                and yaw-alignment gating were added to prevent premature state transitions.
+              </p>
+            </article>
             <article class="callout callout--insight">
               <span class="callout-label">Key Insight</span>
               <h3>The Visual Oracle Freeze</h3>
               <p>
-                The vision estimate was frozen during descent and close-grip phases to avoid
-                self-occlusion jitter and preserve a consistent grasp target.
+                The vision estimate is designed to be frozen during descent and close-grip phases to
+                avoid self-occlusion jitter and preserve a consistent grasp target.
               </p>
             </article>
           </div>

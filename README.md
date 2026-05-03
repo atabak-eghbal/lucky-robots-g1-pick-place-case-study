@@ -1,16 +1,22 @@
-# Lucky Robots G1 Pick-and-Place Case Study
+# Lucky Robots G1 Pick-and-Place — Engineering Submission
 
 ## What this repo is
-This repository hosts a static, multi-page technical portfolio site about building a modular
-pick-and-place baseline for the Unitree G1 humanoid in MuJoCo. It documents the FSM baseline, the
-Visual Oracle perception loop, and the engineering tradeoffs that made the autonomous demo
-repeatable in simulation.
+This repository is a static multi-page engineering submission for the Lucky Robots G1 pick-and-place
+take-home challenge. It documents the ground-truth FSM baseline (Steps 1–10): converting a manual
+keyboard-controlled MuJoCo demo into an autonomous pick-and-place controller using an explicit
+finite-state machine, a kinematic grasp backend, and shared ONNX locomotion and manipulation
+policies. A Visual Oracle perception extension is designed at the architectural level; its
+implementation status is noted on the Visual Oracle page.
+
+The report is evidence-first: every threshold and design decision is backed by a development log
+observation. Known gaps and simulation-only caveats are explicit throughout.
 
 ## How to view locally
 - Open `index.html` directly in a browser, or
 - Run a simple local server (for example, `python -m http.server`) and visit `http://localhost:8000`.
 
-## Links
-- Original implementation repo: TBD
-- Demo video: TBD
-- Final write-up PDF: Optional / TBD
+## Pending links — replace before submission
+- Original implementation repo: _[add repo URL]_
+- Demo video: _[add video URL]_
+- Lucky Robots G1 challenge repo: _[add challenge repo URL]_
+- Final write-up PDF (optional): _[add PDF URL]_

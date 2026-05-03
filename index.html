@@ -10,11 +10,12 @@
     <div class="page">
       <header class="hero" id="top">
         <div class="hero-content">
-          <p class="eyebrow">Technical Case Study</p>
+          <p class="eyebrow">Engineering Submission — Lucky Robots G1 Take-Home Challenge</p>
           <h1>Engineering a Modular Pick-and-Place Baseline for the Unitree G1 Humanoid</h1>
           <p class="subtitle">
-            A portfolio-style case study on turning a manual MuJoCo demo into a modular FSM baseline
-            with a Visual Oracle perception loop.
+            Ground-truth FSM baseline converting a manual MuJoCo demo into an autonomous
+            pick-and-place controller, with an architectural design for a Visual Oracle perception
+            extension.
           </p>
           <ul class="badge-list">
             <li>MuJoCo</li>
@@ -47,24 +48,69 @@
 
       <main class="content post">
         <section>
-          <h2>Project Summary</h2>
+          <h2>How to review this submission</h2>
           <p>
-            This case study documents how the Lucky Robots G1 pick-and-place demo was converted into
-            a modular autonomous baseline. The focus is on explicit sequencing with a finite-state
-            machine, deterministic grasping logic, and a lightweight Visual Oracle for source
-            localization.
+            This site is structured as an engineering report, not a demo showcase. The pages below
+            are appendices to this executive brief. Use the reading guide that matches your
+            available time.
+          </p>
+          <table class="milestone-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>What to read</th>
+                <th>What you will learn</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>3 min</strong></td>
+                <td>This page + <a href="pages/results.html">Results</a></td>
+                <td>What was built, what the simulation demonstrated, and the key caveats.</td>
+              </tr>
+              <tr>
+                <td><strong>10 min</strong></td>
+                <td>Add <a href="pages/fsm-baseline.html">FSM Baseline</a> + <a href="pages/lessons.html">Lessons</a></td>
+                <td>The 12-state sequencing logic and the five engineering decisions that shaped it.</td>
+              </tr>
+              <tr>
+                <td><strong>20 min</strong></td>
+                <td>Add <a href="pages/implementation-deep-dive.html">Implementation</a> + <a href="pages/architecture.html">Architecture</a> + <a href="pages/limitations-next-steps.html">Limitations</a></td>
+                <td>File-by-file code walkthrough, module decomposition, and the full gap list.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>What was built</h2>
+          <p>
+            The starting point was a manual keyboard-controlled MuJoCo demo for the Unitree G1
+            humanoid. The submission converts that demo into an autonomous pick-and-place controller
+            using an explicit 12-state finite-state machine, a kinematic grasp backend, and shared
+            locomotion and manipulation ONNX policies.
           </p>
           <p>
-            The end result is intentionally a baseline rather than a production stack. It is designed
-            for traceability, targeted debugging, and incremental upgrades.
+            The primary deliverable is the <strong>ground-truth FSM baseline</strong> (Steps 1–10).
+            It is intentionally scoped as a debuggable baseline, not a production stack. Every
+            threshold and timeout is backed by a log observation. A Visual Oracle perception
+            extension is designed at the architectural level; its implementation status is described
+            on the <a href="pages/visual-oracle.html">Visual Oracle</a> page.
+          </p>
+          <p>
+            The end-to-end sequence completed in simulation: the robot settled, approached the source
+            table, hovered and descended to the cylinder, attached it kinematically, lifted and
+            transported it, lowered it above the target surface, and released it. Placement was
+            visually successful in simulation; post-release settling validation has a known caveat
+            described in <a href="pages/results.html">Results</a>.
           </p>
         </section>
 
         <section>
-          <h2>Final architecture at a glance</h2>
+          <h2>Architecture at a glance</h2>
           <p>
             The runtime separates orchestration, policy logic, controller synthesis, grasp handling,
-            and validation scripts so each layer stays testable in isolation.
+            and validation scripts so each layer can be instrumented and tested in isolation.
           </p>
           <figure class="figure">
             <img
@@ -80,62 +126,71 @@
         </section>
 
         <section>
-          <h2>Explore the case study</h2>
+          <h2>Key evidence from development logs</h2>
+          <ul class="bullet-list">
+            <li>Headless smoke test passed: scene, cameras, bodies, sites, joints, and ONNX policy warmups all verified.</li>
+            <li>Walker double-normalization bug identified and fixed: raw observations must be passed directly to the walker ONNX policy.</li>
+            <li>Always-on reacher requirement: the right reacher must run unconditionally to keep arm joints inside the training distribution.</li>
+            <li>Empirical reacher accuracy floor: radial error plateaued around 12–13 cm; thresholds and timeouts were set around this floor.</li>
+            <li>Kinematic attach distance: 0.128 m measured in the reference run (snap_offset 0.030 m).</li>
+            <li>Target-side false-positive validation bug: reach-window checks alone produced false positives; world proximity and yaw gating were added.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Submission appendices</h2>
           <div class="card-grid">
             <a class="card card-link" href="pages/challenge.html">
               <h3>Challenge</h3>
-              <p>Frame the task and why the pick-and-place problem is difficult.</p>
+              <p>Task framing and why the problem is harder than it appears.</p>
             </a>
             <a class="card card-link" href="pages/architecture.html">
               <h3>Architecture</h3>
-              <p>See the system decomposition and runtime layout.</p>
+              <p>System decomposition and runtime module layout.</p>
             </a>
             <a class="card card-link" href="pages/fsm-baseline.html">
               <h3>FSM Baseline</h3>
-              <p>Walk through the explicit state machine sequencing.</p>
+              <p>12-state machine with exit conditions, debounce, and timeout fallbacks.</p>
             </a>
             <a class="card card-link" href="pages/visual-oracle.html">
               <h3>Visual Oracle</h3>
-              <p>Review the deterministic perception loop for source localization.</p>
+              <p>Architectural design for deterministic depth back-projection (implementation status noted).</p>
             </a>
             <a class="card card-link" href="pages/lessons.html">
               <h3>Lessons</h3>
-              <p>Capture the engineering decisions and pitfalls.</p>
+              <p>Five engineering decisions and failure modes with log evidence.</p>
             </a>
             <a class="card card-link" href="pages/results.html">
               <h3>Results</h3>
-              <p>Summarize the simulation milestones and evidence.</p>
+              <p>Milestone table and simulation evidence with explicit caveats.</p>
             </a>
             <a class="card card-link" href="pages/implementation-deep-dive.html">
               <h3>Implementation</h3>
-              <p>Step through the ground-truth FSM baseline code walkthrough.</p>
+              <p>File-by-file walkthrough of the ground-truth FSM baseline code.</p>
             </a>
             <a class="card card-link" href="pages/limitations-next-steps.html">
-              <h3>Limitations + Next Steps</h3>
-              <p>Review the known gaps and follow-on work.</p>
+              <h3>Limitations &amp; Next Steps</h3>
+              <p>Known gaps, sim-only caveats, and prioritized follow-on work.</p>
             </a>
             <a class="card card-link" href="pages/references.html">
               <h3>References</h3>
-              <p>Links and supporting resources for the case study.</p>
+              <p>Supporting links and the replace-before-submission block.</p>
             </a>
           </div>
         </section>
 
         <section>
-          <h2>What this case study demonstrates</h2>
+          <h2>Pending links — replace before submission</h2>
+          <p class="small">
+            The following external assets are not yet attached. Consolidating them here prevents
+            placeholder text from appearing elsewhere in the report.
+          </p>
           <ul class="bullet-list">
-            <li>How to decompose a humanoid pick-and-place stack into testable modules.</li>
-            <li>Why explicit FSM sequencing is effective for debugging learned policies.</li>
-            <li>How deterministic perception can bootstrap a baseline before learned detectors.</li>
-            <li>What evidence and logs are needed to defend engineering tradeoffs.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>Resources</h2>
-          <ul class="bullet-list">
-            <li>Original implementation repo: <a href="#">TBD</a></li>
-            <li>Demo video: <a href="#">TBD</a></li>
+            <li>Lucky Robots G1 challenge repository: <em>[add challenge repo URL here]</em></li>
+            <li>Original implementation repository: <em>[add repo URL here]</em></li>
+            <li>Demo video: <em>[add video URL here]</em></li>
+            <li>Unitree G1 documentation: <em>[add docs URL here]</em></li>
+            <li>Final write-up PDF (optional): <em>[add PDF URL here]</em></li>
           </ul>
         </section>
       </main>

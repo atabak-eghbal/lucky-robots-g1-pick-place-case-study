@@ -38,26 +38,25 @@
         <section>
           <h2>Limitations</h2>
           <ul class="bullet-list">
-            <li>The baseline is a modular controller, not a production-ready robotics stack.</li>
-            <li>Kinematic grasping is a shortcut that hides contact dynamics.</li>
-            <li>The Visual Oracle is deterministic and is not a learned detector.</li>
-            <li>Target-side alignment still relies on empirical tuning.</li>
-            <li>On-table checks still need robust post-settle validation.</li>
-            <li>The wrist camera is not fully exploited yet.</li>
-            <li>Sim-to-real transfer will require additional work and validation.</li>
+            <li>The baseline is a debuggable modular controller, not a production-ready robotics stack.</li>
+            <li>Kinematic grasping is a simulation shortcut that hides contact dynamics and finger forces.</li>
+            <li>The Visual Oracle is an architectural design, not an implemented module in this submission.</li>
+            <li>Target-side alignment relies on empirical threshold tuning, not closed-loop pose feedback.</li>
+            <li>Post-DONE on-table validation is not implemented; placement success was confirmed by visual inspection of the simulation.</li>
+            <li>The wrist camera is not exploited in the current baseline.</li>
+            <li>Sim-to-real transfer has not been attempted and will require additional validation.</li>
           </ul>
         </section>
 
         <section>
           <h2>Next Steps</h2>
           <ul class="bullet-list">
-            <li>Introduce a learned detector (for example, YOLO) for object localization.</li>
-            <li>Apply domain randomization and sensor noise for robustness.</li>
-            <li>Add contact-aware grasping, slip detection, and physical release checks.</li>
-            <li>Refine target-side navigation for tighter placement accuracy.</li>
-            <li>Include post-DONE settling checks to validate success criteria.</li>
-            <li>Expand dashboards for timing, failure recovery, and pose drift.</li>
-            <li>Publish a demo video alongside the case study.</li>
+            <li>Implement the Visual Oracle: RGB segmentation, depth back-projection, EMA smoothing, and freeze logic.</li>
+            <li>Add post-DONE proximity checks to programmatically confirm on-table placement.</li>
+            <li>Add contact-aware grasping with slip detection and physical release validation.</li>
+            <li>Refine target-side navigation with closed-loop yaw and distance feedback.</li>
+            <li>Apply domain randomization and sensor noise for robustness evaluation.</li>
+            <li>Expand dashboards for timing, failure recovery, and pose drift metrics.</li>
           </ul>
         </section>
       </main>
