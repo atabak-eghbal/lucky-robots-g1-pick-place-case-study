@@ -1,0 +1,71 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="620"
+  height="210"
+  viewBox="0 0 620 210"
+  role="img"
+  aria-label="Number-line showing snap offset 0.030 m, practical reacher floor 0.12 to 0.13 m, and observed attach distance 0.128 m."
+>
+  <defs>
+    <style>
+      .axis  { stroke: #cbd5e1; stroke-width: 1.5; }
+      .tick  { stroke: #cbd5e1; stroke-width: 1.5; }
+      .band  { stroke-width: 1; }
+      .snap  { fill: #dbeafe; stroke: #bfdbfe; }
+      .floor { fill: #fef3c7; stroke: #fde68a; }
+      .mark  { stroke: #c2410c; stroke-width: 2; stroke-dasharray: 4 3; }
+      .dot   { fill: #c2410c; }
+      .lbl   { font: 500 11px "Inter","Segoe UI",sans-serif; fill: #5f6b7a; }
+      .val   { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #374151; }
+      .cap   { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #1e40af; }
+      .cap2  { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #b45309; }
+      .cap3  { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #c2410c; }
+      .note  { font: 500 10px "Inter","Segoe UI",sans-serif; fill: #5f6b7a; }
+      .title { font: 700 12px "Inter","Segoe UI",sans-serif; fill: #161b22; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="620" height="210" fill="#ffffff" />
+
+  <!-- Title -->
+  <text class="title" x="310" y="18" text-anchor="middle">Attach threshold vs snap offset vs reacher floor (distances in metres)</text>
+
+  <!-- Axis: 0 to 0.16 m, x=60 to x=540, scale=3000 px/m -->
+  <!-- x(d) = 60 + d * 3000 -->
+  <!-- 0.000 → 60,  0.030 → 150,  0.04 → 180,  0.08 → 300,  0.12 → 420,  0.128 → 444,  0.13 → 450,  0.16 → 540 -->
+
+  <!-- Snap zone band: 0 → 0.030 (x=60 to x=150) -->
+  <rect class="band snap"  x="60" y="68" width="90" height="30" rx="4" />
+  <text class="cap"  x="105" y="63" text-anchor="middle">snap zone</text>
+  <text class="note" x="105" y="73" text-anchor="middle" dy="0">0 – 0.030 m</text>
+
+  <!-- Reacher floor band: 0.12 → 0.13 (x=420 to x=450) -->
+  <rect class="band floor" x="420" y="68" width="30" height="30" rx="4" />
+  <text class="cap2" x="435" y="63" text-anchor="middle">reacher floor</text>
+  <text class="note" x="435" y="73" text-anchor="middle" dy="0">~0.12–0.13 m</text>
+
+  <!-- Observed attach marker at 0.128 m (x=444) -->
+  <line class="mark" x1="444" y1="44" x2="444" y2="98" />
+  <circle class="dot" cx="444" cy="98" r="4" />
+  <text class="cap3" x="444" y="40" text-anchor="middle">observed: 0.128 m</text>
+  <text class="note" x="444" y="30" text-anchor="middle">(reference run)</text>
+
+  <!-- Axis line -->
+  <line class="axis" x1="55" y1="98" x2="550" y2="98" />
+
+  <!-- Ticks and labels at 0, 0.04, 0.08, 0.12, 0.16 -->
+  <line class="tick" x1="60"  y1="94" x2="60"  y2="104" /><text class="lbl" x="60"  y="116" text-anchor="middle">0</text>
+  <line class="tick" x1="180" y1="94" x2="180" y2="104" /><text class="lbl" x="180" y="116" text-anchor="middle">0.04</text>
+  <line class="tick" x1="300" y1="94" x2="300" y2="104" /><text class="lbl" x="300" y="116" text-anchor="middle">0.08</text>
+  <line class="tick" x1="420" y1="94" x2="420" y2="104" /><text class="lbl" x="420" y="116" text-anchor="middle">0.12</text>
+  <line class="tick" x1="540" y1="94" x2="540" y2="104" /><text class="lbl" x="540" y="116" text-anchor="middle">0.16</text>
+
+  <!-- Axis label -->
+  <text class="lbl" x="310" y="135" text-anchor="middle">palm-to-object distance (m)</text>
+
+  <!-- Annotation block -->
+  <rect x="40" y="148" width="540" height="52" rx="8" fill="#f8f9fc" stroke="#e1e5ea" stroke-width="1" />
+  <text class="note" x="310" y="164" text-anchor="middle">The snap_offset (0.030 m) defines a kinematic attachment offset. The reacher policy plateaus around 0.12–0.13 m radial error.</text>
+  <text class="note" x="310" y="178" text-anchor="middle">The observed attach distance (0.128 m, reference run) falls within that floor band, confirming the threshold was set</text>
+  <text class="note" x="310" y="192" text-anchor="middle">to match the practical limit of the reacher, not an idealized geometry assumption.</text>
+</svg>

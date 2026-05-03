@@ -12,7 +12,7 @@
         <div class="hero-content">
           <p class="eyebrow">Lessons</p>
           <h1>Key Engineering Lessons</h1>
-          <p class="subtitle">The decisions, pitfalls, and insights that shaped the baseline.</p>
+          <p class="subtitle">The decisions, failure modes, and calibration insights that shaped the baseline.</p>
         </div>
       </header>
 
@@ -38,20 +38,23 @@
         <section>
           <p>
             These lessons capture the key decisions and failure modes that emerged while converting
-            the manual demo into a modular baseline.
+            the manual demo into a modular baseline. Each entry is grounded in a specific logged
+            observation or design decision; none is a post-hoc rationalization.
           </p>
         </section>
 
         <section>
-          <h2>Key Engineering Lessons</h2>
+          <h2>Engineering lessons</h2>
           <div class="callout-grid">
             <article class="callout callout--failure">
               <span class="callout-label">Failure Mode</span>
               <h3>The Normalization Trap</h3>
               <p>
-                The walker ONNX policy already applied internal normalization. Adding external
+                The walker ONNX policy already applies internal normalization. Adding external
                 normalization double-normalized observations, destabilized the gait, and caused
-                hard-to-trace drift.
+                hard-to-trace drift. This was diagnosed by comparing policy outputs: raw-zero input
+                produced a maximum action of 0.628; normalized-zero input produced a maximum action
+                of 14.78 &#x2014; confirming the models expect raw observations.
               </p>
             </article>
             <article class="callout callout--decision">
@@ -59,46 +62,105 @@
               <h3>The Always-On Reacher</h3>
               <p>
                 The walker observes arm joint positions, so the right reacher had to run
-                unconditionally. Keeping the arm in a known carry pose prevented
-                out-of-distribution walking behavior.
+                unconditionally at every tick, even during locomotion-only phases. Keeping the arm
+                in a known carry pose prevented out-of-distribution walking behavior. Gating the
+                reacher off during approach caused observable gait degradation.
               </p>
             </article>
             <article class="callout callout--limitation">
               <span class="callout-label">Limitation</span>
               <h3>The Reacher Accuracy Floor</h3>
               <p>
-                The right reacher had a practical accuracy floor of ~12 cm. Grasp thresholds and
-                timeout fallbacks were tuned around that floor instead of assuming perfect
-                convergence.
+                The right reacher has a practical accuracy floor of approximately 0.12&#x2013;0.13&#x202f;m
+                radial error that the policy cannot overcome through continued inference alone. Hover
+                and grasp thresholds, and the kinematic attach window, were all tuned around this
+                floor rather than assuming the policy would converge to a geometrically precise pose.
+                The observed attach distance of 0.128&#x202f;m (development log) sits within this band.
               </p>
             </article>
             <article class="callout callout--evidence">
               <span class="callout-label">Evidence</span>
               <h3>The Asymptotic Turn-Rate Problem</h3>
               <p>
-                Target-side navigation required empirical tuning because the walker’s effective
-                angular response slowed as it aligned with the desired heading, stretching
-                approach time.
+                Target-side navigation required empirical tuning because the walker's effective
+                angular response slows asymptotically as it approaches the desired heading. This
+                contributed to the target-side false positive (see below): the robot could partially
+                satisfy a reach window while still rotating, which is why yaw alignment was added as
+                an explicit guard condition (PHASE1_ALIGN_TOL&#x202f;=&#x202f;0.40&#x202f;rad).
               </p>
             </article>
             <article class="callout callout--failure">
               <span class="callout-label">Validation Bug</span>
-              <h3>Target-Side False Positive</h3>
+              <h3>Target-Side False Positive &#x2014; Bug Timeline</h3>
               <p>
-                Early target-approach success checks relied only on reach-window distance. This
-                produced false positives before the robot was correctly positioned. World proximity
-                and yaw-alignment gating were added to prevent premature state transitions.
+                <strong>v1 (before fix):</strong> The transition from APPROACH_TARGET to
+                HOVER_TARGET checked only whether the palm was within a reach-window distance.
+                This was insufficient: the reach window could be satisfied while the robot's pelvis
+                was still mid-transit toward the target table, causing the FSM to advance
+                prematurely.
+              </p>
+              <p>
+                <strong>Root cause:</strong> A distance check on the reach window (palm-relative)
+                does not capture whole-body position. The pelvis can be far from the target table
+                while the arm's forward extent puts the palm within a loose reach distance.
+              </p>
+              <p>
+                <strong>Fix (v2):</strong> A compound guard replaced the single condition. All three
+                must hold simultaneously before the transition is allowed:
+              </p>
+              <ul style="margin: 0.5rem 0 0.5rem 1.2rem; color: var(--muted);">
+                <li>palm within reach window</li>
+                <li>body within 0.24&#x202f;m of target stand (TARGET_STAND_DIST)</li>
+                <li>yaw error &#x2264;&#x202f;0.40&#x202f;rad (PHASE1_ALIGN_TOL)</li>
+              </ul>
+              <p>
+                The fix is visible in <code>fsm_core.py</code>'s target navigation phase and
+                documented in the dev log. The values 0.24&#x202f;m and 0.40&#x202f;rad were chosen
+                empirically for this scene geometry.
               </p>
             </article>
             <article class="callout callout--insight">
               <span class="callout-label">Key Insight</span>
               <h3>The Visual Oracle Freeze</h3>
               <p>
-                The vision estimate is designed to be frozen during descent and close-grip phases to
-                avoid self-occlusion jitter and preserve a consistent grasp target.
+                The vision estimate is designed to be frozen during DESCEND_SOURCE and CLOSE_GRIP
+                to avoid self-occlusion jitter as the arm lowers over the cylinder. Updating the EMA
+                target during descent would shift the reacher goal mid-approach, causing instability.
+                Freezing accepts a static target for the last few centimetres in exchange for
+                deterministic, jitter-free behaviour through grip closure.
               </p>
             </article>
           </div>
+        </section>
+
+        <section>
+          <h2>The visual-pass nuance</h2>
+          <p>
+            Several behaviors listed in the results page carry a
+            <span class="status-badge status-visual">&#x25CE; Visually verified</span> label. It is worth
+            being precise about what that label means.
+          </p>
+          <p>
+            A <em>visual pass</em> means: during development, a single reference MuJoCo run was
+            rendered and watched. The described behavior was observed in that run. This is useful
+            for confirming that code paths execute and produce plausible motion, but it has clear
+            limits:
+          </p>
+          <ul class="bullet-list">
+            <li>It was one run with one set of initial conditions, not a statistical sample.</li>
+            <li>Post-DONE table placement was not confirmed by a programmatic check &#x2014; the cylinder
+              appeared to rest on the table, but sensor-free visual inspection of a single frame
+              is not a reliable proxy for a proximity assertion.</li>
+            <li>Visually passing behaviors can fail under small perturbations to initial conditions,
+              contact timing, or floating-point non-determinism across platforms.</li>
+          </ul>
+          <p>
+            The distinction between headless-validated and visually-verified claims is maintained
+            throughout the results page precisely because these two evidence levels support different
+            engineering conclusions. A headless-validated result can be re-run and re-checked
+            automatically. A visually-verified result needs programmatic confirmation before it
+            can be relied upon.
+          </p>
         </section>
       </main>
     </div>

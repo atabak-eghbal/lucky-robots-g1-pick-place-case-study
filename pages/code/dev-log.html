@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DEV_LOG.md — Engineering Evidence | Lucky Robots G1 Pick-and-Place</title>
+    <title>DEV_LOG.md &#x2014; Engineering Evidence | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <header class="hero hero--subpage">
         <div class="hero-content">
           <p class="eyebrow">Implementation</p>
-          <h1>DEV_LOG.md — Engineering Evidence</h1>
-          <p class="subtitle">Short evidence snippets that shaped the baseline design decisions.</p>
+          <h1>DEV_LOG.md &#x2014; Engineering Evidence</h1>
+          <p class="subtitle">Logged observations and design decisions that shaped the baseline.</p>
         </div>
       </header>
 
@@ -36,7 +36,7 @@
 
       <main class="content">
         <div class="breadcrumb">
-          <a href="../implementation-deep-dive.html">Implementation</a> → DEV_LOG.md
+          <a href="../implementation-deep-dive.html">Implementation</a> &#x2192; DEV_LOG.md
         </div>
 
         <div class="code-subnav">
@@ -54,7 +54,7 @@
               <p><strong>Path:</strong> DEV_LOG.md</p>
               <p>
                 The engineering log captures the reasoning behind thresholds, refactors, and test
-                artifacts.
+                artifacts. Values shown here are logged or measured, not assumed.
               </p>
             </div>
             <div class="code-section">
@@ -62,8 +62,11 @@
               <ul class="bullet-list">
                 <li>Modular refactor checkpoints.</li>
                 <li>Smoke test validation records.</li>
-                <li>Normalization pitfalls and reacher accuracy limits.</li>
+                <li>Normalization pitfall and ONNX contract proof.</li>
+                <li>Reacher accuracy floor characterization.</li>
                 <li>Kinematic grasp tuning evidence.</li>
+                <li>Target-side false-positive bug and fix.</li>
+                <li>Visual-pass nuance and evidence tier distinction.</li>
               </ul>
             </div>
           </aside>
@@ -78,14 +81,17 @@
                 <button class="file-tab-button" data-tab-target="accuracy">Reacher accuracy floor</button>
                 <button class="file-tab-button" data-tab-target="grasp">Kinematic grasp evidence</button>
                 <button class="file-tab-button" data-tab-target="false">Target-side false positive</button>
+                <button class="file-tab-button" data-tab-target="visualpass">Visual-pass nuance</button>
               </div>
 
               <div class="file-tab-panel" data-tab-panel="skeleton">
                 <section class="code-section">
                   <h2>Modular skeleton</h2>
                   <p>
-                    DEV_LOG captures the extraction of run.py, controller logic, and the FSM into separate
-                    modules so each piece could be debugged independently.
+                    DEV_LOG records the extraction of run.py, controller logic, and the FSM into
+                    separate modules so that each piece could be debugged and tested independently.
+                    The refactor produced a known-good baseline before any autonomous logic was
+                    layered on top.
                   </p>
                 </section>
               </div>
@@ -94,8 +100,11 @@
                 <section class="code-section">
                   <h2>Smoke test evidence</h2>
                   <p>
-                    The log records when the environment, cameras, and ONNX policies first passed the
-                    headless smoke test, establishing a known-good baseline.
+                    The log records the first passing run of <code>scripts/smoke_env.py</code>,
+                    which asserts that the environment, cameras, bodies, sites, joints, and both
+                    ONNX policies all load cleanly. This established a known-good baseline before
+                    any rollout. Status:
+                    <span class="status-badge status-verified">&#x2713; Verified</span>
                   </p>
                 </section>
               </div>
@@ -104,13 +113,19 @@
                 <section class="code-section">
                   <h2>Normalization trap</h2>
                   <p>
-                    The normalization issue proved the ONNX models already normalize internally, so raw
-                    observations must be passed to the walker.
+                    The normalization issue proved the ONNX models already normalize internally.
+                    The diagnosis was made by logging policy output magnitudes under two input
+                    conditions:
                   </p>
                   <div class="code-block">
-                    <pre><code>raw zeros        → action max=0.628
-normalized zeros → action max=14.78</code></pre>
+                    <pre><code>raw zeros        &#x2192; action max = 0.628
+normalized zeros &#x2192; action max = 14.78</code></pre>
                   </div>
+                  <p>
+                    The 23&#xD7; difference confirms double-normalization. Conclusion: raw, un-normalized
+                    observations must be passed to the walker ONNX policy.
+                    Status: <span class="status-badge status-verified">&#x2713; Verified</span>
+                  </p>
                 </section>
               </div>
 
@@ -118,8 +133,12 @@ normalized zeros → action max=14.78</code></pre>
                 <section class="code-section">
                   <h2>Always-on reacher</h2>
                   <p>
-                    DEV_LOG notes that the right reacher must run even when reach_active is false to keep
-                    arm joints inside the training distribution.
+                    DEV_LOG notes that the right reacher must run at every control tick, even when
+                    <code>reach_active</code> is false. The walker ONNX policy observes arm joint
+                    positions; allowing those joints to drift outside the carry pose introduces
+                    out-of-distribution observations and degrades gait stability. Gating the reacher
+                    off during locomotion-only phases produced observable gait degradation, which
+                    is how this constraint was discovered.
                   </p>
                 </section>
               </div>
@@ -128,9 +147,20 @@ normalized zeros → action max=14.78</code></pre>
                 <section class="code-section">
                   <h2>Reacher accuracy floor</h2>
                   <p>
-                    The reacher plateaued around 0.12–0.13 m, which shaped hover and descend thresholds
-                    near the grasp window.
+                    The reacher plateaued at approximately 0.12&#x2013;0.13&#x202f;m residual radial error and
+                    could not converge further through continued inference. This floor was measured
+                    during development by logging palm-to-target distance over time and observing
+                    the asymptote.
                   </p>
+                  <p>
+                    This observation shaped three downstream design choices:
+                  </p>
+                  <ul class="bullet-list">
+                    <li>Hover and grasp-height thresholds were set to be reachable within the floor, not at the geometric cylinder center.</li>
+                    <li>The kinematic attach window was calibrated to trigger within the floor band.</li>
+                    <li>Timeout fallbacks were added for DESCEND_SOURCE because the policy may stall near the floor without triggering a threshold.</li>
+                  </ul>
+                  <p>Status: <span class="status-badge status-verified">&#x2713; Verified (logged)</span></p>
                 </section>
               </div>
 
@@ -138,24 +168,123 @@ normalized zeros → action max=14.78</code></pre>
                 <section class="code-section">
                   <h2>Kinematic grasp evidence</h2>
                   <p>
-                    The attachment snap distance was tuned to the measured reacher accuracy floor.
+                    The attachment snap distance was calibrated to the reacher accuracy floor. The
+                    grasp backend logs the palm-to-cylinder distance at the moment attachment
+                    triggers. The reference run recorded:
                   </p>
                   <div class="code-block">
-                    <pre><code>Attach: dist=0.128 m
-snap_offset=0.030 m</code></pre>
+                    <pre><code>Attach: dist = 0.128 m
+snap_offset = 0.030 m</code></pre>
                   </div>
+                  <p>
+                    The attach distance of 0.128&#x202f;m falls within the ~0.12&#x2013;0.13&#x202f;m floor band,
+                    confirming the threshold was set to match the practical policy limit, not an
+                    idealized geometry. Status:
+                    <span class="status-badge status-verified">&#x2713; Verified (logged)</span>
+                  </p>
+                  <p class="small">
+                    Caveat: kinematic attachment is a simulation shortcut. It bypasses contact
+                    dynamics and finger forces and should not be treated as evidence of physical
+                    grasp quality.
+                  </p>
                 </section>
               </div>
 
               <div class="file-tab-panel" data-tab-panel="false">
                 <section class="code-section">
-                  <h2>Target-side false positive</h2>
+                  <h2>Target-side false positive &#x2014; full bug timeline</h2>
+
+                  <h3>v1: single-condition check (incorrect)</h3>
                   <p>
-                    Early success checks only used reach windows and produced false positives, so world
-                    proximity and yaw gating were added to the target approach.
+                    The initial implementation of <code>_approach_target()</code> in
+                    <code>fsm_core.py</code> used a single condition to gate the transition from
+                    APPROACH_TARGET to HOVER_TARGET: whether the palm was within a configured
+                    reach-window distance of the target drop point.
+                  </p>
+                  <p>
+                    This produced false positives. During target-side navigation, the robot's
+                    forward arm extent could bring the palm within the reach window while the
+                    pelvis was still several steps away from the target table. The FSM would
+                    advance to HOVER_TARGET, then immediately fail to maintain the hover position
+                    because the whole-body posture was not yet aligned.
+                  </p>
+
+                  <h3>Root cause</h3>
+                  <p>
+                    A reach-window check is palm-relative. It measures whether the palm is close
+                    to a world point, but does not verify that the robot's base is within stable
+                    operating range of that point. With a forward-biased arm carry pose, the palm
+                    leads the pelvis by a significant lateral distance, making the check
+                    insufficient on its own.
+                  </p>
+
+                  <h3>v2: compound guard (fix)</h3>
+                  <p>
+                    The fix replaced the single condition with a compound guard. All three
+                    conditions must hold before the FSM transitions:
+                  </p>
+                  <div class="code-block">
+                    <pre><code>TARGET_STAND_DIST = 0.24        # body proximity (metres)
+PHASE1_ALIGN_TOL  = 0.40        # yaw alignment (radians)
+TARGET_APPROACH_DIST_THRESH = 0.08  # reach window (metres)</code></pre>
+                  </div>
+                  <p>
+                    The additional body-proximity check (0.24&#x202f;m) ensures the pelvis is near
+                    the target stand before the transition is allowed. The yaw-alignment check
+                    (0.40&#x202f;rad) prevents transitions while the robot is still rotating, which
+                    also contributed to the false positive given the asymptotic turn-rate slowdown
+                    documented separately.
+                  </p>
+                  <p>
+                    These values were chosen empirically for this scene geometry. They are not
+                    guaranteed to generalize to different table layouts or robot starting positions.
+                    Status: <span class="status-badge status-verified">&#x2713; Verified (dev log)</span>
                   </p>
                 </section>
               </div>
+
+              <div class="file-tab-panel" data-tab-panel="visualpass">
+                <section class="code-section">
+                  <h2>Visual-pass nuance</h2>
+                  <p>
+                    Several behaviors in the baseline are listed as
+                    <span class="status-badge status-visual">&#x25CE; Visually verified</span>
+                    rather than <span class="status-badge status-verified">&#x2713; Verified</span>.
+                    The distinction matters.
+                  </p>
+
+                  <h3>What a visual pass means</h3>
+                  <p>
+                    A visual pass is an observation made during a single rendered MuJoCo reference
+                    run. A human watched the run, saw the described behavior occur, and recorded
+                    it. This is useful for confirming that a code path executes and produces
+                    plausible motion. It is not a programmatic assertion.
+                  </p>
+
+                  <h3>What a visual pass does not prove</h3>
+                  <ul class="bullet-list">
+                    <li>It does not prove reproducibility across varied initial conditions.</li>
+                    <li>It does not confirm terminal state. In particular, the placement success
+                      (cylinder on the target table) was judged by watching the render &#x2014; no
+                      post-DONE proximity check was executed to confirm the cylinder's final
+                      position programmatically.</li>
+                    <li>It does not establish success rate. One observation is a sample of one.</li>
+                  </ul>
+
+                  <h3>Upgrade path</h3>
+                  <p>
+                    Any visually-verified claim can be upgraded to verified by adding a headless
+                    assertion that checks the same condition without a rendered display. For
+                    placement, this means a post-DONE ground-truth proximity check that confirms
+                    the cylinder rests within a tolerance of the target surface center.
+                  </p>
+                  <p>
+                    Until that check exists, placement success should be reported as a single
+                    visual observation, not as a confirmed outcome.
+                  </p>
+                </section>
+              </div>
+
             </div>
           </div>
         </div>

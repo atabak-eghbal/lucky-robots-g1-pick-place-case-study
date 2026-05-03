@@ -12,7 +12,7 @@
         <div class="hero-content">
           <p class="eyebrow">Limitations</p>
           <h1>Limitations and Next Steps</h1>
-          <p class="subtitle">Known gaps and follow-on work for the baseline stack.</p>
+          <p class="subtitle">Known gaps, evidence tiers, and follow-on work for the baseline stack.</p>
         </div>
       </header>
 
@@ -35,30 +35,170 @@
       </nav>
 
       <main class="content post">
+
+        <!-- ── Tier 1: Headless-validated ── -->
         <section>
-          <h2>Limitations</h2>
+          <h2>
+            Tier 1 &#x2014; Headless-validated
+            <span class="status-badge status-verified">&#x2713; Verified</span>
+          </h2>
+          <p>
+            The claims below were confirmed by code that runs without a rendered display and returns
+            a verifiable result. They can be re-run and checked automatically.
+          </p>
           <ul class="bullet-list">
-            <li>The baseline is a debuggable modular controller, not a production-ready robotics stack.</li>
-            <li>Kinematic grasping is a simulation shortcut that hides contact dynamics and finger forces.</li>
-            <li>The Visual Oracle is an architectural design, not an implemented module in this submission.</li>
-            <li>Target-side alignment relies on empirical threshold tuning, not closed-loop pose feedback.</li>
-            <li>Post-DONE on-table validation is not implemented; placement success was confirmed by visual inspection of the simulation.</li>
-            <li>The wrist camera is not exploited in the current baseline.</li>
-            <li>Sim-to-real transfer has not been attempted and will require additional validation.</li>
+            <li>
+              <strong>Scene and asset loading.</strong> Named MuJoCo bodies, sites, cameras, joints,
+              and both ONNX policies all load and pass the smoke-test assertions
+              (<code>scripts/smoke_env.py</code>).
+            </li>
+            <li>
+              <strong>ONNX observation contract.</strong> The walker policy applies internal
+              normalization. Raw-zero input produces a maximum action of 0.628; normalized-zero
+              input produces 14.78. External normalization must not be added.
+            </li>
+            <li>
+              <strong>Kinematic attach parameters.</strong> The development log records an observed
+              attach distance of 0.128&#x202f;m with snap_offset&#x202f;=&#x202f;0.030&#x202f;m. These values were
+              confirmed at runtime by the grasp backend, not inferred.
+            </li>
+            <li>
+              <strong>Control-loop rate.</strong> timestep&#x202f;=&#x202f;0.005&#x202f;s with decimation&#x202f;=&#x202f;4 gives
+              200&#x202f;Hz physics and 50&#x202f;Hz control. The APPROACH_TARGET timeout of 900 control ticks
+              equals 18&#x202f;s at this rate.
+            </li>
           </ul>
         </section>
 
+        <!-- ── Tier 2: Reference-run visual inspection ── -->
         <section>
-          <h2>Next Steps</h2>
+          <h2>
+            Tier 2 &#x2014; Reference-run visual inspection
+            <span class="status-badge status-visual">&#x25CE; Visually verified</span>
+          </h2>
+          <p>
+            The behaviors below were observed in a single rendered MuJoCo reference run during
+            development. They confirm that the described code paths execute and produce the expected
+            motion at least once, under the conditions of that specific run.
+          </p>
+          <p>
+            These observations do <em>not</em> constitute repeated-trial confirmation and cannot be
+            treated as success-rate evidence. Each carries the caveats described.
+          </p>
           <ul class="bullet-list">
-            <li>Implement the Visual Oracle: RGB segmentation, depth back-projection, EMA smoothing, and freeze logic.</li>
-            <li>Add post-DONE proximity checks to programmatically confirm on-table placement.</li>
-            <li>Add contact-aware grasping with slip detection and physical release validation.</li>
-            <li>Refine target-side navigation with closed-loop yaw and distance feedback.</li>
-            <li>Apply domain randomization and sensor noise for robustness evaluation.</li>
-            <li>Expand dashboards for timing, failure recovery, and pose drift metrics.</li>
+            <li>
+              <strong>Source approach and reach corridor entry.</strong> The robot entered the
+              source-side reach corridor and the FSM advanced to HOVER_SOURCE. Relies on a
+              ground-truth cylinder-pose lookup; Visual Oracle integration is future work.
+            </li>
+            <li>
+              <strong>Hover and descend.</strong> The palm approached the hover target
+              (table&#x202f;+&#x202f;0.18&#x202f;m) and grasp target (table&#x202f;+&#x202f;0.06&#x202f;m). The reacher accuracy floor
+              (~0.12&#x2013;0.13&#x202f;m) means the palm does not reach the geometric center of the
+              cylinder; attachment is designed to trigger at this floor.
+            </li>
+            <li>
+              <strong>Lift and carry.</strong> The attached cylinder tracked the palm through the
+              lift phase. Carry-pose stability was not quantified.
+            </li>
+            <li>
+              <strong>Target transport with compound approach guard.</strong> The robot navigated
+              to the target table after the false-positive guard (body&#x202f;&#x2264;&#x202f;0.24&#x202f;m,
+              yaw&#x202f;&#x2264;&#x202f;0.40&#x202f;rad) was added. Navigation parameters were tuned empirically
+              for this scene.
+            </li>
+            <li>
+              <strong>Placement and release.</strong> The FSM lowered, opened the grip, detached,
+              and retracted. The cylinder appeared to rest on the target table. Post-release
+              settling was not confirmed by any proximity or contact sensor check.
+            </li>
           </ul>
         </section>
+
+        <!-- ── Tier 3: Known gaps and future validation work ── -->
+        <section>
+          <h2>
+            Tier 3 &#x2014; Known gaps and future validation work
+            <span class="status-badge status-future">&#x25CB; Proposed</span>
+          </h2>
+          <p>
+            The following are limitations of the current submission that have not been addressed
+            and require explicit future work before stronger claims can be made.
+          </p>
+          <ul class="bullet-list">
+            <li>
+              <strong>No post-DONE on-table confirmation.</strong> The DONE state is terminal; there
+              is no programmatic check that the cylinder rests on the target table after release.
+              Placement success rests entirely on the single visual observation noted in Tier 2.
+            </li>
+            <li>
+              <strong>Kinematic grasping is a simulation shortcut.</strong> The attach/detach
+              mechanism bypasses contact dynamics, finger forces, and slip. It is not a proxy for
+              physical manipulation quality.
+            </li>
+            <li>
+              <strong>Visual Oracle is architectural design only.</strong> The source localization
+              pipeline (RGB segmentation, depth back-projection, EMA smoothing, freeze logic) is
+              fully specified but the implementation files
+              (<code>vision/observer.py</code>, <code>vision/geometry.py</code>,
+              <code>policies/fsm_visual_oracle.py</code>) are not part of this submission. All
+              source-side phases currently use a ground-truth simulation state read.
+            </li>
+            <li>
+              <strong>Target-table success is not robustly validated.</strong> Navigation to the
+              target table succeeded once under the reference-run conditions. Reproducibility across
+              varied robot starts, object positions, or scene perturbations is unknown.
+            </li>
+            <li>
+              <strong>Target-side pose precision is unmeasured.</strong> The reacher accuracy floor
+              that affects source grasping applies equally to the HOVER_TARGET and LOWER_TARGET
+              phases. Drop-point offset on the target table was not measured.
+            </li>
+            <li>
+              <strong>Wrist camera not used.</strong> The wrist-mounted camera is available in the
+              scene but is not read in the current baseline.
+            </li>
+            <li>
+              <strong>Sim-to-real gap is uncharacterized.</strong> No domain randomization, sensor
+              noise injection, or hardware testing has been attempted.
+            </li>
+          </ul>
+        </section>
+
+        <!-- ── Next steps ── -->
+        <section>
+          <h2>Prioritized next steps</h2>
+          <p>
+            Ordered roughly by how much evidence each step would add relative to the gaps above.
+          </p>
+          <ol class="bullet-list">
+            <li>
+              Add a post-DONE ground-truth proximity check to confirm on-table placement
+              programmatically and retire the visual-only placement claim.
+            </li>
+            <li>
+              Run the FSM headlessly across multiple seeds and record the terminal state, producing
+              a first success-rate estimate.
+            </li>
+            <li>
+              Implement the Visual Oracle pipeline and replace the ground-truth source localization
+              with the observer output; validate with the existing headless runner.
+            </li>
+            <li>
+              Log palm-to-target error during HOVER_TARGET and LOWER_TARGET to characterize
+              placement precision on the target side.
+            </li>
+            <li>
+              Add contact-aware grasping with slip detection to replace the kinematic attachment
+              shortcut.
+            </li>
+            <li>
+              Apply domain randomization and sensor noise; expand dashboards for timing, failure
+              recovery, and pose drift metrics.
+            </li>
+          </ol>
+        </section>
+
       </main>
     </div>
     <script src="../script.js"></script>

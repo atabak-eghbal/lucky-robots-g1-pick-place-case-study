@@ -1,0 +1,150 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="880"
+  height="290"
+  viewBox="0 0 880 290"
+  role="img"
+  aria-label="FSM end-to-end phase sequence showing all twelve states with documented thresholds, timeouts, and exit conditions."
+>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
+    </marker>
+    <style>
+      .bx-v { fill: #effaf2; stroke: #a7f3d0; stroke-width: 1.5; }
+      .bx-w { fill: #e7f0ff; stroke: #bfdbfe; stroke-width: 1.5; }
+      .nm-v { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #166534; }
+      .nm-w { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #1e40af; }
+      .ann  { font: 500 9px  "Inter","Segoe UI",sans-serif; fill: #5f6b7a; }
+      .hdr  { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #374151; }
+      .arr  { stroke: #94a3b8; stroke-width: 1.5; marker-end: url(#arr); fill: none; }
+      .conn { stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+      .leg  { font: 500 10px "Inter","Segoe UI",sans-serif; fill: #5f6b7a; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="880" height="290" fill="#ffffff" />
+
+  <!-- Title -->
+  <text class="hdr" x="440" y="17" text-anchor="middle">FSM end-to-end phase sequence — documented thresholds only</text>
+
+  <!-- ── Row 1: Source side ── -->
+  <text class="hdr" x="8" y="30" text-anchor="start" font-size="10" fill="#6b7280">SOURCE SIDE</text>
+
+  <!-- SETTLE (Verified) -->
+  <rect class="bx-v" x="10"  y="35" width="130" height="48" rx="7" />
+  <text class="nm-v" x="75"  y="59" text-anchor="middle">SETTLE</text>
+  <text class="ann"  x="75"  y="95" text-anchor="middle">timeout-gated</text>
+
+  <!-- → -->
+  <path class="arr" d="M140,59 L148,59" />
+
+  <!-- APPROACH_SOURCE (Visual) -->
+  <rect class="bx-w" x="150" y="35" width="130" height="48" rx="7" />
+  <text class="nm-w" x="215" y="55" text-anchor="middle">APPROACH</text>
+  <text class="nm-w" x="215" y="68" text-anchor="middle">SOURCE</text>
+  <text class="ann"  x="215" y="95" text-anchor="middle">staircase vx</text>
+  <text class="ann"  x="215" y="104" text-anchor="middle">debounce 8 ticks</text>
+
+  <!-- → -->
+  <path class="arr" d="M280,59 L288,59" />
+
+  <!-- HOVER_SOURCE (Visual) -->
+  <rect class="bx-w" x="290" y="35" width="130" height="48" rx="7" />
+  <text class="nm-w" x="355" y="55" text-anchor="middle">HOVER</text>
+  <text class="nm-w" x="355" y="68" text-anchor="middle">SOURCE</text>
+  <text class="ann"  x="355" y="95" text-anchor="middle">target: tbl + 0.18 m</text>
+
+  <!-- → -->
+  <path class="arr" d="M420,59 L428,59" />
+
+  <!-- DESCEND_SOURCE (Visual) -->
+  <rect class="bx-w" x="430" y="35" width="130" height="48" rx="7" />
+  <text class="nm-w" x="495" y="55" text-anchor="middle">DESCEND</text>
+  <text class="nm-w" x="495" y="68" text-anchor="middle">SOURCE</text>
+  <text class="ann"  x="495" y="95" text-anchor="middle">target: tbl + 0.06 m</text>
+  <text class="ann"  x="495" y="104" text-anchor="middle">vision estimate frozen</text>
+
+  <!-- → -->
+  <path class="arr" d="M560,59 L568,59" />
+
+  <!-- CLOSE_GRIP (Verified) -->
+  <rect class="bx-v" x="570" y="35" width="130" height="48" rx="7" />
+  <text class="nm-v" x="635" y="55" text-anchor="middle">CLOSE_GRIP</text>
+  <text class="nm-v" x="635" y="68" text-anchor="middle">→ ATTACH</text>
+  <text class="ann"  x="635" y="95" text-anchor="middle">dist = 0.128 m (ref run)</text>
+  <text class="ann"  x="635" y="104" text-anchor="middle">snap_offset = 0.030 m</text>
+
+  <!-- → -->
+  <path class="arr" d="M700,59 L708,59" />
+
+  <!-- LIFT_SOURCE (Visual) -->
+  <rect class="bx-w" x="710" y="35" width="130" height="48" rx="7" />
+  <text class="nm-w" x="775" y="55" text-anchor="middle">LIFT</text>
+  <text class="nm-w" x="775" y="68" text-anchor="middle">SOURCE</text>
+  <text class="ann"  x="775" y="95" text-anchor="middle">carry pose</text>
+
+  <!-- Connector: down from LIFT_SOURCE bottom, across, down into APPROACH_TARGET -->
+  <path class="conn" d="M 775,83 V 122 H 75" />
+  <path class="arr"  d="M 75,122 V 142" />
+
+  <!-- ── Row 2: Target side ── -->
+  <text class="hdr" x="8" y="138" text-anchor="start" font-size="10" fill="#6b7280">TARGET SIDE</text>
+
+  <!-- APPROACH_TARGET (Visual) -->
+  <rect class="bx-w" x="10"  y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="75"  y="165" text-anchor="middle">APPROACH</text>
+  <text class="nm-w" x="75"  y="178" text-anchor="middle">TARGET</text>
+  <text class="ann"  x="75"  y="205" text-anchor="middle">max 900 ticks (18 s)</text>
+  <text class="ann"  x="75"  y="214" text-anchor="middle">stand 0.24 m · yaw 0.40 rad</text>
+
+  <!-- → -->
+  <path class="arr" d="M140,169 L148,169" />
+
+  <!-- HOVER_TARGET (Visual) -->
+  <rect class="bx-w" x="150" y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="215" y="165" text-anchor="middle">HOVER</text>
+  <text class="nm-w" x="215" y="178" text-anchor="middle">TARGET</text>
+  <text class="ann"  x="215" y="205" text-anchor="middle">hover window</text>
+
+  <!-- → -->
+  <path class="arr" d="M280,169 L288,169" />
+
+  <!-- LOWER_TARGET (Visual) -->
+  <rect class="bx-w" x="290" y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="355" y="165" text-anchor="middle">LOWER</text>
+  <text class="nm-w" x="355" y="178" text-anchor="middle">TARGET</text>
+  <text class="ann"  x="355" y="205" text-anchor="middle">release height</text>
+
+  <!-- → -->
+  <path class="arr" d="M420,169 L428,169" />
+
+  <!-- OPEN_GRIP (Visual) -->
+  <rect class="bx-w" x="430" y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="495" y="172" text-anchor="middle">OPEN_GRIP</text>
+  <text class="ann"  x="495" y="205" text-anchor="middle">detach + debounce</text>
+
+  <!-- → -->
+  <path class="arr" d="M560,169 L568,169" />
+
+  <!-- RETRACT (Visual) -->
+  <rect class="bx-w" x="570" y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="635" y="172" text-anchor="middle">RETRACT</text>
+  <text class="ann"  x="635" y="205" text-anchor="middle">arm reset</text>
+
+  <!-- → -->
+  <path class="arr" d="M700,169 L708,169" />
+
+  <!-- DONE (Visual/terminal) -->
+  <rect class="bx-w" x="710" y="145" width="130" height="48" rx="7" />
+  <text class="nm-w" x="775" y="172" text-anchor="middle">DONE</text>
+  <text class="ann"  x="775" y="205" text-anchor="middle">terminal state</text>
+  <text class="ann"  x="775" y="214" text-anchor="middle">⚠ on-table check</text>
+  <text class="ann"  x="775" y="223" text-anchor="middle">not yet implemented</text>
+
+  <!-- Legend -->
+  <rect x="10"  y="255" width="11" height="11" rx="3" fill="#effaf2" stroke="#a7f3d0" stroke-width="1" />
+  <text class="leg" x="25" y="264">✓ Verified (headless test or logged run)</text>
+  <rect x="290" y="255" width="11" height="11" rx="3" fill="#e7f0ff" stroke="#bfdbfe" stroke-width="1" />
+  <text class="leg" x="305" y="264">◎ Visually verified (reference simulation run)</text>
+</svg>

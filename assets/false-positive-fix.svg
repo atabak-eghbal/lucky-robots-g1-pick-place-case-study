@@ -1,0 +1,108 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="620"
+  height="300"
+  viewBox="0 0 620 300"
+  role="img"
+  aria-label="Two-column diagram comparing the v1 reach-only target approach check that produced false positives with the v2 compound check that fixed them."
+>
+  <defs>
+    <marker id="arrfp" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
+    </marker>
+    <style>
+      .bx    { fill: #ffffff; stroke: #e1e5ea; stroke-width: 1.5; }
+      .bx-r  { fill: #fff2f0; stroke: #ffd6cc; stroke-width: 1.5; }
+      .bx-g  { fill: #effaf2; stroke: #a7f3d0; stroke-width: 1.5; }
+      .bx-b  { fill: #e7f0ff; stroke: #bfdbfe; stroke-width: 1.5; }
+      .bx-t  { fill: #f0fdf4; stroke: #86efac; stroke-width: 1.5; }
+      .lbl   { font: 700 12px "Inter","Segoe UI",sans-serif; fill: #161b22; }
+      .sub   { font: 500 10px "Inter","Segoe UI",sans-serif; fill: #5f6b7a; }
+      .cond  { font: 600 11px "Inter","Segoe UI",sans-serif; fill: #1e40af; }
+      .term  { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #15803d; }
+      .warn  { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #c2410c; }
+      .ok    { font: 700 11px "Inter","Segoe UI",sans-serif; fill: #15803d; }
+      .and   { font: 700 9px  "Inter","Segoe UI",sans-serif; fill: #6d28d9; }
+      .arr   { stroke: #94a3b8; stroke-width: 1.5; marker-end: url(#arrfp); fill: none; }
+      .divl  { stroke: #e1e5ea; stroke-width: 1; stroke-dasharray: 5 4; }
+      .title { font: 700 12px "Inter","Segoe UI",sans-serif; fill: #161b22; }
+      .val   { font: 600 10px "Inter","Segoe UI",sans-serif; fill: #374151; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="620" height="300" fill="#ffffff" />
+
+  <!-- Title -->
+  <text class="title" x="310" y="18" text-anchor="middle">Target-side approach guard: v1 (false positive) → v2 (compound fix)</text>
+
+  <!-- Dividing line -->
+  <line class="divl" x1="310" y1="26" x2="310" y2="285" />
+
+  <!-- ── Left column: v1 ── -->
+  <text class="lbl"  x="155" y="38" text-anchor="middle">v1 — reach-window only</text>
+  <text class="sub"  x="155" y="50" text-anchor="middle">single condition</text>
+
+  <!-- Condition box -->
+  <rect class="bx-b" x="60" y="58" width="190" height="34" rx="7" />
+  <text class="cond" x="155" y="80" text-anchor="middle">palm within reach window?</text>
+
+  <!-- Arrow to terminal -->
+  <path class="arr" d="M155,92 V108" />
+
+  <!-- Terminal box -->
+  <rect class="bx-g" x="60" y="108" width="190" height="30" rx="7" />
+  <text class="term" x="155" y="128" text-anchor="middle">→ HOVER_TARGET</text>
+
+  <!-- False-positive indicator -->
+  <rect class="bx-r" x="40" y="152" width="230" height="46" rx="8" />
+  <text class="warn" x="155" y="170" text-anchor="middle">✗ false positive</text>
+  <text class="sub"  x="155" y="184" text-anchor="middle">robot body not yet at</text>
+  <text class="sub"  x="155" y="196" text-anchor="middle">target-table position</text>
+
+  <!-- Root cause note -->
+  <rect x="40" y="210" width="230" height="46" rx="8" fill="#f8f9fc" stroke="#e1e5ea" stroke-width="1" />
+  <text class="sub"  x="155" y="226" text-anchor="middle">reach window can be satisfied</text>
+  <text class="sub"  x="155" y="238" text-anchor="middle">while pelvis is still mid-transit;</text>
+  <text class="sub"  x="155" y="250" text-anchor="middle">no body-proximity guard existed</text>
+
+  <!-- ── Right column: v2 ── -->
+  <text class="lbl"  x="465" y="38" text-anchor="middle">v2 — compound guard (fix)</text>
+  <text class="sub"  x="465" y="50" text-anchor="middle">all three conditions required</text>
+
+  <!-- Condition 1 -->
+  <rect class="bx-b" x="360" y="58" width="210" height="30" rx="7" />
+  <text class="cond" x="465" y="78" text-anchor="middle">palm within reach window?</text>
+
+  <!-- AND -->
+  <path class="arr" d="M465,88 V98" />
+  <text class="and" x="465" y="96" text-anchor="middle">AND</text>
+
+  <!-- Condition 2 -->
+  <rect class="bx-b" x="360" y="100" width="210" height="30" rx="7" />
+  <text class="cond"  x="465" y="117" text-anchor="middle">body ≤ 0.24 m from stand?</text>
+  <text class="val"   x="465" y="127" text-anchor="middle">TARGET_STAND_DIST = 0.24</text>
+
+  <!-- AND -->
+  <path class="arr" d="M465,130 V140" />
+  <text class="and" x="465" y="138" text-anchor="middle">AND</text>
+
+  <!-- Condition 3 -->
+  <rect class="bx-b" x="360" y="142" width="210" height="30" rx="7" />
+  <text class="cond"  x="465" y="159" text-anchor="middle">yaw error ≤ 0.40 rad?</text>
+  <text class="val"   x="465" y="169" text-anchor="middle">PHASE1_ALIGN_TOL = 0.40</text>
+
+  <!-- Arrow to terminal -->
+  <path class="arr" d="M465,172 V186" />
+
+  <!-- Terminal box -->
+  <rect class="bx-t" x="360" y="186" width="210" height="30" rx="7" />
+  <text class="term" x="465" y="206" text-anchor="middle">→ HOVER_TARGET</text>
+
+  <!-- Success indicator -->
+  <rect class="bx-g" x="360" y="228" width="210" height="30" rx="8" />
+  <text class="ok"  x="465" y="248" text-anchor="middle">✓ correct — all guards passed</text>
+
+  <!-- Context note -->
+  <text class="sub" x="465" y="278" text-anchor="middle">guard added after false-positive</text>
+  <text class="sub" x="465" y="290" text-anchor="middle">observed in development run</text>
+</svg>
