@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>common/scene.py — Reset and Rendering Helpers | Lucky Robots G1 Pick-and-Place</title>
+    <title>common/scene.py — Scene Helpers | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
-          <h1>common/scene.py — Reset and Rendering Helpers</h1>
-          <p class="subtitle">Deterministic reset utilities and offscreen camera rendering.</p>
+          <p class="eyebrow">Implementation · common/scene.py</p>
+          <h1>common/scene.py — Scene Helpers</h1>
+          <p class="subtitle">Two utilities that make the simulation reproducible: <code>CameraRenderer</code> wraps MuJoCo's offscreen renderer for named cameras, and <code>reset_robot</code> sets a deterministic initial joint pose from the config file.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./common-onnx-policy.html">Previous file</a>
-            <a href="./policies-base.html">Next file</a>
+            <a href="./common-onnx-policy.html">← common/onnx_policy.py</a>
+            <a href="./policies-base.html">policies/base.py →</a>
           </div>
         </div>
 
@@ -52,94 +52,175 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> common/scene.py</p>
-              <p>Shared utilities for reset and camera rendering in runtime and tests.</p>
+              <p><strong>Lines:</strong> ~50</p>
+              <p>Pure utilities — no mutable state beyond what MuJoCo holds. <code>CameraRenderer</code> is used by <code>run.py</code> when <code>--cameras</code> is enabled. <code>reset_robot</code> is called by both <code>run.py</code> and the headless test script.</p>
             </div>
-            <div class="code-section">
-              <h2>Key uses</h2>
-              <ul class="bullet-list">
-                <li>Offscreen rendering for future perception work.</li>
-                <li>Deterministic reset for headless scripts.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-camera">CameraRenderer</a></li>
+                <li><a href="#chunk-reset">reset_robot()</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="renderer">CameraRenderer</button>
-                <button class="file-tab-button" data-tab-target="reset">reset_robot</button>
-                <button class="file-tab-button" data-tab-target="determinism">Why deterministic reset matters</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="renderer">
-                <section class="code-section">
-                  <h2>CameraRenderer</h2>
-                  <p>
-                    The renderer wraps MuJoCo’s offscreen renderer so scripts can request named cameras
-                    without worrying about GPU setup.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>class CameraRenderer:
+            <!-- ─── Chunk 1: CameraRenderer ──────────────────────────────── -->
+            <section class="code-section" id="chunk-camera">
+              <h3>CameraRenderer</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Wrap <code>mujoco.Renderer</code> to provide a simple <code>render(camera_name) -&gt; np.ndarray</code> API. The renderer is allocated once at construction (allocating GPU/CPU render buffers) and reused for every frame — avoiding per-frame allocation overhead.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>width/height:</strong> default 320×240 — sufficient for debugging visualization, small enough to not dominate simulation wall-clock time.<br>
+                <strong>render(camera_name):</strong> returns a copy of the RGB array — the copy is required because MuJoCo reuses the internal render buffer on the next call.</p>
+                <h4>Invariants</h4>
+                <p><code>update_scene(data, camera=camera_name)</code> must be called before <code>render()</code> — it synchronises the renderer's scene graph with the current physics state. Omitting it would render a stale frame.<br>
+                The <code>.copy()</code> call is mandatory. Without it, the returned array is a view into a buffer that gets overwritten by the next <code>update_scene</code> call.</p>
+                <h4>Why it matters</h4>
+                <p>Camera rendering is optional in <code>run.py</code> (controlled by <code>--no-cameras</code>). By isolating it here, the headless test can skip creating a <code>CameraRenderer</code> entirely — avoiding any display dependency in CI.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>"""Scene helpers for deterministic reset and camera rendering."""
+
+from __future__ import annotations
+
+from typing import Iterable
+
+import mujoco
+import numpy as np
+
+
+class CameraRenderer:
+  """Offscreen renderer for robot-mounted cameras using mujoco.Renderer."""
+
   def __init__(self, model, data, width: int = 320, height: int = 240):
     self.model = model
     self.data = data
     self.renderer = mujoco.Renderer(model, height, width)
 
-  def render(self, camera_name: str) -> np.ndarray:
+  def render(self, camera_name: str) -&gt; np.ndarray:
+    """Render from a named camera, return RGB array (H, W, 3)."""
     self.renderer.update_scene(self.data, camera=camera_name)
     return self.renderer.render().copy()</code></pre>
-                  </div>
-                </section>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="reset">
-                <section class="code-section">
-                  <h2>reset_robot</h2>
-                  <p>
-                    Resets the robot to a deterministic base pose and applies default joint angles from
-                    model_config.json.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def reset_robot(
-    model,
-    data,
-    config: dict,
-    joint_names: Iterable[str],
-    *,
-    base_pos=(-0.6, 0.0, 0.76),
-    base_quat=(1.0, 0.0, 0.0, 0.0),
-    reset_data=True,
-) -> None:
-    if reset_data:
-        mujoco.mj_resetData(model, data)
-
-    data.qpos[0:3] = base_pos
-    data.qpos[3:7] = base_quat
-
-    for name, value in config["default_joint_pos"].items():
-        idx = joint_index.get(name)
-        if idx is not None:
-            data.qpos[7 + idx] = value
-
-    mujoco.mj_forward(model, data)</code></pre>
-                  </div>
-                </section>
+            <!-- ─── Chunk 2: reset_robot ──────────────────────────────────── -->
+            <section class="code-section" id="chunk-reset">
+              <h3>reset_robot()</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Set the robot to a deterministic initial pose by writing <code>base_pos</code>, <code>base_quat</code>, and per-joint positions from the config into <code>data.qpos</code>, then call <code>mj_forward</code> to compute all derived quantities (site positions, body positions, contact forces).</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>base_pos:</strong> default <code>(-0.6, 0.0, 0.76)</code> — places the robot 0.6 m behind the source table at standing height.<br>
+                <strong>base_quat:</strong> default <code>(1, 0, 0, 0)</code> — identity orientation (facing +x).<br>
+                <strong>reset_data:</strong> if True, calls <code>mj_resetData</code> first to clear all velocities and accumulated state. Set False when the model was just freshly loaded (data already zeroed).</p>
+                <h4>Invariants</h4>
+                <p><code>data.qpos[7 + idx] = value</code> — MuJoCo's <code>qpos</code> layout: indices 0–2 are root position, 3–6 are root quaternion, indices 7 onward are joint positions in the order defined by the model. The config's <code>joint_names</code> list is used to map joint names to the correct <code>qpos</code> index.<br>
+                Joints not present in the config's <code>default_joint_pos</code> dict retain their current <code>qpos</code> value (or zero after <code>mj_resetData</code>).</p>
+                <h4>Why it matters</h4>
+                <p>Using the config's <code>default_joint_pos</code> (not hardcoded values) means the reset pose stays consistent with the walker policy's expected carry pose. If the walker was re-trained with different default arm positions, updating the config is sufficient.</p>
               </div>
+              <div class="code-block">
+                <pre><code>def reset_robot(
+  model,
+  data,
+  config: dict,
+  joint_names: Iterable[str],
+  *,
+  base_pos: tuple[float, float, float] = (-0.6, 0.0, 0.76),
+  base_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
+  reset_data: bool = True,
+) -&gt; None:
+  """Reset the robot to a deterministic pose and forward the model.
 
-              <div class="file-tab-panel" data-tab-panel="determinism">
-                <section class="code-section">
-                  <h2>Why deterministic reset matters</h2>
-                  <p>
-                    Every runtime loop and headless script assumes the same starting pose, so the reset
-                    helper ensures tests and policy debugging stay reproducible across runs.
-                  </p>
-                </section>
+  joint_names should be the full ordered joint list from the config/model.
+  """
+  if reset_data:
+    mujoco.mj_resetData(model, data)
+  joint_names_list = list(joint_names)
+  joint_index = {name: idx for idx, name in enumerate(joint_names_list)}
+  data.qpos[0:3] = base_pos
+  data.qpos[3:7] = base_quat
+  for name, value in config["default_joint_pos"].items():
+    idx = joint_index.get(name)
+    if idx is not None:
+      data.qpos[7 + idx] = value
+  mujoco.mj_forward(model, data)</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — common/scene.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~50 lines)</summary>
+                <div class="code-block">
+                  <pre><code>"""Scene helpers for deterministic reset and camera rendering."""
+
+from __future__ import annotations
+
+from typing import Iterable
+
+import mujoco
+import numpy as np
+
+
+class CameraRenderer:
+  """Offscreen renderer for robot-mounted cameras using mujoco.Renderer."""
+
+  def __init__(self, model, data, width: int = 320, height: int = 240):
+    self.model = model
+    self.data = data
+    self.renderer = mujoco.Renderer(model, height, width)
+
+  def render(self, camera_name: str) -&gt; np.ndarray:
+    """Render from a named camera, return RGB array (H, W, 3)."""
+    self.renderer.update_scene(self.data, camera=camera_name)
+    return self.renderer.render().copy()
+
+
+def reset_robot(
+  model,
+  data,
+  config: dict,
+  joint_names: Iterable[str],
+  *,
+  base_pos: tuple[float, float, float] = (-0.6, 0.0, 0.76),
+  base_quat: tuple[float, float, float, float] = (1.0, 0.0, 0.0, 0.0),
+  reset_data: bool = True,
+) -&gt; None:
+  """Reset the robot to a deterministic pose and forward the model.
+
+  joint_names should be the full ordered joint list from the config/model.
+  """
+  if reset_data:
+    mujoco.mj_resetData(model, data)
+  joint_names_list = list(joint_names)
+  joint_index = {name: idx for idx, name in enumerate(joint_names_list)}
+  data.qpos[0:3] = base_pos
+  data.qpos[3:7] = base_quat
+  for name, value in config["default_joint_pos"].items():
+    idx = joint_index.get(name)
+    if idx is not None:
+      data.qpos[7 + idx] = value
+  mujoco.mj_forward(model, data)</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

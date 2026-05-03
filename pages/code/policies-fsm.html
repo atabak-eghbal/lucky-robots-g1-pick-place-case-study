@@ -10,9 +10,9 @@
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
+          <p class="eyebrow">Implementation · policies/fsm.py</p>
           <h1>policies/fsm.py — FSM Adapter and Grip Safety</h1>
-          <p class="subtitle">Bridges FSMCore outputs into controller state and guards grip commands.</p>
+          <p class="subtitle">The thin adapter layer between FSMCore's pure state-machine outputs and the controller's mutable command state. Also contains the grip-safety guard that prevents mid-carry drops — a guard whose bugfix was the critical Step 10 discovery.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./policies-keyboard.html">Previous file</a>
-            <a href="./policies-fsm-core.html">Next file</a>
+            <a href="./policies-fsm-core.html">← policies/fsm_core.py</a>
+            <a href="./scripts-smoke-env.html">scripts/smoke_env.py →</a>
           </div>
         </div>
 
@@ -52,115 +52,229 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> policies/fsm.py</p>
-              <p>Adapts FSMCore outputs into controller state and integrates grasp backend state.</p>
+              <p><strong>Lines:</strong> ~57</p>
+              <p>A 57-line glue layer. <code>FSMPolicy</code> owns an <code>FSMCore</code>, calls <code>tick()</code> each step, then writes the resulting command into the controller's public attributes so <code>ctrl.step()</code> picks them up. The single non-trivial method is <code>_close_grip_command()</code> — the grip-safety guard.</p>
             </div>
-            <div class="code-section">
-              <h2>Key responsibilities</h2>
-              <ul class="bullet-list">
-                <li>Pass attachment state into FSMCore.</li>
-                <li>Write walk and reach targets into the controller.</li>
-                <li>Guard grip commands to prevent accidental drops.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-header">Module header &amp; _RELEASE_STATES</a></li>
+                <li><a href="#chunk-init">FSMPolicy.__init__</a></li>
+                <li><a href="#chunk-step">step() — command bridge</a></li>
+                <li><a href="#chunk-grip-guard">_close_grip_command() — grip safety</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="construction">FSMPolicy construction</button>
-                <button class="file-tab-button" data-tab-target="adapter">step adapter</button>
-                <button class="file-tab-button" data-tab-target="guard">close grip guard</button>
-                <button class="file-tab-button" data-tab-target="release">release-state exemption</button>
+
+            <!-- ─── Chunk 1: Header ─────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-header">
+              <h3>Module header &amp; _RELEASE_STATES</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Import the two policy-layer types (<code>BasePolicy</code>, <code>PolicyOutput</code>) and the FSM internals (<code>FSMCore</code>, <code>FSMState</code>). Define the frozen set of states where <code>grip_closed=False</code> is intentional and must not be overridden.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>No runtime I/O. <code>_RELEASE_STATES</code> is a module-level constant — three <code>FSMState</code> members that represent intentional release phases.</p>
+                <h4>Invariants</h4>
+                <p><code>_RELEASE_STATES</code> must include every state where FSMCore actively opens the grip. Currently: <code>OPEN_GRIP</code>, <code>RETRACT</code>, <code>DONE</code>. Adding a new release state to <code>FSMCore</code> without adding it here would cause the grip guard to re-close the grip during release.</p>
+                <h4>Failure modes</h4>
+                <p>Step 10 bug: original code omitted <code>OPEN_GRIP</code> from this set. The grip guard then clamped <code>grip_closed=True</code> for the entire OPEN_GRIP state, preventing the cylinder from being released over the target table. Fix: add <code>FSMState.OPEN_GRIP</code> to <code>_RELEASE_STATES</code>.</p>
+                <h4>Why it matters</h4>
+                <p>Making the exemption list a named module constant forces future engineers to acknowledge the decision — you can't miss it. Using <code>frozenset</code> makes membership tests O(1) and prevents accidental mutation.</p>
               </div>
+              <div class="code-block">
+                <pre><code>"""FSM-driven policy: wraps FSMCore and applies its output to the controller."""
 
-              <div class="file-tab-panel" data-tab-panel="construction">
-                <section class="code-section">
-                  <h2>FSMPolicy construction</h2>
-                  <p>
-                    FSMPolicy keeps a reference to the controller, the grasp backend, and a dedicated
-                    FSMCore instance.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>class FSMPolicy(BasePolicy):
-    def __init__(self, controller, grasp_backend=None):
-        self._controller = controller
-        self._grasp_backend = grasp_backend
-        self._fsm = FSMCore(controller.model, controller.data)</code></pre>
-                  </div>
-                </section>
+from __future__ import annotations
+
+from .base import BasePolicy, PolicyOutput
+from .fsm_core import FSMCore, FSMState
+
+# States where grip_closed=False is intentional — do not override.
+_RELEASE_STATES = frozenset({FSMState.OPEN_GRIP, FSMState.RETRACT, FSMState.DONE})</code></pre>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="adapter">
-                <section class="code-section">
-                  <h2>step adapter</h2>
-                  <p>
-                    The adapter reads the current attachment state, ticks the FSM, and writes high-level
-                    commands into controller fields.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>    def step(self) -> PolicyOutput:
-        attached = (
-            self._grasp_backend.attached
-            if self._grasp_backend is not None
-            else False
-        )
+            <!-- ─── Chunk 2: __init__ ──────────────────────────────────────── -->
+            <section class="code-section" id="chunk-init">
+              <h3>FSMPolicy.__init__</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Wire together the three collaborating objects: the <code>WalkerReacherController</code>, the optional <code>GraspBackend</code>, and the <code>FSMCore</code> (which is created fresh here, taking the MuJoCo model and data from the controller).</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>controller:</strong> <code>WalkerReacherController</code> — provides <code>.model</code>, <code>.data</code>, and mutable command state (<code>lin_vel_x</code>, <code>reach_target</code>, etc.).<br>
+                <strong>grasp_backend:</strong> optional <code>GraspBackend</code> — provides <code>.attached</code> boolean; may be <code>None</code> for testing without grasp.</p>
+                <h4>Invariants</h4>
+                <p><code>FSMCore</code> receives the live <code>model</code> and <code>data</code> references so it can read MuJoCo state (body positions, etc.) at tick time. These must not be replaced later — <code>FSMCore</code> caches the references, not snapshots.</p>
+                <h4>Why it matters</h4>
+                <p>By accepting <code>grasp_backend=None</code>, the policy can be instantiated in test harnesses without a full simulation, enabling unit tests of pure FSM logic.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>class FSMPolicy(BasePolicy):
+    """Autonomous policy driven by FSMCore.
 
+    Calls fsm.tick() each step, then writes the resulting command into
+    the controller so that ctrl.step() picks it up immediately.
+
+    grasp_backend (optional): a GraspBackend whose .attached state is forwarded
+    to FSMCore each tick and whose grip_closed override is applied to the output.
+    """
+
+    def __init__(self, controller, grasp_backend=None) -&gt; None:
+        self._ctrl  = controller
+        self._grasp = grasp_backend
+        self._fsm   = FSMCore(controller.model, controller.data)</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 3: step() ───────────────────────────────────────── -->
+            <section class="code-section" id="chunk-step">
+              <h3>step() — the command bridge</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Each control tick: (1) query the grasp attachment state, (2) advance the FSM by one tick, (3) run the grip-safety guard, (4) write all four command fields into the controller's mutable state. Returns the <code>PolicyOutput</code> to the caller (the simulation loop) for logging.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>No explicit inputs (reads live simulation state through <code>self._fsm</code> / <code>self._grasp</code>). Returns a <code>PolicyOutput(walk_cmd, reach_target, reach_active, grip_closed)</code>.</p>
+                <h4>Invariants</h4>
+                <p>The <code>_ctrl</code> fields must be written <strong>before</strong> <code>ctrl.step()</code> is called — the simulation loop in <code>run.py</code> calls <code>policy.step()</code> first, then <code>ctrl.step()</code>, so this ordering is correct.<br>
+                <code>reach_target[:]</code> uses in-place slice assignment — this preserves the existing numpy array rather than replacing the reference, which matters because <code>ctrl.step()</code> reads the same array object.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>_close_grip_command</code> returns a modified <code>PolicyOutput</code>, the controller's <code>grip_closed</code> is set from the corrected value, not the raw FSM output. The returned <code>out</code> (used for logging) reflects the final effective command.</p>
+                <h4>Why it matters</h4>
+                <p>This is the only place where <code>FSMCore</code>'s immutable <code>PolicyOutput</code> is translated into mutable controller state. Keeping this translation explicit and co-located prevents the controller from getting stale commands if <code>FSMCore</code> skips a tick.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    def step(self) -&gt; PolicyOutput:
+        attached = self._grasp.attached if self._grasp is not None else False
         out = self._fsm.tick(attached=attached)
-
-        self._controller.lin_vel_x, self._controller.lin_vel_y, self._controller.ang_vel_z = out.walk_cmd
-        self._controller.reach_target[:] = out.reach_target
-        self._controller.reach_active = out.reach_active
-        self._controller.grip_closed = self._close_grip_command(out)
-
+        out = self._close_grip_command(out)
+        # Push FSM output into controller state before ctrl.step() runs.
+        self._ctrl.lin_vel_x, self._ctrl.lin_vel_y, self._ctrl.ang_vel_z = out.walk_cmd
+        self._ctrl.reach_target[:] = out.reach_target
+        self._ctrl.reach_active    = out.reach_active
+        self._ctrl.grip_closed     = out.grip_closed
         return out</code></pre>
-                  </div>
-                </section>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="guard">
-                <section class="code-section">
-                  <h2>close grip guard</h2>
-                  <p>
-                    The guard keeps the grip closed while attached so accidental drop commands do not
-                    release the object mid-transport.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def _close_grip_command(self, out: PolicyOutput) -> bool:
-    if self._grasp_backend is None:
-        return out.grip_closed
-
-    if self._fsm.state in _RELEASE_STATES:
-        return out.grip_closed
-
-    if self._grasp_backend.attached:
-        return True
-
-    return out.grip_closed</code></pre>
-                  </div>
-                </section>
+            <!-- ─── Chunk 4: _close_grip_command ──────────────────────────── -->
+            <section class="code-section" id="chunk-grip-guard">
+              <h3>_close_grip_command() — grip safety guard</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>If the cylinder is attached and FSMCore happens to emit <code>grip_closed=False</code> during a state that is not an intentional release (e.g., the very first tick of LIFT_SOURCE), override it back to <code>True</code>. This prevents a transient single-tick grip opening from dropping the cylinder mid-carry.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>out:</strong> the raw <code>PolicyOutput</code> from <code>FSMCore.tick()</code>.<br>
+                Returns either <code>out</code> unchanged (passthrough) or a new <code>PolicyOutput</code> with <code>grip_closed=True</code>.</p>
+                <h4>Invariants</h4>
+                <p>The guard activates only when all three conditions hold simultaneously:<br>
+                (1) <code>self._grasp.attached</code> — cylinder is physically attached.<br>
+                (2) <code>not out.grip_closed</code> — FSM emitted an open-grip command.<br>
+                (3) <code>self._fsm.state not in _RELEASE_STATES</code> — current state is not an intentional release.</p>
+                <h4>Failure modes &amp; Step 10 bugfix</h4>
+                <p><strong>Step 10 bug:</strong> The original <code>_RELEASE_STATES</code> was <code>frozenset({FSMState.RETRACT, FSMState.DONE})</code> — missing <code>FSMState.OPEN_GRIP</code>. During OPEN_GRIP the cylinder was still attached (KinematicAttachment only releases on a <em>falling-edge</em> of <code>grip_closed</code>). So <code>self._grasp.attached</code> was <code>True</code>, <code>out.grip_closed</code> was <code>False</code>, and the guard re-clamped it to <code>True</code> every tick — the cylinder never released.</p>
+                <p><strong>Fix:</strong> Add <code>FSMState.OPEN_GRIP</code> to <code>_RELEASE_STATES</code>. The guard now passes through the FSM's intentional <code>grip_closed=False</code> during OPEN_GRIP, allowing <code>KinematicAttachment.release()</code> to fire.</p>
+                <h4>Why it matters</h4>
+                <p>Without this guard, a single-tick <code>grip_closed=False</code> during LIFT_SOURCE (possible if the FSM takes one tick to latch its carry state) would cause <code>KinematicAttachment</code> to release the cylinder. The guard trades a small risk of a stuck grip for a much larger risk of a premature drop.</p>
               </div>
+              <div class="code-block">
+                <pre><code>    def _close_grip_command(self, out: PolicyOutput) -&gt; PolicyOutput:
+        """Keep grip closed while carrying — but not during intentional release.
 
-              <div class="file-tab-panel" data-tab-panel="release">
-                <section class="code-section">
-                  <h2>release-state exemption</h2>
-                  <p>
-                    Release states are explicitly exempt from the guard so the FSM can open the grip when
-                    it reaches the target table.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>_RELEASE_STATES = frozenset({
-    FSMState.OPEN_GRIP,
-    FSMState.RETRACT,
-    FSMState.DONE,
-})</code></pre>
-                  </div>
-                </section>
+        Prevents a single-tick grip opening caused by FSM state-transition timing
+        from accidentally dropping the cylinder mid-carry.  The guard is bypassed
+        in OPEN_GRIP / RETRACT / DONE so the FSM can actually release the object.
+        """
+        if (self._grasp is not None
+                and self._grasp.attached
+                and not out.grip_closed
+                and self._fsm.state not in _RELEASE_STATES):
+            return PolicyOutput(
+                walk_cmd=out.walk_cmd,
+                reach_target=out.reach_target,
+                reach_active=out.reach_active,
+                grip_closed=True,
+            )
+        return out</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — policies/fsm.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~57 lines)</summary>
+                <div class="code-block">
+                  <pre><code>"""FSM-driven policy: wraps FSMCore and applies its output to the controller."""
+
+from __future__ import annotations
+
+from .base import BasePolicy, PolicyOutput
+from .fsm_core import FSMCore, FSMState
+
+# States where grip_closed=False is intentional — do not override.
+_RELEASE_STATES = frozenset({FSMState.OPEN_GRIP, FSMState.RETRACT, FSMState.DONE})
+
+
+class FSMPolicy(BasePolicy):
+    """Autonomous policy driven by FSMCore.
+
+    Calls fsm.tick() each step, then writes the resulting command into
+    the controller so that ctrl.step() picks it up immediately.
+
+    grasp_backend (optional): a GraspBackend whose .attached state is forwarded
+    to FSMCore each tick and whose grip_closed override is applied to the output.
+    """
+
+    def __init__(self, controller, grasp_backend=None) -&gt; None:
+        self._ctrl  = controller
+        self._grasp = grasp_backend
+        self._fsm   = FSMCore(controller.model, controller.data)
+
+    def step(self) -&gt; PolicyOutput:
+        attached = self._grasp.attached if self._grasp is not None else False
+        out = self._fsm.tick(attached=attached)
+        out = self._close_grip_command(out)
+        # Push FSM output into controller state before ctrl.step() runs.
+        self._ctrl.lin_vel_x, self._ctrl.lin_vel_y, self._ctrl.ang_vel_z = out.walk_cmd
+        self._ctrl.reach_target[:] = out.reach_target
+        self._ctrl.reach_active    = out.reach_active
+        self._ctrl.grip_closed     = out.grip_closed
+        return out
+
+    def _close_grip_command(self, out: PolicyOutput) -&gt; PolicyOutput:
+        """Keep grip closed while carrying — but not during intentional release.
+
+        Prevents a single-tick grip opening caused by FSM state-transition timing
+        from accidentally dropping the cylinder mid-carry.  The guard is bypassed
+        in OPEN_GRIP / RETRACT / DONE so the FSM can actually release the object.
+        """
+        if (self._grasp is not None
+                and self._grasp.attached
+                and not out.grip_closed
+                and self._fsm.state not in _RELEASE_STATES):
+            return PolicyOutput(
+                walk_cmd=out.walk_cmd,
+                reach_target=out.reach_target,
+                reach_active=out.reach_active,
+                grip_closed=True,
+            )
+        return out</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

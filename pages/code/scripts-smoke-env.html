@@ -10,9 +10,9 @@
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
+          <p class="eyebrow">Implementation · scripts/smoke_env.py</p>
           <h1>scripts/smoke_env.py — Headless Environment Smoke Test</h1>
-          <p class="subtitle">Validates the scene, cameras, bodies, and ONNX models before debugging the FSM.</p>
+          <p class="subtitle">A 231-line pre-flight checklist run before debugging any FSM behaviour. Loads the scene, validates every camera, body, site, joint, and ONNX model, and exits non-zero on the first required check failure — so CI catches environment rot before it wastes a debugging session.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./policies-fsm-core.html">Previous file</a>
-            <a href="./scripts-test-fsm-approach.html">Next file</a>
+            <a href="./policies-fsm.html">← policies/fsm.py</a>
+            <a href="./scripts-test-fsm-approach.html">scripts/test_fsm_approach.py →</a>
           </div>
         </div>
 
@@ -52,93 +52,603 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> scripts/smoke_env.py</p>
-              <p>Ensures the environment is valid before running autonomy.</p>
+              <p><strong>Lines:</strong> ~231</p>
+              <p>Standalone test script with no policy or FSM imports. Run with <code>python scripts/smoke_env.py</code>. Exits 0 on full pass, 1 on any required failure. Optional ONNX models (croucher, rotator) are reported but never fail the run.</p>
             </div>
-            <div class="code-section">
-              <h2>Why it mattered</h2>
-              <ul class="bullet-list">
-                <li>Validates 29 joints and required scene assets.</li>
-                <li>Confirms walker and right_reacher ONNX warm up.</li>
-                <li>Prevents debugging FSM logic on a broken scene.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-constants">Constants &amp; manifest lists</a></li>
+                <li><a href="#chunk-helpers">Helper utilities: _check() &amp; section()</a></li>
+                <li><a href="#chunk-config">§1 Config validation</a></li>
+                <li><a href="#chunk-scene">§2 MuJoCo scene load</a></li>
+                <li><a href="#chunk-assets">§3–6 Cameras, Bodies, Sites, Joints</a></li>
+                <li><a href="#chunk-onnx">§7–8 ONNX warmup (required + optional)</a></li>
+                <li><a href="#chunk-summary">Summary &amp; exit</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="config">Config checks</button>
-                <button class="file-tab-button" data-tab-target="scene">Scene checks</button>
-                <button class="file-tab-button" data-tab-target="cameras">Cameras/bodies/sites</button>
-                <button class="file-tab-button" data-tab-target="onnx">ONNX warmup</button>
-                <button class="file-tab-button" data-tab-target="why">Why this mattered</button>
+
+            <!-- ─── Chunk 1: Constants ─────────────────────────────────────── -->
+            <section class="code-section" id="chunk-constants">
+              <h3>Constants &amp; manifest lists</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Hard-code the complete set of assets the FSM depends on so any deletion or rename is caught immediately. No logic here — just declarative manifests.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>No runtime I/O. These constants are referenced by the check loops below.</p>
+                <h4>Invariants</h4>
+                <p><code>REQUIRED_CAMERAS</code> includes all 5 named cameras in <code>scene.xml</code>. <code>REQUIRED_BODIES</code> must include <code>red_block</code> and <code>table_white</code> — these are referenced by name in <code>FSMCore</code> geometry lookups. <code>REQUIRED_ONNX</code> maps each model to its exact expected input dimension: walker=99, right_reacher=36. A dimension mismatch would produce a runtime crash during warmup.</p>
+                <h4>Why it matters</h4>
+                <p>Having the required dimensions listed here (not inferred from the model files) means the smoke test catches an accidentally overwritten ONNX file — a corrupted file might still load but produce a different output shape.</p>
               </div>
+              <div class="code-block">
+                <pre><code>#!/usr/bin/env python3
+"""Headless smoke test: validate scene loading and ONNX warmup.
 
-              <div class="file-tab-panel" data-tab-panel="config">
-                <section class="code-section">
-                  <h2>Config checks</h2>
-                  <p>
-                    The smoke test verifies joint counts and configuration dimensions before any policies
-                    are loaded.
-                  </p>
-                </section>
+Exits 0 on full pass, 1 on any required check failure.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+REQUIRED_CAMERAS = ["head_cam", "wrist_cam", "overhead", "side_view", "tracking"]
+REQUIRED_BODIES  = ["pelvis", "red_block", "table", "table_white"]
+REQUIRED_SITES   = ["right_palm", "imu_in_pelvis", "left_foot", "right_foot"]
+
+REQUIRED_ONNX = {
+    "walker":        ("walker.onnx",        99),
+    "right_reacher": ("right_reacher.onnx", 36),
+}
+OPTIONAL_ONNX = {
+    "croucher": ("croucher.onnx",  101),
+    "rotator":  ("rotator.onnx",    99),
+}</code></pre>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="scene">
-                <section class="code-section">
-                  <h2>Scene checks</h2>
-                  <p>
-                    Bodies, sites, and cameras are validated early so missing assets are caught without
-                    stepping the FSM.
-                  </p>
-                </section>
+            <!-- ─── Chunk 2: Helpers ───────────────────────────────────────── -->
+            <section class="code-section" id="chunk-helpers">
+              <h3>Helper utilities: _check() &amp; section()</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p><code>_check(label, ok, detail)</code> — prints a uniform <code>[PASS]</code>/<code>[FAIL]</code> line and returns the boolean result so callers can branch on it. <code>section(title)</code> — prints a section header line for readable terminal output.</p>
+                <h4>Invariants</h4>
+                <p>By returning <code>ok</code>, <code>_check</code> allows the check call to double as both reporting and branching: <code>if not _check(...): failures.append(...)</code>. Every failure is appended to <code>failures</code> in <code>main()</code> — the summary at the end prints the complete list, so a single run shows all problems.</p>
+                <h4>Why it matters</h4>
+                <p>The consistent <code>[PASS]</code>/<code>[FAIL]</code> prefix makes the output greppable in CI logs. Running the entire script (not stopping at first failure) is valuable — a missing joint and a wrong input dimension are independent problems you want to see simultaneously.</p>
               </div>
+              <div class="code-block">
+                <pre><code>def _check(label: str, ok: bool, detail: str = "") -&gt; bool:
+    status = "PASS" if ok else "FAIL"
+    suffix = f"  ({detail})" if detail else ""
+    print(f"  [{status}] {label}{suffix}")
+    return ok
 
-              <div class="file-tab-panel" data-tab-panel="cameras">
-                <section class="code-section">
-                  <h2>Cameras, bodies, and sites</h2>
-                  <p>Named resources are checked explicitly to fail fast.</p>
-                  <div class="code-block">
-                    <pre><code>required_cameras = ["head_cam", "wrist_cam", "overhead", "side_view", "tracking"]
-required_bodies = ["pelvis", "red_block", "table", "table_white"]
-required_sites = ["right_palm", "imu_in_pelvis", "left_foot", "right_foot"]
 
-for name in required_cameras:
-    check_id(model, mujoco.mjtObj.mjOBJ_CAMERA, name)
-
-for name in required_bodies:
-    check_id(model, mujoco.mjtObj.mjOBJ_BODY, name)
-
-for name in required_sites:
-    check_id(model, mujoco.mjtObj.mjOBJ_SITE, name)</code></pre>
-                  </div>
-                </section>
+def section(title: str) -&gt; None:
+    print(f"\n--- {title} ---")</code></pre>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="onnx">
-                <section class="code-section">
-                  <h2>ONNX warmup</h2>
-                  <p>
-                    The script warms up walker and right_reacher models to confirm they load and return
-                    outputs before any FSM logic runs.
-                  </p>
-                </section>
+            <!-- ─── Chunk 3: Config ────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-config">
+              <h3>§1 Config validation</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Verify <code>model_config.json</code> exists, parses cleanly, and contains the <code>joint_names</code>, <code>walker</code>, and <code>croucher</code> blocks. If the config is missing, set <code>config={}</code> and continue — later sections degrade gracefully.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>model_config.json</code> is missing, the joint validation section (§6) silently passes (empty joint list). This is acceptable — the missing-config failure is already recorded and the summary will show it.</p>
               </div>
+              <div class="code-block">
+                <pre><code>def main() -&gt; int:
+    failures: list[str] = []
 
-              <div class="file-tab-panel" data-tab-panel="why">
-                <section class="code-section">
-                  <h2>Why this mattered</h2>
-                  <p>
-                    This smoke test prevented hours of FSM debugging when the scene or model assets were
-                    missing. It became the first gate for every new environment change.
-                  </p>
-                </section>
+    # ------------------------------------------------------------------ #
+    # 1. Config
+    # ------------------------------------------------------------------ #
+    section("Config")
+    config_path = ROOT / "model_config.json"
+    config_ok = _check("model_config.json exists", config_path.exists())
+    if not config_ok:
+        failures.append("model_config.json missing")
+        config = {}
+    else:
+        with open(config_path) as f:
+            config = json.load(f)
+        joint_names = config.get("joint_names", [])
+        _check("joint_names present", bool(joint_names), f"{len(joint_names)} joints")
+        for key in ("walker", "croucher"):
+            present = key in config
+            _check(f"config['{key}'] block", present)
+            if not present:
+                failures.append(f"config missing '{key}' block")</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Chunk 4: Scene load ────────────────────────────────────── -->
+            <section class="code-section" id="chunk-scene">
+              <h3>§2 MuJoCo scene load</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Import MuJoCo (fail-fast if not installed), load <code>scene.xml</code>, create a <code>MjData</code>, and run one forward pass. A forward pass is required before reading any derived quantities (site positions, body positions) — without it, all position arrays contain stale zeros.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>scene.xml</code> or MuJoCo itself is not available, the script exits immediately with code 1 — subsequent checks all depend on a live model and data. Using early-exit here rather than recording a failure and continuing prevents a cascade of confusing <code>NameError</code> exceptions in the asset checks.</p>
+                <h4>Why it matters</h4>
+                <p>Calling <code>mujoco.mj_forward()</code> at startup catches XML validation errors and missing mesh files (which only materialise at load time, not at parse time). A script that merely opens the XML file wouldn't catch a bad mesh reference.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    # ------------------------------------------------------------------ #
+    # 2. MuJoCo scene
+    # ------------------------------------------------------------------ #
+    section("MuJoCo scene")
+    try:
+        import mujoco
+    except ImportError as exc:
+        print(f"  [FAIL] mujoco import failed: {exc}")
+        failures.append("mujoco not importable")
+        _print_summary(failures)
+        return 1
+
+    xml_path = ROOT / "scene.xml"
+    xml_ok = _check("scene.xml exists", xml_path.exists())
+    if not xml_ok:
+        failures.append("scene.xml missing")
+        _print_summary(failures)
+        return 1
+
+    try:
+        model = mujoco.MjModel.from_xml_path(str(xml_path))
+        data  = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        _check("scene loaded + forward pass", True)
+    except Exception as exc:
+        _check("scene loaded", False, str(exc))
+        failures.append(f"scene load failed: {exc}")
+        _print_summary(failures)
+        return 1</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 5: Assets ───────────────────────────────────────── -->
+            <section class="code-section" id="chunk-assets">
+              <h3>§3–6 Cameras, Bodies, Sites, Joints</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Iterate each manifest list and call <code>mujoco.mj_name2id()</code> to verify the named entity exists in the loaded model. A return value of <code>-1</code> means not found. Joints are validated by cross-referencing the <code>joint_names</code> list from the config against the MuJoCo model — this catches a JSON/XML mismatch (config says a joint exists but it was renamed in the XML).</p>
+                <h4>Invariants</h4>
+                <p><code>mj_name2id</code> is the authoritative way to check MuJoCo name resolution. It does not raise on not-found — it returns -1, so the check must guard <code>cid &gt;= 0</code>. All failures are appended to the shared <code>failures</code> list; the loop continues to expose all missing assets at once.</p>
+                <h4>Why it matters</h4>
+                <p>Without this check, a typo in a camera name in <code>scene.xml</code> would only surface when the simulation tries to render — typically mid-experiment, not at startup. Running the smoke test first turns a mysterious render crash into a clear <code>[FAIL] camera 'overhead' NOT FOUND</code>.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    # ------------------------------------------------------------------ #
+    # 3. Cameras
+    # ------------------------------------------------------------------ #
+    section("Cameras")
+    for cam in REQUIRED_CAMERAS:
+        cid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cam)
+        ok  = cid &gt;= 0
+        _check(f"camera '{cam}'", ok, f"id={cid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"camera '{cam}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 4. Bodies
+    # ------------------------------------------------------------------ #
+    section("Bodies")
+    for body in REQUIRED_BODIES:
+        bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body)
+        ok  = bid &gt;= 0
+        _check(f"body '{body}'", ok, f"id={bid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"body '{body}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 5. Sites
+    # ------------------------------------------------------------------ #
+    section("Sites")
+    for site in REQUIRED_SITES:
+        sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, site)
+        ok  = sid &gt;= 0
+        _check(f"site '{site}'", ok, f"id={sid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"site '{site}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 6. Joints from config
+    # ------------------------------------------------------------------ #
+    section("Config joints in model")
+    joint_names = config.get("joint_names", [])
+    missing_joints = []
+    for jname in joint_names:
+        jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, jname)
+        if jid &lt; 0:
+            missing_joints.append(jname)
+    if missing_joints:
+        _check(f"all {len(joint_names)} joints present", False,
+               f"missing: {missing_joints}")
+        failures.append(f"missing joints: {missing_joints}")
+    else:
+        _check(f"all {len(joint_names)} joints present", True)</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 6: ONNX ─────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-onnx">
+              <h3>§7–8 ONNX warmup (required + optional)</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>For each required ONNX model: verify the file exists, load it with the same <code>SessionOptions</code> used in production (1 thread per op), run one forward pass with a zero-filled observation of the expected input dimension, and check the output shape. Optional models (croucher, rotator) are given a softer treatment: INFO if absent, WARN if load fails — never a counted failure.</p>
+                <h4>Invariants</h4>
+                <p>The dummy input is always <code>np.zeros((1, input_dim), dtype=np.float32)</code>. This exercises the ONNX runtime session creation and graph compilation, which are the expensive parts — actual numeric content doesn't matter for shape validation.<br>
+                <code>intra_op_num_threads = 1</code> and <code>inter_op_num_threads = 1</code> must match production settings to catch any session-option-dependent initialization errors.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>onnxruntime</code> cannot be imported, the script exits early with code 1. This is the correct behaviour — an ONNX import failure means the entire environment is unusable, not just one model. For optional models, load failures are printed as <code>[WARN]</code> and don't contribute to the failure count.</p>
+                <h4>Why it matters</h4>
+                <p>ONNX warmup failures are the most common reason a new environment doesn't work. A corrupted walker.onnx file looks identical to a valid file in terms of file size — the smoke test catches it immediately by running inference, not just checking existence.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    # ------------------------------------------------------------------ #
+    # 7. ONNX — required
+    # ------------------------------------------------------------------ #
+    section("ONNX (required)")
+    try:
+        import numpy as np
+        import onnxruntime as ort
+        ort_ok = True
+    except ImportError as exc:
+        print(f"  [FAIL] onnxruntime import failed: {exc}")
+        failures.append("onnxruntime not importable")
+        _print_summary(failures)
+        return 1
+
+    for label, (fname, input_dim) in REQUIRED_ONNX.items():
+        path = ROOT / fname
+        exists = path.exists()
+        _check(f"{fname} exists", exists)
+        if not exists:
+            failures.append(f"{fname} missing")
+            continue
+        try:
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = 1
+            sess_opts.inter_op_num_threads = 1
+            sess = ort.InferenceSession(
+                str(path), sess_opts, providers=["CPUExecutionProvider"]
+            )
+            in_name  = sess.get_inputs()[0].name
+            out_name = sess.get_outputs()[0].name
+            dummy = np.zeros((1, input_dim), dtype=np.float32)
+            out   = sess.run([out_name], {in_name: dummy})[0]
+            _check(
+                f"{label} warmup",
+                True,
+                f"in={input_dim} out={out.shape[1]}",
+            )
+        except Exception as exc:
+            _check(f"{label} warmup", False, str(exc))
+            failures.append(f"{label} warmup failed: {exc}")
+
+    # ------------------------------------------------------------------ #
+    # 8. ONNX — optional (report only, never fail)
+    # ------------------------------------------------------------------ #
+    section("ONNX (optional)")
+    for label, (fname, input_dim) in OPTIONAL_ONNX.items():
+        path = ROOT / fname
+        exists = path.exists()
+        if not exists:
+            print(f"  [INFO] {fname} not present (optional)")
+            continue
+        try:
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = 1
+            sess_opts.inter_op_num_threads = 1
+            sess = ort.InferenceSession(
+                str(path), sess_opts, providers=["CPUExecutionProvider"]
+            )
+            in_name  = sess.get_inputs()[0].name
+            out_name = sess.get_outputs()[0].name
+            dummy = np.zeros((1, input_dim), dtype=np.float32)
+            out   = sess.run([out_name], {in_name: dummy})[0]
+            print(f"  [OK  ] {label}: in={input_dim} out={out.shape[1]}")
+        except Exception as exc:
+            print(f"  [WARN] {label} load/warmup failed: {exc}")</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 7: Summary ──────────────────────────────────────── -->
+            <section class="code-section" id="chunk-summary">
+              <h3>Summary &amp; exit</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Print a clearly formatted summary block — all failures listed, or a single PASS line — and return the appropriate exit code. <code>_print_summary</code> is a standalone function so it can be called from early-exit paths (e.g., scene load failure) without duplicating the formatting.</p>
+                <h4>Why it matters</h4>
+                <p>The <code>sys.exit(main())</code> pattern ensures the return value from <code>main()</code> is directly used as the process exit code. CI can check <code>$?</code> without parsing the output text.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    # ------------------------------------------------------------------ #
+    # Summary
+    # ------------------------------------------------------------------ #
+    _print_summary(failures)
+    return 1 if failures else 0
+
+
+def _print_summary(failures: list[str]) -&gt; None:
+    print("\n" + "=" * 50)
+    if failures:
+        print(f"RESULT: FAIL  ({len(failures)} issue(s))")
+        for f in failures:
+            print(f"  - {f}")
+    else:
+        print("RESULT: PASS  — repo is ready for FSM work")
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    sys.exit(main())</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — scripts/smoke_env.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~231 lines)</summary>
+                <div class="code-block">
+                  <pre><code>#!/usr/bin/env python3
+"""Headless smoke test: validate scene loading and ONNX warmup.
+
+Exits 0 on full pass, 1 on any required check failure.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+REQUIRED_CAMERAS = ["head_cam", "wrist_cam", "overhead", "side_view", "tracking"]
+REQUIRED_BODIES  = ["pelvis", "red_block", "table", "table_white"]
+REQUIRED_SITES   = ["right_palm", "imu_in_pelvis", "left_foot", "right_foot"]
+
+REQUIRED_ONNX = {
+    "walker":        ("walker.onnx",        99),
+    "right_reacher": ("right_reacher.onnx", 36),
+}
+OPTIONAL_ONNX = {
+    "croucher": ("croucher.onnx",  101),
+    "rotator":  ("rotator.onnx",    99),
+}
+
+
+# --------------------------------------------------------------------------- #
+
+def _check(label: str, ok: bool, detail: str = "") -&gt; bool:
+    status = "PASS" if ok else "FAIL"
+    suffix = f"  ({detail})" if detail else ""
+    print(f"  [{status}] {label}{suffix}")
+    return ok
+
+
+def section(title: str) -&gt; None:
+    print(f"\n--- {title} ---")
+
+
+# --------------------------------------------------------------------------- #
+
+def main() -&gt; int:
+    failures: list[str] = []
+
+    # ------------------------------------------------------------------ #
+    # 1. Config
+    # ------------------------------------------------------------------ #
+    section("Config")
+    config_path = ROOT / "model_config.json"
+    config_ok = _check("model_config.json exists", config_path.exists())
+    if not config_ok:
+        failures.append("model_config.json missing")
+        config = {}
+    else:
+        with open(config_path) as f:
+            config = json.load(f)
+        joint_names = config.get("joint_names", [])
+        _check("joint_names present", bool(joint_names), f"{len(joint_names)} joints")
+        for key in ("walker", "croucher"):
+            present = key in config
+            _check(f"config['{key}'] block", present)
+            if not present:
+                failures.append(f"config missing '{key}' block")
+
+    # ------------------------------------------------------------------ #
+    # 2. MuJoCo scene
+    # ------------------------------------------------------------------ #
+    section("MuJoCo scene")
+    try:
+        import mujoco
+    except ImportError as exc:
+        print(f"  [FAIL] mujoco import failed: {exc}")
+        failures.append("mujoco not importable")
+        _print_summary(failures)
+        return 1
+
+    xml_path = ROOT / "scene.xml"
+    xml_ok = _check("scene.xml exists", xml_path.exists())
+    if not xml_ok:
+        failures.append("scene.xml missing")
+        _print_summary(failures)
+        return 1
+
+    try:
+        model = mujoco.MjModel.from_xml_path(str(xml_path))
+        data  = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        _check("scene loaded + forward pass", True)
+    except Exception as exc:
+        _check("scene loaded", False, str(exc))
+        failures.append(f"scene load failed: {exc}")
+        _print_summary(failures)
+        return 1
+
+    # ------------------------------------------------------------------ #
+    # 3. Cameras
+    # ------------------------------------------------------------------ #
+    section("Cameras")
+    for cam in REQUIRED_CAMERAS:
+        cid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cam)
+        ok  = cid &gt;= 0
+        _check(f"camera '{cam}'", ok, f"id={cid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"camera '{cam}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 4. Bodies
+    # ------------------------------------------------------------------ #
+    section("Bodies")
+    for body in REQUIRED_BODIES:
+        bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body)
+        ok  = bid &gt;= 0
+        _check(f"body '{body}'", ok, f"id={bid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"body '{body}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 5. Sites
+    # ------------------------------------------------------------------ #
+    section("Sites")
+    for site in REQUIRED_SITES:
+        sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, site)
+        ok  = sid &gt;= 0
+        _check(f"site '{site}'", ok, f"id={sid}" if ok else "NOT FOUND")
+        if not ok:
+            failures.append(f"site '{site}' missing")
+
+    # ------------------------------------------------------------------ #
+    # 6. Joints from config
+    # ------------------------------------------------------------------ #
+    section("Config joints in model")
+    joint_names = config.get("joint_names", [])
+    missing_joints = []
+    for jname in joint_names:
+        jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, jname)
+        if jid &lt; 0:
+            missing_joints.append(jname)
+    if missing_joints:
+        _check(f"all {len(joint_names)} joints present", False,
+               f"missing: {missing_joints}")
+        failures.append(f"missing joints: {missing_joints}")
+    else:
+        _check(f"all {len(joint_names)} joints present", True)
+
+    # ------------------------------------------------------------------ #
+    # 7. ONNX — required
+    # ------------------------------------------------------------------ #
+    section("ONNX (required)")
+    try:
+        import numpy as np
+        import onnxruntime as ort
+        ort_ok = True
+    except ImportError as exc:
+        print(f"  [FAIL] onnxruntime import failed: {exc}")
+        failures.append("onnxruntime not importable")
+        _print_summary(failures)
+        return 1
+
+    for label, (fname, input_dim) in REQUIRED_ONNX.items():
+        path = ROOT / fname
+        exists = path.exists()
+        _check(f"{fname} exists", exists)
+        if not exists:
+            failures.append(f"{fname} missing")
+            continue
+        try:
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = 1
+            sess_opts.inter_op_num_threads = 1
+            sess = ort.InferenceSession(
+                str(path), sess_opts, providers=["CPUExecutionProvider"]
+            )
+            in_name  = sess.get_inputs()[0].name
+            out_name = sess.get_outputs()[0].name
+            dummy = np.zeros((1, input_dim), dtype=np.float32)
+            out   = sess.run([out_name], {in_name: dummy})[0]
+            _check(
+                f"{label} warmup",
+                True,
+                f"in={input_dim} out={out.shape[1]}",
+            )
+        except Exception as exc:
+            _check(f"{label} warmup", False, str(exc))
+            failures.append(f"{label} warmup failed: {exc}")
+
+    # ------------------------------------------------------------------ #
+    # 8. ONNX — optional (report only, never fail)
+    # ------------------------------------------------------------------ #
+    section("ONNX (optional)")
+    for label, (fname, input_dim) in OPTIONAL_ONNX.items():
+        path = ROOT / fname
+        exists = path.exists()
+        if not exists:
+            print(f"  [INFO] {fname} not present (optional)")
+            continue
+        try:
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = 1
+            sess_opts.inter_op_num_threads = 1
+            sess = ort.InferenceSession(
+                str(path), sess_opts, providers=["CPUExecutionProvider"]
+            )
+            in_name  = sess.get_inputs()[0].name
+            out_name = sess.get_outputs()[0].name
+            dummy = np.zeros((1, input_dim), dtype=np.float32)
+            out   = sess.run([out_name], {in_name: dummy})[0]
+            print(f"  [OK  ] {label}: in={input_dim} out={out.shape[1]}")
+        except Exception as exc:
+            print(f"  [WARN] {label} load/warmup failed: {exc}")
+
+    # ------------------------------------------------------------------ #
+    # Summary
+    # ------------------------------------------------------------------ #
+    _print_summary(failures)
+    return 1 if failures else 0
+
+
+def _print_summary(failures: list[str]) -&gt; None:
+    print("\n" + "=" * 50)
+    if failures:
+        print(f"RESULT: FAIL  ({len(failures)} issue(s))")
+        for f in failures:
+            print(f"  - {f}")
+    else:
+        print("RESULT: PASS  — repo is ready for FSM work")
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    sys.exit(main())</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

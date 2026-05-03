@@ -10,10 +10,10 @@
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
+          <p class="eyebrow">Implementation Deep Dive</p>
           <h1>Implementation Deep Dive</h1>
           <p class="subtitle">
-            A code-browser view of the Step 1–10 ground-truth FSM baseline.
+            The full codebase, chunk by chunk. Each page breaks one source file into annotated sections with intent, invariants, and failure modes — then provides the complete HTML-escaped source in a collapsible appendix.
           </p>
         </div>
       </header>
@@ -37,31 +37,147 @@
       </nav>
 
       <main class="content post">
+
         <section>
-          <h2>Implementation Deep Dive</h2>
+          <h2>What's in this section</h2>
           <p>
-            This section turns the baseline implementation into a navigable code walkthrough. Each page
-            focuses on one file or subsystem and explains what the code does, why it exists, and how it
-            connects to the rest of the robot stack.
+            This section turns the Steps 1–10 FSM baseline into a navigable code walkthrough.
+            Every source file has its own page. Each page covers the same five questions for every
+            logical chunk: <em>what does this do, what goes in and out, what invariants must hold,
+            what can go wrong, and why does this code exist at all.</em>
+          </p>
+          <p>
+            The <strong>full source</strong> for each file is present in a collapsible appendix — nothing is
+            paraphrased or omitted. Code shown in annotated chunks is reproduced verbatim from the
+            Step 10 ground-truth snapshot.
           </p>
           <div class="code-note">
-            <strong>Accuracy note</strong>
+            <strong>Scope</strong>
             <p>
-              The Step 1–10 snapshot covers the ground-truth FSM baseline. Later Visual Oracle files are
-              discussed at the architecture level elsewhere but are not part of this code deep dive unless
-              explicitly added.
+              The Step 1–10 snapshot covers the final FSM baseline that achieved pick-and-place.
+              The Visual Oracle work (vision-guided reach) is discussed at the architecture level
+              on the <a href="./visual-oracle.html">Visual Oracle</a> page but its source files
+              are not part of this code walkthrough.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Architecture in one paragraph</h2>
+          <p>
+            <code>run.py</code> is the entry point. It loads a MuJoCo scene at 200 Hz
+            (<code>timestep=0.005</code>), runs four ONNX models (walker 99D→29D, reacher 36D→7D,
+            croucher, rotator), and applies their outputs via PD control at 50 Hz (4× decimation).
+            All locomotion and reaching intelligence is in pre-trained ONNX policies;
+            <code>WalkerReacherController</code> in <code>common/controller.py</code>
+            assembles the observations and dispatches to the right model each tick.
+            <code>KinematicAttachment</code> in <code>common/grasp.py</code> implements a physics
+            shortcut — it teleports the cylinder to the palm every physics step when the grip is
+            closed, avoiding the need for contact-force grasping. The FSM in
+            <code>policies/fsm_core.py</code> sequences 12 states (SETTLE through DONE) by
+            computing world-frame geometry from MuJoCo ground-truth data and issuing walk commands
+            and reach targets each tick. <code>policies/fsm.py</code> is the 57-line glue layer
+            that bridges FSMCore's immutable outputs into the controller's mutable command state.
+          </p>
+        </section>
+
+        <section>
+          <h2>Critical cross-file invariants</h2>
+          <p>These constraints span multiple files. Violating any one of them produces a bug that is hard to localise because the symptom appears in a different file from the cause.</p>
+
+          <div class="code-deep-notes">
+            <h4>1 — Grasp tick must run at 200 Hz, not 50 Hz</h4>
+            <p>
+              <code>KinematicAttachment.tick()</code> must be called <strong>inside</strong> the decimation
+              loop in <code>run.py</code> — after every <code>mujoco.mj_step()</code>.
+              If called only at the outer 50 Hz rate, gravity accumulates 0.049 m/s of velocity in the
+              attached body between ticks, causing a visible drift during carry.
             </p>
           </div>
 
+          <div class="code-deep-notes">
+            <h4>2 — Walker observation must NOT be normalized before passing to ONNX</h4>
+            <p>
+              The walker ONNX model bakes its own input normalization (mean/std) inside the graph.
+              Normalizing the 99D observation in Python before calling <code>walker(obs)</code> would
+              double-normalize and cause an immediate fall. Raw sensor values must be passed directly.
+            </p>
+          </div>
+
+          <div class="code-deep-notes">
+            <h4>3 — Reacher runs unconditionally every tick</h4>
+            <p>
+              The walker policy was trained with the right arm held in a specific carry pose.
+              If the reacher is deactivated (even for one tick while walking), the arm falls into
+              a different position, destabilising the walker. The reacher overlay must be active
+              at all times — even when <code>reach_active=False</code> is passed by the FSM,
+              the controller still runs the reacher to maintain the carry pose.
+            </p>
+          </div>
+
+          <div class="code-deep-notes">
+            <h4>4 — _RELEASE_STATES must include OPEN_GRIP (Step 10 bugfix)</h4>
+            <p>
+              <code>FSMPolicy._close_grip_command()</code> guards against accidental grip opening during carry.
+              If <code>FSMState.OPEN_GRIP</code> is not in <code>_RELEASE_STATES</code>, the guard
+              overrides the FSM's intentional <code>grip_closed=False</code> and the cylinder never releases.
+              This was the critical Step 10 bug — the fix is adding <code>FSMState.OPEN_GRIP</code>
+              to the frozen set.
+            </p>
+          </div>
+
+          <div class="code-deep-notes">
+            <h4>5 — Target drop point must be frozen at APPROACH_TARGET entry</h4>
+            <p>
+              <code>FSMCore._target_drop_pt</code> is computed once when entering
+              <code>APPROACH_TARGET</code> and never updated. If it were recomputed each tick,
+              the drop position would drift as the robot walks toward the table — the cylinder
+              would be released in a different position than intended.
+            </p>
+          </div>
+
+          <div class="code-deep-notes">
+            <h4>6 — Reach targets are in pelvis frame; geometry is in world frame</h4>
+            <p>
+              <code>FSMCore</code> computes all geometry (cylinder position, table surface)
+              in world frame using <code>data.xpos[]</code>. Reach targets are then converted
+              to pelvis frame via <code>_world_to_pelvis()</code> before writing to
+              <code>ctrl.reach_target</code>. Confusing frames produces a reach that looks
+              correct in logs but misses the target in the simulator.
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2>Suggested reading order</h2>
+          <p>If you're new to this codebase, this order builds context progressively:</p>
+          <ol class="bullet-list">
+            <li><a href="./code/policies-base.html"><strong>policies/base.py</strong></a> — understand the <code>PolicyOutput</code> data contract first (3 min)</li>
+            <li><a href="./code/common-onnx-policy.html"><strong>common/onnx_policy.py</strong></a> — the ONNX inference wrapper used by all four models (5 min)</li>
+            <li><a href="./code/common-scene.html"><strong>common/scene.py</strong></a> — scene reset and camera helpers (5 min)</li>
+            <li><a href="./code/common-grasp.html"><strong>common/grasp.py</strong></a> — KinematicAttachment physics shortcut (15 min)</li>
+            <li><a href="./code/common-controller.html"><strong>common/controller.py</strong></a> — walker/reacher composition and observation assembly (30 min)</li>
+            <li><a href="./code/run.html"><strong>run.py</strong></a> — the simulation loop that ties everything together (20 min)</li>
+            <li><a href="./code/policies-fsm-core.html"><strong>policies/fsm_core.py</strong></a> — the 750-line autonomous state machine (45 min)</li>
+            <li><a href="./code/policies-fsm.html"><strong>policies/fsm.py</strong></a> — the adapter layer and grip-safety guard (10 min)</li>
+            <li><a href="./code/scripts-smoke-env.html"><strong>scripts/smoke_env.py</strong></a> — what the pre-flight checklist validates (10 min)</li>
+            <li><a href="./code/scripts-test-fsm-approach.html"><strong>scripts/test_fsm_approach.py</strong></a> — the integration test harness (10 min)</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>File index</h2>
           <div class="implementation-grid">
+
             <article class="directory-card">
               <span class="directory-label">Runtime</span>
-              <h3>run.py</h3>
+              <h3><a href="./code/run.html">run.py</a></h3>
               <p>
-                Entry point that wires model loading, ONNX policies, controller, policy selection,
-                simulation stepping, and the grasp backend.
+                Entry point. Loads scene, sets armature, wires four ONNX policies, controller, FSM
+                or keyboard policy, grasp backend, optional camera renderer. Runs the 200 Hz / 50 Hz
+                decimated simulation loop.
               </p>
-              <a href="./code/run.html">Open run.py walkthrough →</a>
+              <a href="./code/run.html">Open walkthrough (8 chunks) →</a>
             </article>
 
             <article class="directory-card">
@@ -69,20 +185,16 @@
               <h3>Shared simulation helpers</h3>
               <ul class="bullet-list">
                 <li>
-                  <a href="./code/common-controller.html"><strong>controller.py</strong></a> — Walker/reacher
-                  composition, observation assembly, arm overlay, and finger commands.
+                  <a href="./code/common-controller.html"><strong>controller.py</strong></a> — 397-line controller. Walker/reacher ONNX dispatch, 99D and 36D observation assembly, arm overlay, PD control, finger commands. Key: reacher runs unconditionally.
                 </li>
                 <li>
-                  <a href="./code/common-grasp.html"><strong>grasp.py</strong></a> — Replaceable grasp backend
-                  and kinematic attachment shortcut.
+                  <a href="./code/common-grasp.html"><strong>grasp.py</strong></a> — KinematicAttachment: teleports cylinder to palm every physics step, disables cylinder collisions on attach, zeroes velocity to cancel gravity drift.
                 </li>
                 <li>
-                  <a href="./code/common-onnx-policy.html"><strong>onnx_policy.py</strong></a> — Thin CPU ONNX
-                  Runtime wrapper.
+                  <a href="./code/common-onnx-policy.html"><strong>onnx_policy.py</strong></a> — 34-line CPU ONNX wrapper. Enforces single-threaded deterministic inference. Used by all four models.
                 </li>
                 <li>
-                  <a href="./code/common-scene.html"><strong>scene.py</strong></a> — Deterministic reset and
-                  camera rendering helpers.
+                  <a href="./code/common-scene.html"><strong>scene.py</strong></a> — Deterministic robot reset from config joint positions. Offscreen CameraRenderer.
                 </li>
               </ul>
             </article>
@@ -92,20 +204,16 @@
               <h3>Decision making</h3>
               <ul class="bullet-list">
                 <li>
-                  <a href="./code/policies-base.html"><strong>base.py</strong></a> — Base policy interface and
-                  PolicyOutput command packet.
+                  <a href="./code/policies-base.html"><strong>base.py</strong></a> — <code>PolicyOutput</code> frozen dataclass (walk_cmd, reach_target, reach_active, grip_closed). <code>BasePolicy</code> ABC.
                 </li>
                 <li>
-                  <a href="./code/policies-keyboard.html"><strong>keyboard.py</strong></a> — Manual regression
-                  path preserved as a policy.
+                  <a href="./code/policies-keyboard.html"><strong>keyboard.py</strong></a> — Manual control path as a BasePolicy subclass. Preserved for regression testing.
                 </li>
                 <li>
-                  <a href="./code/policies-fsm.html"><strong>fsm.py</strong></a> — Adapter between FSMCore,
-                  controller state, and grasp backend.
+                  <a href="./code/policies-fsm.html"><strong>fsm.py</strong></a> — 57-line adapter. Runs FSMCore.tick(), applies grip-safety guard, writes commands into controller. Contains the Step 10 OPEN_GRIP bugfix.
                 </li>
                 <li>
-                  <a href="./code/policies-fsm-core.html"><strong>fsm_core.py</strong></a> — Main autonomous
-                  state machine and geometry logic.
+                  <a href="./code/policies-fsm-core.html"><strong>fsm_core.py</strong></a> — 748-line autonomous brain. 12-state machine, world-frame geometry, pelvis-frame reach conversion, staircase velocity schedule, all timeouts and debounce counters.
                 </li>
               </ul>
             </article>
@@ -115,12 +223,10 @@
               <h3>Validation runners</h3>
               <ul class="bullet-list">
                 <li>
-                  <a href="./code/scripts-smoke-env.html"><strong>smoke_env.py</strong></a> — Headless
-                  environment and ONNX validation.
+                  <a href="./code/scripts-smoke-env.html"><strong>smoke_env.py</strong></a> — 231-line pre-flight checklist. Validates config, scene, 5 cameras, 4 bodies, 4 sites, all joints, and ONNX warmup for required models. Exits 0 on full pass.
                 </li>
                 <li>
-                  <a href="./code/scripts-test-fsm-approach.html"><strong>test_fsm_approach.py</strong></a> —
-                  Headless FSM integration runner.
+                  <a href="./code/scripts-test-fsm-approach.html"><strong>test_fsm_approach.py</strong></a> — 130-line headless integration test. Runs full pipeline (walker + reacher + FSM + grasp) for up to 3000 ticks (60 s), checks cylinder landed on target table.
                 </li>
               </ul>
             </article>
@@ -130,7 +236,8 @@
               <h3>Simulation contract</h3>
               <p><strong>g1.xml</strong>, <strong>scene.xml</strong>, <strong>model_config.json</strong></p>
               <p>
-                Robot model, scene, cameras, tables, cylinder, joint ordering, and policy dimensions.
+                Robot model (29 DOF, armature values), scene layout (two tables, cylinder, 5 cameras),
+                joint ordering and PD gain config, and default joint poses used by reset_robot().
               </p>
               <a href="./code/config-simulation.html">Open simulation config walkthrough →</a>
             </article>
@@ -138,12 +245,18 @@
             <article class="directory-card">
               <span class="directory-label">evidence/</span>
               <h3>DEV_LOG.md</h3>
-              <p>Engineering log documenting decisions, bugs, and measured observations.</p>
+              <p>Engineering log documenting all 10 steps — goal, files changed, commands run, expected result, actual result, and key observations.</p>
               <a href="./code/dev-log.html">Open DEV_LOG evidence →</a>
             </article>
+
           </div>
         </section>
+
       </main>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
     </div>
     <script src="../script.js"></script>
   </body>

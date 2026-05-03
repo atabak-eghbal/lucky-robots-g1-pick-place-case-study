@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>policies/keyboard.py — Manual Regression Policy | Lucky Robots G1 Pick-and-Place</title>
+    <title>policies/keyboard.py — Keyboard-Driven Manual Policy | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
-          <h1>policies/keyboard.py — Manual Regression Policy</h1>
-          <p class="subtitle">Preserves the manual control path as a first-class policy.</p>
+          <p class="eyebrow">Implementation · policies/keyboard.py</p>
+          <h1>policies/keyboard.py — Keyboard-Driven Manual Policy</h1>
+          <p class="subtitle">The original manual control path, preserved as a <code>BasePolicy</code> subclass. Delegates all state to the controller and serves as the baseline that proves the controller interface works before adding any autonomy.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./policies-base.html">Previous file</a>
-            <a href="./policies-fsm.html">Next file</a>
+            <a href="./policies-base.html">← policies/base.py</a>
+            <a href="./policies-fsm-core.html">policies/fsm_core.py →</a>
           </div>
         </div>
 
@@ -52,78 +52,142 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> policies/keyboard.py</p>
-              <p>Maintains the original manual control path inside the unified policy interface.</p>
+              <p><strong>Lines:</strong> ~32</p>
+              <p>Introduced in Step 2 alongside <code>BasePolicy</code>. Wraps the pre-existing keyboard-driven controller state into the policy contract. No new logic — purely a protocol adapter. Passing <code>--policy keyboard</code> to <code>run.py</code> uses this class.</p>
             </div>
-            <div class="code-section">
-              <h2>Why it stayed</h2>
-              <ul class="bullet-list">
-                <li>Preserves the original keyboard behavior.</li>
-                <li>Provides a regression baseline for the refactor.</li>
-                <li>Uses the same runtime path as the FSM policy.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-init">__init__</a></li>
+                <li><a href="#chunk-handle-key">handle_key()</a></li>
+                <li><a href="#chunk-step">step()</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="handle">handle_key</button>
-                <button class="file-tab-button" data-tab-target="step">step output</button>
-                <button class="file-tab-button" data-tab-target="why">Why manual control stayed</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="handle">
-                <section class="code-section">
-                  <h2>handle_key</h2>
-                  <p>Keyboard input is forwarded directly to the controller.</p>
-                  <div class="code-block">
-                    <pre><code>class KeyboardPolicy(BasePolicy):
-    def __init__(self, controller):
-        self.controller = controller
-
-    def handle_key(self, key: int) -> None:
-        self.controller.key_callback(key)</code></pre>
-                  </div>
-                </section>
+            <!-- ─── Chunk 1: __init__ ─────────────────────────────────────── -->
+            <section class="code-section" id="chunk-init">
+              <h3>__init__</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Store a reference to the controller. No additional state — the keyboard policy is entirely stateless; all command state lives in the controller's public attributes (<code>lin_vel_x</code>, <code>reach_target</code>, etc.).</p>
+                <h4>Why it matters</h4>
+                <p>By storing only a reference (not copying state), keyboard commands set via <code>key_callback</code> are immediately visible to <code>step()</code> on the same tick — there's no buffering delay.</p>
               </div>
+              <div class="code-block">
+                <pre><code>"""Keyboard-driven policy wrapper for manual control."""
 
-              <div class="file-tab-panel" data-tab-panel="step">
-                <section class="code-section">
-                  <h2>step output</h2>
-                  <p>
-                    The policy mirrors controller state into a PolicyOutput so the runtime loop stays
-                    identical across policies.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>    def step(self) -> PolicyOutput:
-        return PolicyOutput(
-            walk_cmd=(
-                self.controller.lin_vel_x,
-                self.controller.lin_vel_y,
-                self.controller.ang_vel_z,
-            ),
-            reach_target=tuple(self.controller.reach_target),
-            reach_active=self.controller.reach_active,
-            grip_closed=self.controller.grip_closed,
-        )</code></pre>
-                  </div>
-                </section>
-              </div>
+from __future__ import annotations
 
-              <div class="file-tab-panel" data-tab-panel="why">
-                <section class="code-section">
-                  <h2>Why manual control stayed</h2>
-                  <p>
-                    Manual control is a regression path: it validates controller changes without relying
-                    on the FSM and keeps debugging interactive when automation fails.
-                  </p>
-                </section>
+from .base import BasePolicy, PolicyOutput
+
+
+class KeyboardPolicy(BasePolicy):
+  """Policy wrapper that delegates keyboard input to the controller."""
+
+  def __init__(self, controller):
+    self._controller = controller</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Chunk 2: handle_key ───────────────────────────────────── -->
+            <section class="code-section" id="chunk-handle-key">
+              <h3>handle_key()</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Forward MuJoCo viewer keyboard events to the controller's <code>key_callback</code> method. The simulation loop calls <code>policy.handle_key(keycode)</code> inside MuJoCo's key callback — this override makes it reach the controller.</p>
+                <h4>Invariants</h4>
+                <p>The simulation loop calls <code>handle_key</code> on <em>any</em> policy. For <code>FSMPolicy</code>, <code>handle_key</code> is the no-op inherited from <code>BasePolicy</code>. For <code>KeyboardPolicy</code>, it forwards to the controller. This means the loop never needs to branch on policy type to handle key events.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>  def handle_key(self, keycode: int) -&gt; None:
+    """Forward keyboard events to the controller."""
+    self._controller.key_callback(keycode)</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 3: step ─────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-step">
+              <h3>step()</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Read the controller's current public command state and package it into a <code>PolicyOutput</code>. The controller's <code>lin_vel_x</code>, <code>lin_vel_y</code>, <code>ang_vel_z</code>, <code>reach_target</code>, <code>grip_closed</code>, and <code>reach_active</code> attributes are the single source of truth — this method just exposes them as the policy contract type.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>No inputs. Returns a <code>PolicyOutput</code> built from the controller's current state. <code>reach_target</code> is read as a tuple (immutable snapshot) — the controller's array is not aliased into the output, preventing the frozen dataclass constraint from conflicting with the controller's mutable numpy array.</p>
+                <h4>Why it matters</h4>
+                <p>This method exists to satisfy the <code>BasePolicy</code> ABC — the simulation loop reads <code>policy.step()</code> for logging (printing walk_cmd, reach_active, etc.) regardless of policy type. Without this, the keyboard policy would have no way to expose its current state to the logging layer.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>  def step(self) -&gt; PolicyOutput:
+    """Expose the controller's current high-level command state."""
+    walk_cmd = (
+      self._controller.lin_vel_x,
+      self._controller.lin_vel_y,
+      self._controller.ang_vel_z,
+    )
+    reach_target = tuple(self._controller.reach_target)
+    return PolicyOutput(
+      walk_cmd=walk_cmd,
+      reach_target=reach_target,
+      grip_closed=self._controller.grip_closed,
+      reach_active=self._controller.reach_active,
+    )</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — policies/keyboard.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~32 lines)</summary>
+                <div class="code-block">
+                  <pre><code>"""Keyboard-driven policy wrapper for manual control."""
+
+from __future__ import annotations
+
+from .base import BasePolicy, PolicyOutput
+
+
+class KeyboardPolicy(BasePolicy):
+  """Policy wrapper that delegates keyboard input to the controller."""
+
+  def __init__(self, controller):
+    self._controller = controller
+
+  def handle_key(self, keycode: int) -&gt; None:
+    """Forward keyboard events to the controller."""
+    self._controller.key_callback(keycode)
+
+  def step(self) -&gt; PolicyOutput:
+    """Expose the controller's current high-level command state."""
+    walk_cmd = (
+      self._controller.lin_vel_x,
+      self._controller.lin_vel_y,
+      self._controller.ang_vel_z,
+    )
+    reach_target = tuple(self._controller.reach_target)
+    return PolicyOutput(
+      walk_cmd=walk_cmd,
+      reach_target=reach_target,
+      grip_closed=self._controller.grip_closed,
+      reach_active=self._controller.reach_active,
+    )</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

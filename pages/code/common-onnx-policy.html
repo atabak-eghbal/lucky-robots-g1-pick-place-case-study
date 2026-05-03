@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>common/onnx_policy.py — ONNX Runtime Wrapper | Lucky Robots G1 Pick-and-Place</title>
+    <title>common/onnx_policy.py — CPU ONNX Inference Wrapper | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
-          <h1>common/onnx_policy.py — ONNX Runtime Wrapper</h1>
-          <p class="subtitle">A minimal CPU wrapper that makes policy inference predictable and portable.</p>
+          <p class="eyebrow">Implementation · common/onnx_policy.py</p>
+          <h1>common/onnx_policy.py — CPU ONNX Inference Wrapper</h1>
+          <p class="subtitle">A 34-line wrapper that loads any ONNX model onto CPU, exposes it as a callable, and handles the shape coercion between NumPy's 1D observation vectors and ONNX Runtime's expected (1, N) float32 batches.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./common-grasp.html">Previous file</a>
-            <a href="./common-scene.html">Next file</a>
+            <a href="./scripts-test-fsm-approach.html">← scripts/test_fsm_approach.py</a>
+            <a href="./common-scene.html">common/scene.py →</a>
           </div>
         </div>
 
@@ -52,81 +52,138 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> common/onnx_policy.py</p>
-              <p>Wraps ONNX Runtime so policies can be called like simple Python functions.</p>
+              <p><strong>Lines:</strong> ~34</p>
+              <p>Shared by walker, croucher, rotator, and right_reacher. All four models are instantiated as <code>ONNXPolicy</code> objects with different paths and input dimensions. The wrapper enforces CPU-only execution and single-threaded inference to avoid non-determinism.</p>
             </div>
-            <div class="code-section">
-              <h2>Design goals</h2>
-              <ul class="bullet-list">
-                <li>CPUExecutionProvider for portability.</li>
-                <li>Single-thread inference for stable local runs.</li>
-                <li>Simple 1D observation handling.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-init">__init__ — session construction</a></li>
+                <li><a href="#chunk-call">__call__ — inference</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="session">Session creation</button>
-                <button class="file-tab-button" data-tab-target="inference">Inference call</button>
-                <button class="file-tab-button" data-tab-target="rationale">Design rationale</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="session">
-                <section class="code-section">
-                  <h2>Session creation</h2>
-                  <p>SessionOptions force predictable CPU inference with a stable thread count.</p>
-                  <div class="code-block">
-                    <pre><code>class ONNXPolicy:
-    def __init__(self, model_path: str | Path):
-        sess_options = ort.SessionOptions()
-        sess_options.intra_op_num_threads = 1
-        sess_options.inter_op_num_threads = 1
-        self.session = ort.InferenceSession(
-            str(model_path),
-            sess_options,
-            providers=["CPUExecutionProvider"],
-        )
-        self.input_name = self.session.get_inputs()[0].name
-        self.output_name = self.session.get_outputs()[0].name</code></pre>
-                  </div>
-                </section>
+            <!-- ─── Chunk 1: __init__ ─────────────────────────────────────── -->
+            <section class="code-section" id="chunk-init">
+              <h3>__init__ — session construction</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Load the ONNX model into an <code>InferenceSession</code> pinned to CPU. Cache the input and output tensor names so they don't need to be queried on every inference call.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>model_path:</strong> <code>str | Path</code> — path to the <code>.onnx</code> file. Converted to string because ONNX Runtime doesn't accept <code>Path</code> objects directly.</p>
+                <h4>Invariants</h4>
+                <p><code>intra_op_num_threads = 1</code> and <code>inter_op_num_threads = 1</code> force single-threaded inference. This is required for deterministic output — ONNX Runtime's multi-threaded reduction operators can produce floating-point differences across runs, which would make the walker policy non-reproducible.<br>
+                <code>providers=["CPUExecutionProvider"]</code> prevents ONNX Runtime from attempting to load CUDA/CoreML providers that may not be installed, which would cause a warning or error on startup.</p>
+                <h4>Why it matters</h4>
+                <p>All four ONNX models (walker 99D→29D, reacher 36D→7D, croucher 101D→29D, rotator 99D→29D) use this same wrapper. Centralising the session construction means any session-options fix applies to all models at once.</p>
               </div>
+              <div class="code-block">
+                <pre><code>"""ONNX policy wrapper for CPU inference."""
 
-              <div class="file-tab-panel" data-tab-panel="inference">
-                <section class="code-section">
-                  <h2>Inference call</h2>
-                  <p>
-                    The call wrapper handles 1D input by reshaping to a batch and returns the first output
-                    row for convenience.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>    def __call__(self, obs: np.ndarray) -> np.ndarray:
-        if obs.ndim == 1:
-            obs = obs.reshape(1, -1)
-        obs = obs.astype(np.float32)
-        return self.session.run(
-            [self.output_name],
-            {self.input_name: obs},
-        )[0][0]</code></pre>
-                  </div>
-                </section>
-              </div>
+from __future__ import annotations
 
-              <div class="file-tab-panel" data-tab-panel="rationale">
-                <section class="code-section">
-                  <h2>Design rationale</h2>
-                  <p>
-                    Keeping the wrapper small makes smoke tests and controller calls trivial. CPU-only
-                    inference plus a fixed thread count improves repeatability across laptops and CI.
-                  </p>
-                </section>
+from pathlib import Path
+
+import numpy as np
+import onnxruntime as ort
+
+
+class ONNXPolicy:
+  """Thin CPU-only ONNX inference wrapper.
+
+  Expects a 1D or (1, N) float32 observation and returns the first output row.
+  """
+
+  def __init__(self, model_path: str | Path):
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = 1
+    sess_options.inter_op_num_threads = 1
+    self.session = ort.InferenceSession(
+      str(model_path), sess_options, providers=["CPUExecutionProvider"]
+    )
+    self.input_name = self.session.get_inputs()[0].name
+    self.output_name = self.session.get_outputs()[0].name</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Chunk 2: __call__ ─────────────────────────────────────── -->
+            <section class="code-section" id="chunk-call">
+              <h3>__call__ — inference</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Accept a 1D or batched observation, coerce it to <code>float32</code> shape <code>(1, N)</code>, run inference, and return the first (and only) output row as a 1D array.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>obs:</strong> <code>np.ndarray</code> — shape <code>(N,)</code> or <code>(1, N)</code>. If 1D, reshaped to <code>(1, N)</code>.<br>
+                <strong>Returns:</strong> <code>np.ndarray</code> shape <code>(M,)</code> — the policy's action vector. For walker: 29 joint targets. For reacher: 7 right-arm joint targets.</p>
+                <h4>Invariants</h4>
+                <p><code>obs.astype(np.float32)</code> is called unconditionally — if the observation was computed in float64 (NumPy's default), this ensures the ONNX session receives float32 as expected. Passing float64 to a float32 ONNX graph raises a runtime type error.<br>
+                The return value is <code>[0][0]</code>: <code>[0]</code> selects the first output tensor from the output list, <code>[0]</code> selects the first (and only) row from the <code>(1, M)</code> batch dimension.</p>
+                <h4>Critical note — do NOT normalize the walker observation</h4>
+                <p>The walker ONNX model bakes its own input normalization (mean/std) inside the graph. Passing pre-normalized observations would double-normalize and cause the robot to immediately fall. The raw 99D observation must be passed directly — this is why <code>WalkerReacherController.step()</code> constructs the obs from raw MuJoCo state without any scaling.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>  def __call__(self, obs: np.ndarray) -&gt; np.ndarray:
+    if obs.ndim == 1:
+      obs = obs.reshape(1, -1)
+    obs = obs.astype(np.float32)
+    return self.session.run([self.output_name], {self.input_name: obs})[0][0]</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — common/onnx_policy.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~34 lines)</summary>
+                <div class="code-block">
+                  <pre><code>"""ONNX policy wrapper for CPU inference."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import onnxruntime as ort
+
+
+class ONNXPolicy:
+  """Thin CPU-only ONNX inference wrapper.
+
+  Expects a 1D or (1, N) float32 observation and returns the first output row.
+  """
+
+  def __init__(self, model_path: str | Path):
+    sess_options = ort.SessionOptions()
+    sess_options.intra_op_num_threads = 1
+    sess_options.inter_op_num_threads = 1
+    self.session = ort.InferenceSession(
+      str(model_path), sess_options, providers=["CPUExecutionProvider"]
+    )
+    self.input_name = self.session.get_inputs()[0].name
+    self.output_name = self.session.get_outputs()[0].name
+
+  def __call__(self, obs: np.ndarray) -&gt; np.ndarray:
+    if obs.ndim == 1:
+      obs = obs.reshape(1, -1)
+    obs = obs.astype(np.float32)
+    return self.session.run([self.output_name], {self.input_name: obs})[0][0]</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

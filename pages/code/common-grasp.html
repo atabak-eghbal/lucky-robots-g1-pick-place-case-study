@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>common/grasp.py — Kinematic Grasp Backend | Lucky Robots G1 Pick-and-Place</title>
+    <title>common/grasp.py — Grasp Backend | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
-          <h1>common/grasp.py — Kinematic Grasp Backend</h1>
-          <p class="subtitle">A simulation shortcut that snaps the object to the palm while attached.</p>
+          <p class="eyebrow">Implementation · common/grasp.py</p>
+          <h1>common/grasp.py — Grasp Backend</h1>
+          <p class="subtitle">Abstract grasp interface and kinematic-attachment implementation: teleport-welds the cylinder to the palm, disables its collisions, and zeroes its velocity every physics step to prevent drift.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./common-controller.html">Previous file</a>
-            <a href="./common-onnx-policy.html">Next file</a>
+            <a href="./common-controller.html">← common/controller.py</a>
+            <a href="./common-onnx-policy.html">common/onnx_policy.py →</a>
           </div>
         </div>
 
@@ -52,139 +52,339 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> common/grasp.py</p>
-              <p>
-                A replaceable grasp backend that updates object pose directly when the grip is closed.
-              </p>
+              <p><strong>Lines:</strong> ~137</p>
+              <p>The grasp backend isolates "is the object held?" from the FSM. <code>GraspBackend</code> is an ABC; <code>KinematicAttachment</code> implements it as a physics shortcut — no contact forces, just position teleportation every step.</p>
             </div>
-            <div class="code-section">
-              <h2>Why it exists</h2>
-              <ul class="bullet-list">
-                <li>Provides deterministic pickup and release.</li>
-                <li>Isolates a simulation-only shortcut behind GraspBackend.</li>
-                <li>Disables collisions while attached, restores them on release.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#abstract">GraspBackend ABC</a></li>
+                <li><a href="#kinematic-init">KinematicAttachment.__init__</a></li>
+                <li><a href="#tick">tick() — state machine</a></li>
+                <li><a href="#release-pub">release() — force detach</a></li>
+                <li><a href="#attach">_attach() — snap + collision disable</a></li>
+                <li><a href="#update-pose">_update_pose() — teleport every step</a></li>
+                <li><a href="#release-priv">_release() — restore physics</a></li>
+                <li><a href="#full-file">Full source file ↓</a></li>
               </ul>
+            </nav>
+            <div class="code-section">
+              <a href="#full-file" style="color:var(--accent);font-weight:600;text-decoration:none;">Jump to full file ↓</a>
             </div>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="interface">Interface</button>
-                <button class="file-tab-button" data-tab-target="trigger">Attachment trigger</button>
-                <button class="file-tab-button" data-tab-target="snap">Snap offset and collision disabling</button>
-                <button class="file-tab-button" data-tab-target="pose">Pose update</button>
-                <button class="file-tab-button" data-tab-target="release">Release</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="interface">
-                <section class="code-section">
-                  <h2>Interface</h2>
-                  <p>
-                    The grasp backend is intentionally small so the kinematic shortcut can be replaced by
-                    a contact-based backend later.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>class GraspBackend(ABC):
+            <section class="code-section" id="abstract">
+              <h3>GraspBackend — abstract interface</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Define the minimal contract any grasp implementation must satisfy. The FSM queries only <code>attached</code> and calls <code>tick()</code> — it never knows how attachment works.</p>
+                <h4>Inputs / Outputs</h4><p><strong>attached:</strong> bool property. <strong>tick(grip_closed):</strong> called after every <code>mj_step()</code>, returns current attached state. <strong>release():</strong> force-detach unconditionally.</p>
+                <h4>Invariants</h4><p><code>tick()</code> must be called after <em>every</em> physics step, not just each control tick. With 4× decimation there are 4 physics steps per control tick — all 4 must call <code>tick()</code>.</p>
+                <h4>Failure modes</h4><p>If <code>tick()</code> is called only at control rate, the cylinder drifts under gravity between corrections — ~0.8 mm per control tick accumulating into visible float over a 300-tick carry phase.</p>
+                <h4>Why it matters</h4><p>The ABC enables swapping in a contact-force-based grasp without touching the FSM. The FSM only checks <code>grasp_backend.attached</code>.</p>
+              </div>
+              <div class="code-block"><pre><code>class GraspBackend(ABC):
+    """Abstract grasp backend — called every physics tick from the main loop."""
+
     @property
     @abstractmethod
-    def attached(self) -> bool:
-        ...
+    def attached(self) -&gt; bool:
+        """True while the object is kinematically attached."""
 
     @abstractmethod
-    def tick(self, grip_closed: bool) -> bool:
-        ...
+    def tick(self, grip_closed: bool) -&gt; bool:
+        """Update attachment state. Returns True if currently attached.
+
+        Must be called after every mujoco.mj_step() so the cylinder pose is
+        corrected before the next integration step.
+        """
 
     @abstractmethod
-    def release(self) -> None:
-        ...</code></pre>
-                  </div>
-                </section>
+    def release(self) -&gt; None:
+        """Force-detach the object and restore its physics."""</code></pre></div>
+            </section>
+
+            <section class="code-section" id="kinematic-init">
+              <h3>KinematicAttachment.__init__ — address caching</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Pre-compute all MuJoCo array addresses for fast per-step operation: freejoint qpos/qvel addresses, IDs of all cylinder geoms, and their original collision bitmasks for restoration on release.</p>
+                <h4>Inputs / Outputs</h4><p><strong>In:</strong> <code>model</code>, <code>data</code>, <code>palm_site_id</code>, <code>obj_body_id</code>. <strong>Out:</strong> fully wired KinematicAttachment instance.</p>
+                <h4>Invariants</h4><p>The cylinder body must have a freejoint as its first joint. <code>body_jntadr[obj_body_id]</code> gives the joint index; <code>jnt_qposadr</code> and <code>jnt_dofadr</code> give the 7-element position and 6-element velocity start addresses.</p>
+                <h4>Failure modes</h4><p>A body with no joints (static body) causes <code>body_jntadr</code> to return −1 and the qpos address lookup is wrong. The cylinder must be dynamic with a freejoint.</p>
+                <h4>Why it matters</h4><p>All lookups happen once at init. <code>_update_pose()</code> (hot path, 200 Hz) uses only direct array index arithmetic.</p>
               </div>
+              <div class="code-block"><pre><code>    ATTACH_DIST: float = 0.13  # m: auto-attach when palm within this distance
+    SNAP_DIST:   float = 0.03  # m: clamp palm-local offset so object sits in hand
 
-              <div class="file-tab-panel" data-tab-panel="trigger">
-                <section class="code-section">
-                  <h2>Attachment trigger</h2>
-                  <p>
-                    Attachment happens only when the grip is closed and the object is within ATTACH_DIST.
-                    Otherwise the backend simply updates or releases when commanded.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>ATTACH_DIST: float = 0.13
-SNAP_DIST: float = 0.03
+    def __init__(
+        self,
+        model,
+        data,
+        palm_site_id: int,
+        obj_body_id: int,
+    ) -&gt; None:
+        self._model    = model
+        self._data     = data
+        self._palm_id  = palm_site_id
+        self._obj_id   = obj_body_id
 
-def tick(self, grip_closed: bool) -> bool:
-    if not self._is_attached:
-        if grip_closed:
-            palm = self._data.site_xpos[self._palm_id].copy()
-            obj = self._data.xpos[self._obj_id].copy()
-            if float(np.linalg.norm(palm - obj)) <= self.ATTACH_DIST:
-                self._attach(palm, obj)
-    else:
-        if not grip_closed:
-            self._release()
+        jnt_id = int(model.body_jntadr[obj_body_id])
+        self._qposadr = int(model.jnt_qposadr[jnt_id])
+        self._qveladr = int(model.jnt_dofadr[jnt_id])
+
+        self._geom_ids = [
+            i for i in range(model.ngeom)
+            if int(model.geom_bodyid[i]) == obj_body_id
+        ]
+        self._orig_contype     = {g: int(model.geom_contype[g])     for g in self._geom_ids}
+        self._orig_conaffinity = {g: int(model.geom_conaffinity[g]) for g in self._geom_ids}
+
+        self._is_attached    = False
+        self._local_offset   = np.zeros(3, dtype=np.float64)</code></pre></div>
+            </section>
+
+            <section class="code-section" id="tick">
+              <h3>tick() — three-branch state machine</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Evaluate one physics step. If not attached and grip closed and palm close enough → attach. If attached and grip opened → release. If attached and grip still closed → update pose.</p>
+                <h4>Inputs / Outputs</h4><p><strong>In:</strong> <code>grip_closed</code> bool from controller state. <strong>Returns:</strong> current <code>_is_attached</code>.</p>
+                <h4>Invariants</h4><p>Attach fires when <code>‖palm − obj‖ ≤ 0.13 m</code> AND <code>grip_closed = True</code>. The reacher's ~12 cm accuracy floor means the palm typically stops at exactly 12–13 cm — matching the threshold by design.</p>
+                <h4>Failure modes</h4><p>If palm never gets within 0.13 m when grip closes, attachment never fires. The FSM's <code>CLOSE_GRIP_TIMEOUT = 100</code> ticks handles this case by advancing anyway.</p>
+                <h4>Why it matters</h4><p>The three-branch structure is intentionally simple. All coordination complexity lives in the FSM.</p>
+              </div>
+              <div class="code-block"><pre><code>    def tick(self, grip_closed: bool) -&gt; bool:
+        if not self._is_attached:
+            if grip_closed:
+                palm = self._data.site_xpos[self._palm_id].copy()
+                obj  = self._data.xpos[self._obj_id].copy()
+                if float(np.linalg.norm(palm - obj)) &lt;= self.ATTACH_DIST:
+                    self._attach(palm, obj)
         else:
-            self._update_pose()
-    return self._is_attached</code></pre>
-                  </div>
-                </section>
-              </div>
+            if not grip_closed:
+                self._release()
+            else:
+                self._update_pose()
+        return self._is_attached</code></pre></div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="snap">
-                <section class="code-section">
-                  <h2>Snap offset and collision disabling</h2>
-                  <p>
-                    The local offset is computed in the palm frame and clamped if it exceeds SNAP_DIST. A
-                    valid attachment disables collisions and immediately updates the object pose.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def _attach(self, palm_pos, obj_pos) -> None:
-    palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
-    local = palm_rot.T @ (obj_pos - palm_pos)
-    d = float(np.linalg.norm(local))
-    if d > self.SNAP_DIST:
-        local = local * (self.SNAP_DIST / d)
-    self._local_offset = local
-    self._disable_collisions()
-    self._is_attached = True
-    self._update_pose()</code></pre>
-                  </div>
-                </section>
+            <section class="code-section" id="release-pub">
+              <h3>release() — public force-detach</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Unconditionally release the object. Used by the test harness and emergency cleanup paths where waiting for the grip to open through <code>tick()</code> is not desirable.</p>
+                <h4>Invariants</h4><p>Safe to call multiple times — the <code>if attached</code> guard prevents double-release. After release the cylinder resumes normal physics from its current world position with zero velocity.</p>
               </div>
+              <div class="code-block"><pre><code>    def release(self) -&gt; None:
+        if self._is_attached:
+            self._release()</code></pre></div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="pose">
-                <section class="code-section">
-                  <h2>Pose update</h2>
-                  <p>
-                    While attached, the backend overwrites the freejoint position and velocity directly.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def _update_pose(self) -> None:
-    palm_pos = self._data.site_xpos[self._palm_id].copy()
-    palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
-    new_pos = palm_pos + palm_rot @ self._local_offset
-
-    self._data.qpos[self._qposadr:self._qposadr + 3] = new_pos
-    self._data.qpos[self._qposadr + 3:self._qposadr + 7] = [1.0, 0.0, 0.0, 0.0]
-    self._data.qvel[self._qveladr:self._qveladr + 6] = 0.0</code></pre>
-                  </div>
-                </section>
+            <section class="code-section" id="attach">
+              <h3>_attach() — snap and collision disable</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Compute palm-local offset, clamp it to SNAP_DIST so the cylinder sits visually in the hand, disable cylinder collisions to prevent contact impulses, then teleport the cylinder into position immediately.</p>
+                <h4>Inputs / Outputs</h4><p><strong>In:</strong> <code>palm_pos</code>, <code>obj_pos</code> already read in <code>tick()</code>. <strong>Side effects:</strong> sets <code>_local_offset</code>, zeroes contype/conaffinity for all cylinder geoms, sets <code>_is_attached = True</code>, calls <code>_update_pose()</code>.</p>
+                <h4>Invariants</h4><p><code>local = palm_rot.T @ (obj_pos - palm_pos)</code> stores the offset in the palm's own local frame so it rotates with the palm. SNAP_DIST = 0.03 m — observed attachment: real gap 0.128 m snapped to 0.030 m; cylinder jumps ~10 cm visibly but stably.</p>
+                <h4>Failure modes</h4><p>If collision disable is skipped, the teleported cylinder geoms overlap the hand geoms. MuJoCo resolves this as a large contact impulse that can knock the robot over in one step.</p>
+                <h4>Why it matters</h4><p>The snap + collision disable pair is what makes kinematic attachment stable. They must both fire atomically in <code>_attach()</code>.</p>
               </div>
+              <div class="code-block"><pre><code>    def _attach(self, palm_pos: np.ndarray, obj_pos: np.ndarray) -&gt; None:
+        palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+        local = palm_rot.T @ (obj_pos - palm_pos)
+        d = float(np.linalg.norm(local))
+        if d &gt; self.SNAP_DIST:
+            local = local * (self.SNAP_DIST / d)
+        self._local_offset = local
 
-              <div class="file-tab-panel" data-tab-panel="release">
-                <section class="code-section">
-                  <h2>Release</h2>
-                  <p>
-                    Releasing restores collision filters and lets physics take over again.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def _release(self) -> None:
-    self._enable_collisions()
-    self._is_attached = False</code></pre>
-                  </div>
-                  <p class="small">The backend is intentionally replaceable for more realistic grasping.</p>
-                </section>
+        for g in self._geom_ids:
+            self._model.geom_contype[g]     = 0
+            self._model.geom_conaffinity[g] = 0
+
+        self._is_attached = True
+        snap = float(np.linalg.norm(self._local_offset))
+        print(f"[GRASP] attached  dist={float(np.linalg.norm(palm_pos - obj_pos)):.3f} m"
+              f"  snap_offset={snap:.3f} m")
+        self._update_pose()</code></pre></div>
+            </section>
+
+            <section class="code-section" id="update-pose">
+              <h3>_update_pose() — teleport every physics step (hot path)</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Recompute the cylinder's world position from the current palm pose and stored local offset. Write directly to <code>data.qpos</code>. Zero the freejoint velocity to prevent gravity accumulation.</p>
+                <h4>Inputs / Outputs</h4><p><strong>Reads:</strong> <code>site_xpos[palm_id]</code>, <code>site_xmat[palm_id]</code>. <strong>Writes:</strong> <code>qpos[qposadr:qposadr+3]</code> (position), <code>qpos[qposadr+3:qposadr+7]</code> (identity quaternion), <code>qvel[qveladr:qveladr+6] = 0</code>.</p>
+                <h4>Invariants</h4><p><code>new_pos = palm_pos + palm_rot @ local_offset</code>. Quaternion is always identity — cylinder orientation is not tracked. This is correct for a cylinder (radially symmetric). Velocity zeroing prevents gravity accumulation: at 200 Hz, gravity adds 9.81 × 0.005 = 0.049 m/s per step. Without zeroing this reaches 14.7 m/s after a 300-step phase, causing a violent launch on release.</p>
+                <h4>Failure modes</h4><p>If called only at control rate (50 Hz) rather than physics rate (200 Hz), drift between corrections is 4× larger — visible floating during long carry phases.</p>
+                <h4>Why it matters</h4><p>This is the hottest method in the file — 200 calls per second. Its simplicity (2 matrix ops, 3 array writes) is intentional.</p>
               </div>
-            </div>
+              <div class="code-block"><pre><code>    def _update_pose(self) -&gt; None:
+        palm_pos = self._data.site_xpos[self._palm_id].copy()
+        palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+        new_pos  = palm_pos + palm_rot @ self._local_offset
+        self._data.qpos[self._qposadr    :self._qposadr + 3] = new_pos
+        self._data.qpos[self._qposadr + 3:self._qposadr + 7] = [1.0, 0.0, 0.0, 0.0]
+        self._data.qvel[self._qveladr    :self._qveladr + 6] = 0.0</code></pre></div>
+            </section>
+
+            <section class="code-section" id="release-priv">
+              <h3>_release() — restore physics</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4><p>Restore original collision bitmasks, zero cylinder velocity, and clear the attached flag. The cylinder then resumes normal physics from its current position.</p>
+                <h4>Invariants</h4><p>Velocity is zeroed on release so the cylinder falls cleanly from wherever the palm was, rather than launching due to any velocity residual from palm motion. Collision restore happens before <code>_is_attached = False</code> so the cylinder is immediately responsive to contact once physics resumes.</p>
+                <h4>Failure modes</h4><p>If original contype/conaffinity values were modified externally between attach and release, the restored values will be wrong. Nothing else modifies these in this codebase.</p>
+              </div>
+              <div class="code-block"><pre><code>    def _release(self) -&gt; None:
+        for g in self._geom_ids:
+            self._model.geom_contype[g]     = self._orig_contype[g]
+            self._model.geom_conaffinity[g] = self._orig_conaffinity[g]
+        self._data.qvel[self._qveladr:self._qveladr + 6] = 0.0
+        self._is_attached = False
+        print("[GRASP] released")</code></pre></div>
+            </section>
+
+            <section class="code-section" id="full-file">
+              <h3>Full source file</h3>
+              <p>Complete HTML-escaped source of <code>common/grasp.py</code>.</p>
+              <details class="code-details">
+                <summary><span>Expand full grasp.py</span><code>~137 lines</code></summary>
+                <div class="code-block"><pre><code>"""Grasp backend interface and kinematic-attachment implementation."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+
+class GraspBackend(ABC):
+    """Abstract grasp backend — called every physics tick from the main loop."""
+
+    @property
+    @abstractmethod
+    def attached(self) -&gt; bool:
+        """True while the object is kinematically attached."""
+
+    @abstractmethod
+    def tick(self, grip_closed: bool) -&gt; bool:
+        """Update attachment state. Returns True if currently attached.
+
+        Must be called after every mujoco.mj_step() so the cylinder pose is
+        corrected before the next integration step.
+        """
+
+    @abstractmethod
+    def release(self) -&gt; None:
+        """Force-detach the object and restore its physics."""
+
+
+class KinematicAttachment(GraspBackend):
+    """Teleport-weld the cylinder to the palm while the grip is closed.
+
+    Simulation shortcut: bypasses contact forces. The cylinder is placed at a
+    fixed palm-local offset (snapped to SNAP_DIST if the hand closed far away)
+    and its freejoint velocity is zeroed every tick so it does not drift between
+    teleportations.
+
+    Collisions are disabled while attached to prevent geom-overlap impulses from
+    destabilising the robot.
+    """
+
+    ATTACH_DIST: float = 0.13  # m: auto-attach when palm is within this distance
+    SNAP_DIST:   float = 0.03  # m: clamp palm-local offset so object sits in hand
+
+    def __init__(
+        self,
+        model,
+        data,
+        palm_site_id: int,
+        obj_body_id: int,
+    ) -&gt; None:
+        self._model    = model
+        self._data     = data
+        self._palm_id  = palm_site_id
+        self._obj_id   = obj_body_id
+
+        # Freejoint addressing (first joint of the body; must be a freejoint).
+        jnt_id = int(model.body_jntadr[obj_body_id])
+        self._qposadr = int(model.jnt_qposadr[jnt_id])
+        self._qveladr = int(model.jnt_dofadr[jnt_id])
+
+        # Geoms belonging to this body — used to toggle collisions.
+        self._geom_ids = [
+            i for i in range(model.ngeom)
+            if int(model.geom_bodyid[i]) == obj_body_id
+        ]
+        self._orig_contype     = {g: int(model.geom_contype[g])     for g in self._geom_ids}
+        self._orig_conaffinity = {g: int(model.geom_conaffinity[g]) for g in self._geom_ids}
+
+        self._is_attached    = False
+        self._local_offset   = np.zeros(3, dtype=np.float64)
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+
+    @property
+    def attached(self) -&gt; bool:
+        return self._is_attached
+
+    def tick(self, grip_closed: bool) -&gt; bool:
+        if not self._is_attached:
+            if grip_closed:
+                palm = self._data.site_xpos[self._palm_id].copy()
+                obj  = self._data.xpos[self._obj_id].copy()
+                if float(np.linalg.norm(palm - obj)) &lt;= self.ATTACH_DIST:
+                    self._attach(palm, obj)
+        else:
+            if not grip_closed:
+                self._release()
+            else:
+                self._update_pose()
+        return self._is_attached
+
+    def release(self) -&gt; None:
+        if self._is_attached:
+            self._release()
+
+    # ------------------------------------------------------------------ #
+    # Private helpers
+    # ------------------------------------------------------------------ #
+
+    def _attach(self, palm_pos: np.ndarray, obj_pos: np.ndarray) -&gt; None:
+        palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+        local = palm_rot.T @ (obj_pos - palm_pos)
+        d = float(np.linalg.norm(local))
+        if d &gt; self.SNAP_DIST:
+            local = local * (self.SNAP_DIST / d)
+        self._local_offset = local
+
+        for g in self._geom_ids:
+            self._model.geom_contype[g]     = 0
+            self._model.geom_conaffinity[g] = 0
+
+        self._is_attached = True
+        snap = float(np.linalg.norm(self._local_offset))
+        print(f"[GRASP] attached  dist={float(np.linalg.norm(palm_pos - obj_pos)):.3f} m"
+              f"  snap_offset={snap:.3f} m")
+        self._update_pose()
+
+    def _update_pose(self) -&gt; None:
+        palm_pos = self._data.site_xpos[self._palm_id].copy()
+        palm_rot = self._data.site_xmat[self._palm_id].reshape(3, 3).copy()
+        new_pos  = palm_pos + palm_rot @ self._local_offset
+        self._data.qpos[self._qposadr    :self._qposadr + 3] = new_pos
+        self._data.qpos[self._qposadr + 3:self._qposadr + 7] = [1.0, 0.0, 0.0, 0.0]
+        self._data.qvel[self._qveladr    :self._qveladr + 6] = 0.0
+
+    def _release(self) -&gt; None:
+        for g in self._geom_ids:
+            self._model.geom_contype[g]     = self._orig_contype[g]
+            self._model.geom_conaffinity[g] = self._orig_conaffinity[g]
+        self._data.qvel[self._qveladr:self._qveladr + 6] = 0.0
+        self._is_attached = False
+        print("[GRASP] released")</code></pre></div>
+              </details>
+            </section>
+
           </div>
         </div>
       </main>

@@ -10,9 +10,9 @@
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
+          <p class="eyebrow">Implementation · scripts/test_fsm_approach.py</p>
           <h1>scripts/test_fsm_approach.py — Headless FSM Integration Test</h1>
-          <p class="subtitle">Runs the FSM without a viewer to validate end-to-end state progression.</p>
+          <p class="subtitle">The authoritative end-to-end harness. Runs the full pipeline — walker, reacher, grasp attachment, FSM — for up to 3 000 control ticks without a viewer, then checks whether the cylinder landed on the target table. Exits 0 for PASS, 1 for FAIL or timeout.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./scripts-smoke-env.html">Previous file</a>
-            <a href="./config-simulation.html">Next file</a>
+            <a href="./scripts-smoke-env.html">← scripts/smoke_env.py</a>
+            <a href="./common-onnx-policy.html">common/onnx_policy.py →</a>
           </div>
         </div>
 
@@ -52,97 +52,402 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> scripts/test_fsm_approach.py</p>
-              <p>Runs the FSM loop headlessly to verify state progression and grasp timing.</p>
+              <p><strong>Lines:</strong> ~130</p>
+              <p>A mirror of <code>run.py</code>'s simulation loop — same physics timestep, same decimation, same grasp tick — stripped of all viewer/camera overhead. This is the script used to validate every FSM step (Steps 6–10) before checking in.</p>
             </div>
-            <div class="code-section">
-              <h2>Key checks</h2>
-              <ul class="bullet-list">
-                <li>Executes the full policy/controller loop.</li>
-                <li>Applies decimated physics steps.</li>
-                <li>Calls grasp ticks after every physics step.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-imports">Imports &amp; path setup</a></li>
+                <li><a href="#chunk-armature">set_armature() — physics fidelity</a></li>
+                <li><a href="#chunk-setup">Scene, controller, policy wiring</a></li>
+                <li><a href="#chunk-loop">Simulation loop</a></li>
+                <li><a href="#chunk-done">DONE verdict &amp; diagnostic printout</a></li>
+                <li><a href="#chunk-timeout">Timeout &amp; fall detection</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="setup">Setup</button>
-                <button class="file-tab-button" data-tab-target="loop">Policy/controller loop</button>
-                <button class="file-tab-button" data-tab-target="physics">Decimated physics loop</button>
-                <button class="file-tab-button" data-tab-target="grasp">Grasp tick timing</button>
-                <button class="file-tab-button" data-tab-target="passfail">PASS/fail milestones</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="setup">
-                <section class="code-section">
-                  <h2>Setup</h2>
-                  <p>
-                    The test initializes model/data, resets the robot, loads ONNX policies, and
-                    constructs the controller plus KinematicAttachment before entering the loop.
-                  </p>
-                </section>
+            <!-- ─── Chunk 1: Imports ───────────────────────────────────────── -->
+            <section class="code-section" id="chunk-imports">
+              <h3>Imports &amp; path setup</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Add the repo root to <code>sys.path</code> so the script can be run from any working directory without installing the package. Import every collaborating module explicitly — this makes the dependency graph of the integration test immediately visible.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><code>ROOT = Path(__file__).resolve().parent.parent</code> resolves to the repo root regardless of where the script is invoked from. All asset paths (ONNX, XML, config) are computed relative to ROOT.</p>
+                <h4>Why it matters</h4>
+                <p>Importing <code>FSMState</code> directly (not just <code>FSMPolicy</code>) enables the DONE detection in the loop — <code>if state == FSMState.DONE</code> — without string comparison.</p>
               </div>
+              <div class="code-block">
+                <pre><code>#!/usr/bin/env python3
+"""Headless integration test: full pick-and-place pipeline through DONE."""
 
-              <div class="file-tab-panel" data-tab-panel="loop">
-                <section class="code-section">
-                  <h2>Policy/controller loop</h2>
-                  <p>
-                    Policy and controller steps stay in the same sequence as run.py, keeping the headless
-                    test faithful to runtime behavior.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>for tick in range(max_ticks):
-    policy.step()
-    target_pos = ctrl.step()
-    ctrl.apply_pd_control(target_pos)
+from __future__ import annotations
 
-    for _ in range(decimation):
-        mujoco.mj_step(model, data)
-        if grasp_backend is not None:
-            grasp_backend.tick(ctrl.grip_closed)</code></pre>
-                  </div>
-                </section>
+import json
+import sys
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from common.controller import WalkerReacherController
+from common.grasp import KinematicAttachment
+from common.onnx_policy import ONNXPolicy
+from common.scene import reset_robot
+from policies.fsm import FSMPolicy
+from policies.fsm_core import FSMState</code></pre>
               </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="physics">
-                <section class="code-section">
-                  <h2>Decimated physics loop</h2>
-                  <p>
-                    A fixed decimation keeps control at 50 Hz while physics steps remain at 200 Hz.
-                  </p>
-                </section>
+            <!-- ─── Chunk 2: set_armature ─────────────────────────────────── -->
+            <section class="code-section" id="chunk-armature">
+              <h3>set_armature() — physics fidelity</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Patch MuJoCo's <code>dof_armature</code> values after loading the model. Armature adds virtual inertia to each joint DOF to improve numerical stability and reduce joint vibration. The values here match those used in training — without them the walker policy produces a subtly different gait that can destabilise the carry phase.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>model:</strong> <code>mujoco.MjModel</code> — mutated in place.<br>
+                <strong>joint_names:</strong> ordered list from config — maps index <code>i</code> to DOF <code>6 + i</code> (the first 6 DOFs are the floating base).</p>
+                <h4>Invariants</h4>
+                <p>Armature values are in kg·m². The five constants (ARM_5020 through ARM_2x5020) are derived from the physical motor specifications of the G1's actuators. The <code>else</code> clause defaults to ARM_5020 — a conservative safe value for any unclassified joint (e.g., finger joints not listed in the config).</p>
+                <h4>Why it matters</h4>
+                <p>This function is duplicated verbatim from <code>run.py</code>. The duplication is intentional — the test must simulate physics identically to production, and a shared helper would require packaging the test's dependencies as a library. Any edit to this function must be applied in both files.</p>
               </div>
+              <div class="code-block">
+                <pre><code>def set_armature(model, joint_names):
+    ARM_5020    = 0.00360972
+    ARM_7520_14 = 0.01017752
+    ARM_7520_22 = 0.02510192
+    ARM_4010    = 0.00425000
+    ARM_2x5020  = 0.00721945
+    for i, name in enumerate(joint_names):
+        dof = 6 + i
+        if "elbow" in name or "shoulder" in name or "wrist_roll" in name:
+            model.dof_armature[dof] = ARM_5020
+        elif "hip_pitch" in name or "hip_yaw" in name or name == "waist_yaw_joint":
+            model.dof_armature[dof] = ARM_7520_14
+        elif "hip_roll" in name or "knee" in name:
+            model.dof_armature[dof] = ARM_7520_22
+        elif "wrist_pitch" in name or "wrist_yaw" in name:
+            model.dof_armature[dof] = ARM_4010
+        elif "ankle" in name or name in ("waist_pitch_joint", "waist_roll_joint"):
+            model.dof_armature[dof] = ARM_2x5020
+        else:
+            model.dof_armature[dof] = ARM_5020</code></pre>
+              </div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="grasp">
-                <section class="code-section">
-                  <h2>Grasp tick timing</h2>
-                  <p>
-                    Grasp ticks live inside the physics loop so the attachment stays glued between
-                    controller updates.
-                  </p>
-                </section>
+            <!-- ─── Chunk 3: Setup ─────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-setup">
+              <h3>Scene, controller, policy wiring</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Load all four ONNX policies, create the controller, wire up the grasp backend, create the FSM policy, and run one warmup call per ONNX model. The warmup call pre-compiles the ONNX graph so the first real inference call doesn't have an anomalous latency spike.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>All ONNX files are loaded from <code>ROOT</code>. <code>KinematicAttachment</code> requires the <code>right_palm_site_id</code> (from the controller) and the <code>rb_body_id</code> (from a direct MuJoCo name lookup for <code>red_block</code>).</p>
+                <h4>Invariants</h4>
+                <p><code>reset_robot(... reset_data=False)</code> — the model is freshly loaded so <code>mj_resetData</code> would redundantly clear everything. Setting <code>reset_data=False</code> skips the redundant clear and goes straight to setting joint positions from the config.<br>
+                <code>model.opt.timestep = 0.005</code> is set explicitly after loading — this ensures the 200 Hz physics rate even if the XML was edited.</p>
+                <h4>Why it matters</h4>
+                <p>The grasp backend receives the same <code>right_palm_site_id</code> as in production — this site drives the attachment logic. Using a different site ID here would produce a test that passes but doesn't exercise the real code path.</p>
               </div>
+              <div class="code-block">
+                <pre><code>def main():
+    config_path = ROOT / "model_config.json"
+    with open(config_path) as f:
+        config = json.load(f)
+    joint_names = config["joint_names"]
 
-              <div class="file-tab-panel" data-tab-panel="passfail">
-                <section class="code-section">
-                  <h2>PASS/fail milestones</h2>
-                  <p>
-                    The test prints PASS when the FSM reaches DONE, but downstream validation still
-                    requires post-settle checks on the target table.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>if policy.state == FSMState.DONE:
-    print("PASS — reached DONE")
-    break</code></pre>
-                  </div>
-                </section>
+    model = mujoco.MjModel.from_xml_path(str(ROOT / "scene.xml"))
+    model.opt.timestep = 0.005
+    set_armature(model, joint_names)
+    data  = mujoco.MjData(model)
+    reset_robot(model, data, config, joint_names, reset_data=False)
+
+    walker        = ONNXPolicy(str(ROOT / "walker.onnx"))
+    croucher      = ONNXPolicy(str(ROOT / "croucher.onnx"))
+    rotator       = ONNXPolicy(str(ROOT / "rotator.onnx"))
+    right_reacher = ONNXPolicy(str(ROOT / "right_reacher.onnx"))
+
+    ctrl = WalkerReacherController(model, data, walker, croucher, rotator,
+                                   config, right_reacher=right_reacher)
+
+    rb_body_id    = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_block")
+    grasp_backend = KinematicAttachment(model, data, ctrl.right_palm_site_id, rb_body_id)
+    policy        = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+
+    # Warm up ONNX
+    walker(np.zeros((1, 99), dtype=np.float32))
+    croucher(np.zeros((1, 101), dtype=np.float32))
+    rotator(np.zeros((1, 99), dtype=np.float32))
+    right_reacher(np.zeros((1, 36), dtype=np.float32))</code></pre>
               </div>
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <!-- ─── Chunk 4: Loop ─────────────────────────────────────────── -->
+            <section class="code-section" id="chunk-loop">
+              <h3>Simulation loop</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Run the control loop at 50 Hz (control tick) with 4× physics decimation (200 Hz). The structure exactly mirrors <code>run.py</code>'s loop — policy, controller, physics, grasp tick — so the test validates the same execution order as production.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><code>MAX_CTRL_TICKS = 3000</code> corresponds to ~60 s of simulation time at 50 Hz. This is the budget for the full pick-and-place pipeline. If DONE is not reached in this budget, the test reports a timeout FAIL.</p>
+                <h4>Invariants</h4>
+                <p><strong>Loop order matters:</strong><br>
+                1. <code>policy.step()</code> — advances FSM, writes commands into controller.<br>
+                2. <code>ctrl.step()</code> — runs ONNX policies, computes target joint positions.<br>
+                3. Inner loop: <code>ctrl.apply_pd_control()</code> → <code>mujoco.mj_step()</code> → <code>grasp_backend.tick()</code>.<br>
+                <code>grasp_backend.tick()</code> must be called <strong>after</strong> every <code>mj_step</code> — not just at the outer tick rate. It teleports the attached body every physics step to prevent gravity/collision drift.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>grasp_backend.tick()</code> were called only at the outer 50 Hz rate, the cylinder would drift ~0.049 m per physics step during carry (gravity × dt²), accumulating a visible drop between ticks. At 200 Hz, drift is ~0.006 m per step — still needs zeroing, but manageable.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>    decimation     = 4
+    MAX_CTRL_TICKS = 3000   # ~60 s: full pipeline through DONE
+
+    target_pos = ctrl.default_joint_pos.copy()
+
+    for tick in range(MAX_CTRL_TICKS):
+        out = policy.step()
+        target_pos = ctrl.step()
+        for _ in range(decimation):
+            ctrl.apply_pd_control(target_pos)
+            mujoco.mj_step(model, data)
+            grasp_backend.tick(ctrl.grip_closed)
+
+        state = policy._fsm.state</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 5: DONE verdict ──────────────────────────────────── -->
+            <section class="code-section" id="chunk-done">
+              <h3>DONE verdict &amp; diagnostic printout</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>When the FSM reaches <code>FSMState.DONE</code>, run the success check: <code>fsm._cylinder_on_target_table()</code>. Print a rich diagnostic block showing all relevant world-frame coordinates before calling <code>sys.exit(0)</code> on pass or <code>sys.exit(1)</code> on fail.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>Reads from the FSMCore's private geometry helpers — <code>_cylinder_world()</code>, <code>_palm_world()</code>, <code>_target_drop_pt</code>, <code>_target_surface_z()</code>, <code>_cylinder_on_target_table()</code> — which all use live MuJoCo data. These are the same helpers the FSM uses internally to make state-transition decisions, so the test is checking the exact quantities the FSM acted on.</p>
+                <h4>Invariants</h4>
+                <p><code>_target_drop_pt</code> is the frozen world-frame point captured at <code>APPROACH_TARGET</code> entry. The diagnostic prints it explicitly so a failing test can show whether the drop point was computed correctly and whether the cylinder landed near it.</p>
+                <h4>Why it matters</h4>
+                <p>Calling <code>sys.exit(0 if on_tbl else 1)</code> immediately on reaching DONE (rather than breaking the loop and checking afterward) means the test runs for the minimum number of ticks — the loop doesn't spin for the remaining budget after success.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>        if state == FSMState.DONE:
+            fsm   = policy._fsm
+            cyl   = fsm._cylinder_world()
+            palm  = fsm._palm_world()
+            drop  = fsm._target_drop_pt
+            tgt_z = fsm._target_surface_z()
+            on_tbl = fsm._cylinder_on_target_table()
+            verdict = "PASS" if on_tbl else "FAIL"
+            print(f"\n{verdict} — reached DONE at control tick {tick + 1}")
+            print(f"  palm_world      : ({palm[0]:.3f}, {palm[1]:.3f}, {palm[2]:.3f})")
+            print(f"  cyl_world       : ({cyl[0]:.3f}, {cyl[1]:.3f}, {cyl[2]:.3f})")
+            print(f"  drop_world      : ({drop[0]:.3f}, {drop[1]:.3f}, {drop[2]:.3f})")
+            print(f"  target_z        : {tgt_z:.3f}")
+            print(f"  cyl_clearance   : {cyl[2]-tgt_z:.3f} m")
+            print(f"  on_target_table : {on_tbl}")
+            print(f"  attached        : {grasp_backend.attached}")
+            sys.exit(0 if on_tbl else 1)</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 6: Timeout ──────────────────────────────────────── -->
+            <section class="code-section" id="chunk-timeout">
+              <h3>Timeout &amp; fall detection</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Two failure paths outside the DONE check: (1) robot fell — pelvis z drops below 0.40 m, which means the walker policy lost balance; (2) global timeout — 3 000 ticks elapsed without reaching DONE. Both print a diagnostic block and exit 1.</p>
+                <h4>Invariants</h4>
+                <p><code>data.qpos[2]</code> is the pelvis z position in world frame (the floating base z DOF). The threshold 0.40 m is well below normal walking height (~0.76 m) but above the floor, so it unambiguously indicates a fall rather than a deliberate crouch.<br>
+                The fall check is inside the per-tick loop and fires immediately — it doesn't wait for the full 3 000 ticks if the robot falls at tick 50.</p>
+                <h4>Why it matters</h4>
+                <p>The timeout diagnostic prints the last FSM state, cylinder position, drop point, and on-table result. This is the primary debugging tool when the pipeline stalls — it answers "what was the FSM doing when time ran out?" without needing to re-run with a viewer.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>        pz = float(data.qpos[2])
+        if pz &lt; 0.40:
+            print(f"\nFAIL — robot fell (pelvis z={pz:.3f}) at tick {tick + 1}")
+            sys.exit(1)
+
+    # Timeout
+    fsm   = policy._fsm
+    cyl_w = fsm._cylinder_world()
+    drop  = fsm._target_drop_pt
+    drop_str = f"({drop[0]:.3f},{drop[1]:.3f},{drop[2]:.3f})" if drop is not None else "None"
+    print(f"\n=== TIMEOUT after {MAX_CTRL_TICKS} ticks ===")
+    print(f"  state           : {fsm.state.name}")
+    print(f"  cyl_world       : ({cyl_w[0]:.3f}, {cyl_w[1]:.3f}, {cyl_w[2]:.3f})")
+    print(f"  drop_world      : {drop_str}")
+    print(f"  on_target_table : {fsm._cylinder_on_target_table()}")
+    print(f"  attached        : {grasp_backend.attached}")
+    print("\nFAIL — did not reach DONE")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — scripts/test_fsm_approach.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~130 lines)</summary>
+                <div class="code-block">
+                  <pre><code>#!/usr/bin/env python3
+"""Headless integration test: full pick-and-place pipeline through DONE."""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from common.controller import WalkerReacherController
+from common.grasp import KinematicAttachment
+from common.onnx_policy import ONNXPolicy
+from common.scene import reset_robot
+from policies.fsm import FSMPolicy
+from policies.fsm_core import FSMState
+
+
+def set_armature(model, joint_names):
+    ARM_5020    = 0.00360972
+    ARM_7520_14 = 0.01017752
+    ARM_7520_22 = 0.02510192
+    ARM_4010    = 0.00425000
+    ARM_2x5020  = 0.00721945
+    for i, name in enumerate(joint_names):
+        dof = 6 + i
+        if "elbow" in name or "shoulder" in name or "wrist_roll" in name:
+            model.dof_armature[dof] = ARM_5020
+        elif "hip_pitch" in name or "hip_yaw" in name or name == "waist_yaw_joint":
+            model.dof_armature[dof] = ARM_7520_14
+        elif "hip_roll" in name or "knee" in name:
+            model.dof_armature[dof] = ARM_7520_22
+        elif "wrist_pitch" in name or "wrist_yaw" in name:
+            model.dof_armature[dof] = ARM_4010
+        elif "ankle" in name or name in ("waist_pitch_joint", "waist_roll_joint"):
+            model.dof_armature[dof] = ARM_2x5020
+        else:
+            model.dof_armature[dof] = ARM_5020
+
+
+def main():
+    config_path = ROOT / "model_config.json"
+    with open(config_path) as f:
+        config = json.load(f)
+    joint_names = config["joint_names"]
+
+    model = mujoco.MjModel.from_xml_path(str(ROOT / "scene.xml"))
+    model.opt.timestep = 0.005
+    set_armature(model, joint_names)
+    data  = mujoco.MjData(model)
+    reset_robot(model, data, config, joint_names, reset_data=False)
+
+    walker        = ONNXPolicy(str(ROOT / "walker.onnx"))
+    croucher      = ONNXPolicy(str(ROOT / "croucher.onnx"))
+    rotator       = ONNXPolicy(str(ROOT / "rotator.onnx"))
+    right_reacher = ONNXPolicy(str(ROOT / "right_reacher.onnx"))
+
+    ctrl = WalkerReacherController(model, data, walker, croucher, rotator,
+                                   config, right_reacher=right_reacher)
+
+    rb_body_id    = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_block")
+    grasp_backend = KinematicAttachment(model, data, ctrl.right_palm_site_id, rb_body_id)
+    policy        = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+
+    # Warm up ONNX
+    walker(np.zeros((1, 99), dtype=np.float32))
+    croucher(np.zeros((1, 101), dtype=np.float32))
+    rotator(np.zeros((1, 99), dtype=np.float32))
+    right_reacher(np.zeros((1, 36), dtype=np.float32))
+
+    decimation     = 4
+    MAX_CTRL_TICKS = 3000   # ~60 s: full pipeline through DONE
+
+    target_pos = ctrl.default_joint_pos.copy()
+
+    for tick in range(MAX_CTRL_TICKS):
+        out = policy.step()
+        target_pos = ctrl.step()
+        for _ in range(decimation):
+            ctrl.apply_pd_control(target_pos)
+            mujoco.mj_step(model, data)
+            grasp_backend.tick(ctrl.grip_closed)
+
+        state = policy._fsm.state
+
+        if state == FSMState.DONE:
+            fsm   = policy._fsm
+            cyl   = fsm._cylinder_world()
+            palm  = fsm._palm_world()
+            drop  = fsm._target_drop_pt
+            tgt_z = fsm._target_surface_z()
+            on_tbl = fsm._cylinder_on_target_table()
+            verdict = "PASS" if on_tbl else "FAIL"
+            print(f"\n{verdict} — reached DONE at control tick {tick + 1}")
+            print(f"  palm_world      : ({palm[0]:.3f}, {palm[1]:.3f}, {palm[2]:.3f})")
+            print(f"  cyl_world       : ({cyl[0]:.3f}, {cyl[1]:.3f}, {cyl[2]:.3f})")
+            print(f"  drop_world      : ({drop[0]:.3f}, {drop[1]:.3f}, {drop[2]:.3f})")
+            print(f"  target_z        : {tgt_z:.3f}")
+            print(f"  cyl_clearance   : {cyl[2]-tgt_z:.3f} m")
+            print(f"  on_target_table : {on_tbl}")
+            print(f"  attached        : {grasp_backend.attached}")
+            sys.exit(0 if on_tbl else 1)
+
+        pz = float(data.qpos[2])
+        if pz &lt; 0.40:
+            print(f"\nFAIL — robot fell (pelvis z={pz:.3f}) at tick {tick + 1}")
+            sys.exit(1)
+
+    # Timeout
+    fsm   = policy._fsm
+    cyl_w = fsm._cylinder_world()
+    drop  = fsm._target_drop_pt
+    drop_str = f"({drop[0]:.3f},{drop[1]:.3f},{drop[2]:.3f})" if drop is not None else "None"
+    print(f"\n=== TIMEOUT after {MAX_CTRL_TICKS} ticks ===")
+    print(f"  state           : {fsm.state.name}")
+    print(f"  cyl_world       : ({cyl_w[0]:.3f}, {cyl_w[1]:.3f}, {cyl_w[2]:.3f})")
+    print(f"  drop_world      : {drop_str}")
+    print(f"  on_target_table : {fsm._cylinder_on_target_table()}")
+    print(f"  attached        : {grasp_backend.attached}")
+    print("\nFAIL — did not reach DONE")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+                </div>
+              </details>
+            </section>
+
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>

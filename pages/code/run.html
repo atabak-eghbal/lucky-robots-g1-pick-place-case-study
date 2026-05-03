@@ -10,9 +10,9 @@
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
+          <p class="eyebrow">Implementation · run.py</p>
           <h1>run.py — Runtime Orchestration</h1>
-          <p class="subtitle">The thin entry point that wires models, policies, control, and simulation.</p>
+          <p class="subtitle">The thin entry point that wires model loading, ONNX policies, controller, policy selection, simulation stepping, and the grasp backend into one real-time loop.</p>
         </div>
       </header>
 
@@ -40,51 +40,67 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./dev-log.html">Previous file</a>
-            <a href="./common-controller.html">Next file</a>
+            <a href="./dev-log.html">← DEV_LOG</a>
+            <a href="./common-controller.html">common/controller.py →</a>
           </div>
         </div>
 
         <div class="code-page-layout">
+          <!-- ─── Sticky sidebar ──────────────────────────────────── -->
           <aside class="code-sidebar">
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> run.py</p>
+              <p><strong>Lines:</strong> ~285</p>
               <p>
-                The runtime shell that loads assets, selects a policy, and keeps the control loop moving.
+                Intentionally thin orchestration layer. Loads the scene and
+                policies, selects keyboard or FSM mode, then runs the real-time
+                decimated control loop. All heavyweight logic lives in
+                <code>common/</code> and <code>policies/</code>.
               </p>
             </div>
-            <div class="code-section">
-              <h2>Key responsibilities</h2>
-              <ul class="bullet-list">
-                <li>Load model, config, and ONNX policies.</li>
-                <li>Select KeyboardPolicy or FSMPolicy.</li>
-                <li>Bridge PolicyOutput into controller state.</li>
-                <li>Advance MuJoCo and the grasp backend.</li>
+
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#imports">Imports &amp; module boundary</a></li>
+                <li><a href="#armature">set_armature()</a></li>
+                <li><a href="#bridge">Policy output bridge</a></li>
+                <li><a href="#scene-load">Scene &amp; config loading</a></li>
+                <li><a href="#policy-wiring">Policy / controller / grasp wiring</a></li>
+                <li><a href="#warmup">ONNX warmup</a></li>
+                <li><a href="#cameras">Camera renderer setup</a></li>
+                <li><a href="#sim-loop">Simulation loop</a></li>
+                <li><a href="#full-file">Full source file ↓</a></li>
               </ul>
+            </nav>
+
+            <div class="code-section">
+              <a href="#full-file" style="color: var(--accent); font-weight: 600; text-decoration: none;">Jump to full file ↓</a>
             </div>
           </aside>
 
+          <!-- ─── Main content ──────────────────────────────────── -->
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="imports">Imports and refactor boundary</button>
-                <button class="file-tab-button" data-tab-target="bridge">Policy output bridge</button>
-                <button class="file-tab-button" data-tab-target="wiring">Controller/policy/grasp wiring</button>
-                <button class="file-tab-button" data-tab-target="loop">Simulation loop</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="imports">
-                <section class="code-section">
-                  <h2>Imports and refactor boundary</h2>
-                  <p>
-                    run.py is intentionally thin. Its imports show what moved out into common helpers and
-                    policy modules so the entry point remains a small orchestration layer.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>import argparse
+            <!-- 1. Imports -->
+            <section class="code-section" id="imports">
+              <h3>Imports and module boundary</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Import statements define the refactor boundary. Every heavyweight concern (controller logic, grasp backend, ONNX loading, scene reset, policies) has been extracted into a separate module. run.py only imports — it does not reimplement.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>No runtime I/O at import time. <code>SCRIPT_DIR</code> anchors all relative paths so the script works regardless of working directory.</p>
+                <h4>Invariants</h4>
+                <p>All paths are constructed relative to <code>SCRIPT_DIR = Path(__file__).resolve().parent</code>, not the CWD. This keeps the script relocatable.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>mujoco</code> or <code>onnxruntime</code> is not installed the import fails immediately with a clear <code>ModuleNotFoundError</code>. <code>cv2</code> (opencv) is deferred and caught later — camera windows are optional.</p>
+                <h4>Why it matters</h4>
+                <p>The import list is the dependency manifest. Seeing it tells you exactly what subsystems are active in a given run mode.</p>
+              </div>
+              <div class="code-block"><pre><code>import argparse
 import json
 import time
 from pathlib import Path
@@ -99,84 +115,567 @@ from common.scene import CameraRenderer, reset_robot
 from policies.fsm import FSMPolicy
 from policies.keyboard import KeyboardPolicy
 
-SCRIPT_DIR = Path(__file__).resolve().parent</code></pre>
-                  </div>
-                  <p class="small">
-                    Viewer setup, camera UI, and timing helpers live here too, but are intentionally kept
-                    out of the code snippets.
-                  </p>
-                </section>
-              </div>
+SCRIPT_DIR = Path(__file__).resolve().parent</code></pre></div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="bridge">
-                <section class="code-section">
-                  <h2>Policy output bridge</h2>
-                  <p>
-                    The bridge keeps PolicyOutput immutable and feeds the controller with a small command
-                    packet. This keeps run.py from reaching into FSM internals.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>def _apply_policy_output(ctrl, out) -> None:
+            <!-- 2. set_armature -->
+            <section class="code-section" id="armature">
+              <h3>set_armature() — per-joint rotational inertia</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Writes motor armature values (effective rotor inertia) into the MuJoCo model after loading. This matches the G1's physical actuator specs and is required for the pre-trained ONNX policies to produce stable motion — the policies were trained with these exact inertia values.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>In:</strong> <code>model</code> (MjModel), <code>joint_names</code> list in the same order as <code>model_config.json</code>. <strong>Out:</strong> mutates <code>model.dof_armature[6+i]</code> for each joint (DOF 0–5 are the freejoint of the pelvis, DOFs 6+ are the 29 body joints).</p>
+                <h4>Invariants</h4>
+                <p>Armature must be set <em>before</em> any simulation step. The mapping <code>dof = 6 + i</code> assumes joint ordering matches <code>joint_names</code> exactly — a reordering would silently assign wrong inertia.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>joint_names</code> is missing an entry, the corresponding DOF gets the default <code>ARM_5020</code> value (the fallback <code>else</code> branch). No crash, but potentially wrong physics for that joint.</p>
+                <h4>Why it matters</h4>
+                <p>Without matching armature the ONNX policies produce unstable oscillation. This was one of the first things audited in Step 1. Armature is also duplicated in <code>test_fsm_approach.py</code> so headless tests run with identical physics.</p>
+              </div>
+              <div class="code-block"><pre><code>def set_armature(model, joint_names):
+  ARM_5020 = 0.00360972
+  ARM_7520_14 = 0.01017752
+  ARM_7520_22 = 0.02510192
+  ARM_4010 = 0.00425000
+  ARM_2x5020 = 0.00721945
+
+  for i, name in enumerate(joint_names):
+    dof = 6 + i
+    if "elbow" in name or "shoulder" in name or "wrist_roll" in name:
+      model.dof_armature[dof] = ARM_5020
+    elif "hip_pitch" in name or "hip_yaw" in name or name == "waist_yaw_joint":
+      model.dof_armature[dof] = ARM_7520_14
+    elif "hip_roll" in name or "knee" in name:
+      model.dof_armature[dof] = ARM_7520_22
+    elif "wrist_pitch" in name or "wrist_yaw" in name:
+      model.dof_armature[dof] = ARM_4010
+    elif "ankle" in name or name in ("waist_pitch_joint", "waist_roll_joint"):
+      model.dof_armature[dof] = ARM_2x5020
+    else:
+      model.dof_armature[dof] = ARM_5020</code></pre></div>
+            </section>
+
+            <!-- 3. Policy output bridge -->
+            <section class="code-section" id="bridge">
+              <h3>_apply_policy_output() — command bridge</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>One-way bridge from a <code>PolicyOutput</code> value object into the mutable controller state fields that <code>ctrl.step()</code> reads. This keeps <code>PolicyOutput</code> immutable and prevents run.py from reaching into FSM internals.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>In:</strong> <code>ctrl</code> (WalkerReacherController), <code>out</code> (PolicyOutput namedtuple). <strong>Out:</strong> mutates <code>ctrl.lin_vel_x/y</code>, <code>ctrl.ang_vel_z</code>, <code>ctrl.reach_target</code>, <code>ctrl.reach_active</code>, <code>ctrl.grip_closed</code>.</p>
+                <h4>Invariants</h4>
+                <p>Called once per control tick, before <code>ctrl.step()</code>. The FSMPolicy also does this internally via the same assignment pattern (the run.py call is for the keyboard path where FSMPolicy is not used).</p>
+                <h4>Failure modes</h4>
+                <p>None — pure field assignment. A shape mismatch in <code>reach_target</code> would raise a NumPy broadcast error at the <code>[:]</code> assignment.</p>
+                <h4>Why it matters</h4>
+                <p>Decouples the policy interface (what to command) from the controller state format (how to command it). Adding a new policy type only requires producing a valid <code>PolicyOutput</code>; the bridge handles the rest.</p>
+              </div>
+              <div class="code-block"><pre><code>def _apply_policy_output(ctrl, out) -> None:
   """Write a PolicyOutput into controller state before ctrl.step() runs."""
   ctrl.lin_vel_x, ctrl.lin_vel_y, ctrl.ang_vel_z = out.walk_cmd
   ctrl.reach_target[:] = out.reach_target
   ctrl.reach_active    = out.reach_active
-  ctrl.grip_closed     = out.grip_closed</code></pre>
-                  </div>
-                </section>
-              </div>
+  ctrl.grip_closed     = out.grip_closed</code></pre></div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="wiring">
-                <section class="code-section">
-                  <h2>Controller/policy/grasp wiring</h2>
-                  <p>
-                    The runtime loads ONNX policies, builds the controller, and chooses between manual
-                    and autonomous policies. KinematicAttachment is only constructed for the FSM path.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>ctrl = WalkerReacherController(
-    model, data, walker, croucher, rotator, config,
-    right_reacher=right_reacher,
+            <!-- 4. Scene & config loading -->
+            <section class="code-section" id="scene-load">
+              <h3>Scene and config loading</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Parse CLI args, load <code>model_config.json</code>, construct the MuJoCo model and data objects, apply armature, and reset to the spawn pose. This is all done before any simulation step runs.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>In:</strong> CLI args (<code>--policy</code>, <code>--no-cameras</code>, <code>--cam-fps</code>); <code>model_config.json</code> on disk; <code>scene.xml</code> (which includes <code>g1.xml</code>). <strong>Out:</strong> initialized <code>model</code>, <code>data</code>, <code>config</code>, <code>joint_names</code>.</p>
+                <h4>Invariants</h4>
+                <p><code>model.opt.timestep = 0.005</code> (200 Hz) must be set <em>after</em> model load because the scene.xml may not override the default. The training timestep is 0.005 s — this must match or policy outputs will be wrong. <code>reset_data=False</code> on the first call preserves any XML-defined initial state already set by <code>mj_resetData</code> inside model creation.</p>
+                <h4>Failure modes</h4>
+                <p>Missing <code>scene.xml</code> or <code>model_config.json</code> raises immediately. A malformed XML triggers a MuJoCo compile error with a descriptive message.</p>
+                <h4>Why it matters</h4>
+                <p>The 200 Hz timestep with 4× decimation gives 50 Hz control, matching the training environment. Any deviation breaks the policy because the observation velocities are in per-second units but computed over the wrong window.</p>
+              </div>
+              <div class="code-block"><pre><code>parser = argparse.ArgumentParser(description="G1 Table Red Block — MuJoCo standalone")
+parser.add_argument("--no-cameras", action="store_true", help="Disable camera windows")
+parser.add_argument("--cam-fps", type=int, default=10, help="Camera render FPS (default: 10)")
+parser.add_argument(
+  "--policy",
+  choices=["keyboard", "fsm"],
+  default="keyboard",
+  help="Control policy to use (default: keyboard)",
 )
+args = parser.parse_args()
+
+# Load config
+config_path = SCRIPT_DIR / "model_config.json"
+with open(config_path) as f:
+  config = json.load(f)
+joint_names = config["joint_names"]
+
+# Load scene
+xml_path = SCRIPT_DIR / "scene.xml"
+print(f"Loading scene: {xml_path}")
+model = mujoco.MjModel.from_xml_path(str(xml_path))
+model.opt.timestep = 0.005  # 200 Hz — must match training
+set_armature(model, joint_names)
+
+data = mujoco.MjData(model)
+
+# Init robot pose — spawn behind the table, facing it
+reset_robot(model, data, config, joint_names, reset_data=False)</code></pre></div>
+            </section>
+
+            <!-- 5. Policy/controller/grasp wiring -->
+            <section class="code-section" id="policy-wiring">
+              <h3>Policy / controller / grasp wiring</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Instantiate ONNX wrappers, build the controller, then branch on <code>--policy</code> to create either the autonomous FSM path (with <code>KinematicAttachment</code>) or the manual keyboard path.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>In:</strong> loaded <code>model</code>, <code>data</code>, <code>config</code>. <strong>Out:</strong> <code>ctrl</code>, <code>policy</code>, <code>grasp_backend</code> (None for keyboard mode).</p>
+                <h4>Invariants</h4>
+                <p><code>KinematicAttachment</code> needs the palm site ID from the controller (<code>ctrl.right_palm_site_id</code>) so the controller must be created first. The grasp backend holds references to <code>model</code> and <code>data</code> — these must be the same objects used everywhere.</p>
+                <h4>Failure modes</h4>
+                <p>If <code>right_reacher.onnx</code> is missing the <code>if rr_path.exists()</code> guard prevents a crash — <code>right_reacher</code> is None and the controller skips the reacher step. The arm will hang at default pose.</p>
+                <h4>Why it matters</h4>
+                <p>The two-path structure (keyboard vs FSM) means the manual path remains runnable at all times for regression testing. The grasp backend is only wired when the FSM is active, keeping physics clean during keyboard exploration.</p>
+              </div>
+              <div class="code-block"><pre><code>print("Loading ONNX policies...")
+walker = ONNXPolicy(str(SCRIPT_DIR / "walker.onnx"))
+croucher = ONNXPolicy(str(SCRIPT_DIR / "croucher.onnx"))
+rotator = ONNXPolicy(str(SCRIPT_DIR / "rotator.onnx"))
+
+right_reacher = None
+rr_path = SCRIPT_DIR / "right_reacher.onnx"
+if rr_path.exists():
+  right_reacher = ONNXPolicy(str(rr_path))
+  print("  Right reacher loaded.")
+
+# Create controller
+ctrl = WalkerReacherController(model, data, walker, croucher, rotator, config,
+                               right_reacher=right_reacher)
 
 grasp_backend = None
 if args.policy == "fsm":
-    rb_body_id = mujoco.mj_name2id(
-        model, mujoco.mjtObj.mjOBJ_BODY, "red_block"
-    )
-    grasp_backend = KinematicAttachment(
-        model, data, ctrl.right_palm_site_id, rb_body_id
-    )
-    policy = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+  rb_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_block")
+  grasp_backend = KinematicAttachment(model, data, ctrl.right_palm_site_id, rb_body_id)
+  policy = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+  print("Policy: FSM (autonomous) + KinematicAttachment grasp backend")
 else:
-    policy = KeyboardPolicy(ctrl)</code></pre>
-                  </div>
-                </section>
+  policy = KeyboardPolicy(ctrl)
+  print("Policy: keyboard (manual)")</code></pre></div>
+            </section>
+
+            <!-- 6. ONNX warmup -->
+            <section class="code-section" id="warmup">
+              <h3>ONNX warmup</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Run a dummy forward pass through each ONNX model before the real-time loop starts. ONNX Runtime performs JIT compilation on the first call; without warmup this latency spike appears inside the time-critical control loop.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>Dummy zero tensors of the correct input dimension: 99-D for walker/rotator, 101-D for croucher, 36-D for reacher. Outputs are discarded.</p>
+                <h4>Invariants</h4>
+                <p>Must be called after policy objects exist but before the viewer loop starts (viewer uses real-time deadlines). Dimensions must match what the ONNX was trained with — smoke_env.py validates these at startup.</p>
+                <h4>Failure modes</h4>
+                <p>Wrong input dimension raises an ONNX Runtime shape error immediately. This would indicate a model file mismatch.</p>
+                <h4>Why it matters</h4>
+                <p>Without warmup the first control tick incurs 200–500ms of JIT latency. In a real-time viewer loop this causes the robot to receive a stale action for the first several frames and fall.</p>
               </div>
+              <div class="code-block"><pre><code>print("Warming up policies...")
+_dummy99  = np.zeros((1, 99),  dtype=np.float32)
+_dummy101 = np.zeros((1, 101), dtype=np.float32)
+_dummy36  = np.zeros((1, 36),  dtype=np.float32)
+walker(_dummy99)
+croucher(_dummy101)
+rotator(_dummy99)
+if right_reacher:
+  right_reacher(_dummy36)
+print("  Policies warm.")</code></pre></div>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="loop">
-                <section class="code-section">
-                  <h2>Simulation loop</h2>
-                  <p>
-                    The loop is always policy → controller → PD control → MuJoCo step → grasp tick. Viewer
-                    timing and camera updates are present but not shown here to keep the focus on the core
-                    runtime sequence.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>out = policy.step()
-_apply_policy_output(ctrl, out)
-
-target_pos = ctrl.step()
-ctrl.apply_pd_control(target_pos)
-
-mujoco.mj_step(model, data)
-
-if grasp_backend is not None:
-    grasp_backend.tick(ctrl.grip_closed)</code></pre>
-                  </div>
-                </section>
+            <!-- 7. Camera renderer setup -->
+            <section class="code-section" id="cameras">
+              <h3>Camera renderer setup</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Optionally initialize an offscreen OpenCV-based renderer for the head and wrist cameras. Camera rendering is intentionally optional and rate-limited to avoid slowing down the physics loop.</p>
+                <h4>Inputs / Outputs</h4>
+                <p>Creates a <code>CameraRenderer(model, data, 320, 240)</code> if <code>--no-cameras</code> is not set and <code>cv2</code> is importable. Calls <code>render("head_cam")</code> and <code>render("wrist_cam")</code> once to compile shaders before the loop starts.</p>
+                <h4>Invariants</h4>
+                <p>Camera rendering is gated at <code>cam_interval = 1.0 / cam_fps</code> (default 10 fps) to keep overhead low. The physics loop still runs at 200 Hz regardless.</p>
+                <h4>Failure modes</h4>
+                <p>Missing <code>opencv-python</code> is caught and both camera windows are silently disabled. Any renderer initialization failure is also caught and falls back gracefully — physics continues without camera output.</p>
+                <h4>Why it matters</h4>
+                <p>The cameras exist because the challenge brief asks about vision-based approaches. Even when not used for control, having the camera feed visible helps debug whether the robot is looking at the right thing.</p>
               </div>
-            </div>
+              <div class="code-block"><pre><code>cam_renderer = None
+cv2 = None
+show_head_cam = not args.no_cameras
+show_wrist_cam = not args.no_cameras
+if not args.no_cameras:
+  try:
+    import cv2 as _cv2
+    cv2 = _cv2
+    cam_renderer = CameraRenderer(model, data, 320, 240)
+    cam_renderer.render("head_cam")
+    cam_renderer.render("wrist_cam")
+    print("  Camera renderer ready (head_cam, wrist_cam).")
+  except ImportError:
+    print("  [WARN] opencv-python not installed — camera windows disabled.")
+    show_head_cam = show_wrist_cam = False
+  except Exception as e:
+    print(f"  [WARN] Camera renderer init failed: {e}")
+    show_head_cam = show_wrist_cam = False</code></pre></div>
+            </section>
+
+            <!-- 8. Simulation loop -->
+            <section class="code-section" id="sim-loop">
+              <h3>Simulation loop — real-time control with decimation</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>The core loop advances physics at 200 Hz wall-clock time while only calling the policy at every 4th step (50 Hz). A catch-up limiter prevents the loop from trying to compensate for large wall-clock gaps (e.g., pausing the viewer).</p>
+                <h4>Inputs / Outputs</h4>
+                <p>Loop variables: <code>sim_time</code> (simulated time in seconds), <code>control_step</code> (physics steps), <code>target_pos</code> (last computed joint targets). The viewer <code>v.sync()</code> call updates the 3D display.</p>
+                <h4>Invariants</h4>
+                <p>
+                  <strong>Policy order each control tick:</strong> <code>policy.step()</code> → <code>_apply_policy_output()</code> → <code>ctrl.step()</code> (computes joint targets) → <code>ctrl.apply_pd_control()</code> → <code>mujoco.mj_step()</code> → <code>grasp_backend.tick()</code>.<br>
+                  <strong>Decimation:</strong> <code>ctrl.step()</code> is called every 4 physics steps. <code>apply_pd_control()</code> and <code>mj_step()</code> run every step.<br>
+                  <strong>Grasp backend</strong> is called <em>after</em> every physics step so the cylinder teleportation happens before the next integration step integrates any velocity drift.
+                </p>
+                <h4>Failure modes</h4>
+                <p>If wall time gets 50ms ahead of sim time the catch-up is capped at <code>max_catchup = 0.05</code> seconds. Without this cap, a viewer pause or slow frame causes the loop to sprint through many physics steps at once, producing non-real-time behavior.</p>
+                <h4>Why it matters</h4>
+                <p>This is the central timing contract. Every design decision in the controller and FSM assumes 50 Hz control ticks (200 Hz physics ÷ 4). Any change to decimation must be propagated to all timeout constants defined in fsm_core.py.</p>
+              </div>
+              <div class="code-block"><pre><code>with viewer.launch_passive(model, data, key_callback=on_key) as v:
+  t0 = time.time()
+  while v.is_running():
+    # Handle spacebar reset
+    if state["reset"]:
+      reset_robot(model, data, config, joint_names)
+      ctrl.last_action[:] = 0
+      ctrl.last_arm_action[:] = 0
+      ctrl.lin_vel_x = ctrl.lin_vel_y = ctrl.ang_vel_z = 0.0
+      ctrl.reach_active = False
+      ctrl.last_arm_target = None
+      ctrl.frozen_arm_pos = None
+      ctrl.grip_closed = False
+      ctrl.input_mode = "walk"
+      target_pos = ctrl.default_joint_pos.copy()
+      state["reset"] = False
+      print("[RESET] Robot reset → WALK mode")
+
+    # Step physics in real time
+    wall = time.time() - t0
+    max_catchup = 0.05
+    if wall - sim_time &gt; max_catchup:
+      sim_time = wall - max_catchup
+    while sim_time &lt; wall:
+      if control_step % decimation == 0:
+        _apply_policy_output(ctrl, policy.step())
+        target_pos = ctrl.step()
+      ctrl.apply_pd_control(target_pos)
+      mujoco.mj_step(model, data)
+      if grasp_backend is not None:
+        grasp_backend.tick(ctrl.grip_closed)
+      control_step += 1
+      sim_time += model.opt.timestep
+
+    v.sync()
+
+    # Render camera views at lower FPS
+    if cam_renderer and cv2 and (show_head_cam or show_wrist_cam):
+      now = time.time()
+      if now - last_cam_render &gt;= cam_interval:
+        last_cam_render = now
+        if show_head_cam:
+          img = cam_renderer.render("head_cam")
+          cv2.imshow("Head Camera", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        if show_wrist_cam:
+          img = cam_renderer.render("wrist_cam")
+          cv2.imshow("Wrist Camera", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)</code></pre></div>
+            </section>
+
+            <!-- Full file appendix -->
+            <section class="code-section" id="full-file">
+              <h3>Full source file</h3>
+              <p>Complete HTML-escaped source of <code>run.py</code>. Identical to the repo; nothing paraphrased or omitted.</p>
+              <details class="code-details">
+                <summary>
+                  <span>Expand full run.py</span>
+                  <code>~285 lines</code>
+                </summary>
+                <div class="code-block"><pre><code>#!/usr/bin/env python3
+"""G1 Table Red Block — standalone MuJoCo scene with walker + reacher policies.
+
+Controls (press keys in the GLFW viewer window):
+  Arrow Keys   : Walk forward/back, strafe left/right
+  ; / '        : Turn left / right
+  ,            : Toggle crouch mode
+  [ / ]        : Height down / up
+  \\           : Stop (zero velocity)
+  /            : Toggle arm freeze
+  .            : Toggle reach mode (right arm)
+  Space        : Reset robot + zero velocity
+  C            : Cycle camera view in main window
+  1            : Toggle head camera window
+  2            : Toggle wrist camera window
+
+Prerequisites:
+  pip install mujoco onnxruntime numpy opencv-python
+
+Usage:
+  python run.py
+  python run.py --no-cameras    # Disable camera windows (faster)
+"""
+
+import argparse
+import json
+import time
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+from common.controller import WalkerReacherController
+from common.grasp import KinematicAttachment
+from common.onnx_policy import ONNXPolicy
+from common.scene import CameraRenderer, reset_robot
+from policies.fsm import FSMPolicy
+from policies.keyboard import KeyboardPolicy
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+# --------------------------------------------------------------------------- #
+# Armature setup
+# --------------------------------------------------------------------------- #
+def set_armature(model, joint_names):
+  ARM_5020 = 0.00360972
+  ARM_7520_14 = 0.01017752
+  ARM_7520_22 = 0.02510192
+  ARM_4010 = 0.00425000
+  ARM_2x5020 = 0.00721945
+
+  for i, name in enumerate(joint_names):
+    dof = 6 + i
+    if "elbow" in name or "shoulder" in name or "wrist_roll" in name:
+      model.dof_armature[dof] = ARM_5020
+    elif "hip_pitch" in name or "hip_yaw" in name or name == "waist_yaw_joint":
+      model.dof_armature[dof] = ARM_7520_14
+    elif "hip_roll" in name or "knee" in name:
+      model.dof_armature[dof] = ARM_7520_22
+    elif "wrist_pitch" in name or "wrist_yaw" in name:
+      model.dof_armature[dof] = ARM_4010
+    elif "ankle" in name or name in ("waist_pitch_joint", "waist_roll_joint"):
+      model.dof_armature[dof] = ARM_2x5020
+    else:
+      model.dof_armature[dof] = ARM_5020
+
+
+# --------------------------------------------------------------------------- #
+# Policy helpers
+# --------------------------------------------------------------------------- #
+def _apply_policy_output(ctrl, out) -> None:
+  """Write a PolicyOutput into controller state before ctrl.step() runs."""
+  ctrl.lin_vel_x, ctrl.lin_vel_y, ctrl.ang_vel_z = out.walk_cmd
+  ctrl.reach_target[:] = out.reach_target
+  ctrl.reach_active    = out.reach_active
+  ctrl.grip_closed     = out.grip_closed
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+def main():
+  parser = argparse.ArgumentParser(description="G1 Table Red Block — MuJoCo standalone")
+  parser.add_argument("--no-cameras", action="store_true", help="Disable camera windows")
+  parser.add_argument("--cam-fps", type=int, default=10, help="Camera render FPS (default: 10)")
+  parser.add_argument(
+    "--policy",
+    choices=["keyboard", "fsm"],
+    default="keyboard",
+    help="Control policy to use (default: keyboard)",
+  )
+  args = parser.parse_args()
+
+  # Load config
+  config_path = SCRIPT_DIR / "model_config.json"
+  with open(config_path) as f:
+    config = json.load(f)
+  joint_names = config["joint_names"]
+
+  # Load scene
+  xml_path = SCRIPT_DIR / "scene.xml"
+  print(f"Loading scene: {xml_path}")
+  model = mujoco.MjModel.from_xml_path(str(xml_path))
+  model.opt.timestep = 0.005  # 200 Hz — must match training
+  set_armature(model, joint_names)
+
+  data = mujoco.MjData(model)
+
+  # Init robot pose — spawn behind the table, facing it
+  reset_robot(model, data, config, joint_names, reset_data=False)
+
+  # Load policies
+  print("Loading ONNX policies...")
+  walker = ONNXPolicy(str(SCRIPT_DIR / "walker.onnx"))
+  croucher = ONNXPolicy(str(SCRIPT_DIR / "croucher.onnx"))
+  rotator = ONNXPolicy(str(SCRIPT_DIR / "rotator.onnx"))
+
+  right_reacher = None
+  rr_path = SCRIPT_DIR / "right_reacher.onnx"
+  if rr_path.exists():
+    right_reacher = ONNXPolicy(str(rr_path))
+    print("  Right reacher loaded.")
+
+  # Create controller
+  ctrl = WalkerReacherController(model, data, walker, croucher, rotator, config,
+                                 right_reacher=right_reacher)
+
+  grasp_backend = None
+  if args.policy == "fsm":
+    rb_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_block")
+    grasp_backend = KinematicAttachment(model, data, ctrl.right_palm_site_id, rb_body_id)
+    policy = FSMPolicy(ctrl, grasp_backend=grasp_backend)
+    print("Policy: FSM (autonomous) + KinematicAttachment grasp backend")
+  else:
+    policy = KeyboardPolicy(ctrl)
+    print("Policy: keyboard (manual)")
+
+  # Warm up ONNX models (first call triggers JIT compilation)
+  print("Warming up policies...")
+  _dummy99 = np.zeros((1, 99), dtype=np.float32)
+  _dummy101 = np.zeros((1, 101), dtype=np.float32)
+  _dummy36 = np.zeros((1, 36), dtype=np.float32)
+  walker(_dummy99)
+  croucher(_dummy101)
+  rotator(_dummy99)
+  if right_reacher:
+    right_reacher(_dummy36)
+  print("  Policies warm.")
+
+  # Camera renderer (offscreen, for head/wrist cam windows)
+  cam_renderer = None
+  cv2 = None
+  show_head_cam = not args.no_cameras
+  show_wrist_cam = not args.no_cameras
+  if not args.no_cameras:
+    try:
+      import cv2 as _cv2
+      cv2 = _cv2
+      cam_renderer = CameraRenderer(model, data, 320, 240)
+      cam_renderer.render("head_cam")
+      cam_renderer.render("wrist_cam")
+      print("  Camera renderer ready (head_cam, wrist_cam).")
+    except ImportError:
+      print("  [WARN] opencv-python not installed — camera windows disabled.")
+      print("  Install with: pip install opencv-python")
+      show_head_cam = show_wrist_cam = False
+    except Exception as e:
+      print(f"  [WARN] Camera renderer init failed: {e}")
+      show_head_cam = show_wrist_cam = False
+
+  # Print controls
+  print(f"\n{'='*50}")
+  print("G1 TABLE RED BLOCK — MuJoCo Standalone")
+  print(f"{'='*50}")
+  print("  .          Toggle WALK / REACH mode")
+  print("  --- WALK mode ---")
+  print("  Arrows     Walk fwd/back, strafe L/R")
+  print("  ; / '      Turn left / right")
+  print("  \\          Stop")
+  print("  --- REACH mode ---")
+  print("  Up/Down    Reach forward / backward")
+  print("  Left/Right Reach left / right")
+  print("  ; / '      Reach up / down")
+  print("  \\          Reset reach target")
+  print("  --- Always ---")
+  print("  Space      Reset robot")
+  print(f"{'='*50}\n")
+
+  # Mutable state for key callback
+  state = {"reset": False}
+
+  def on_key(keycode: int) -&gt; None:
+    if keycode == 32:  # Space
+      state["reset"] = True
+    else:
+      policy.handle_key(keycode)
+
+  # ------------------------------------------------------------------- #
+  # Simulation loop using launch_passive (MuJoCo's built-in viewer)
+  # ------------------------------------------------------------------- #
+  from mujoco import viewer
+
+  decimation = 4
+  control_step = 0
+  target_pos = ctrl.default_joint_pos.copy()
+  sim_time = 0.0
+  last_cam_render = 0.0
+  cam_interval = 1.0 / args.cam_fps
+
+  print("Launching MuJoCo viewer...")
+
+  with viewer.launch_passive(model, data, key_callback=on_key) as v:
+    t0 = time.time()
+    while v.is_running():
+      if state["reset"]:
+        reset_robot(model, data, config, joint_names)
+        ctrl.last_action[:] = 0
+        ctrl.last_arm_action[:] = 0
+        ctrl.lin_vel_x = ctrl.lin_vel_y = ctrl.ang_vel_z = 0.0
+        ctrl.reach_active = False
+        ctrl.last_arm_target = None
+        ctrl.frozen_arm_pos = None
+        ctrl.grip_closed = False
+        ctrl.input_mode = "walk"
+        target_pos = ctrl.default_joint_pos.copy()
+        state["reset"] = False
+        print("[RESET] Robot reset → WALK mode")
+
+      wall = time.time() - t0
+      max_catchup = 0.05
+      if wall - sim_time &gt; max_catchup:
+        sim_time = wall - max_catchup
+      while sim_time &lt; wall:
+        if control_step % decimation == 0:
+          _apply_policy_output(ctrl, policy.step())
+          target_pos = ctrl.step()
+        ctrl.apply_pd_control(target_pos)
+        mujoco.mj_step(model, data)
+        if grasp_backend is not None:
+          grasp_backend.tick(ctrl.grip_closed)
+        control_step += 1
+        sim_time += model.opt.timestep
+
+      v.sync()
+
+      if cam_renderer and cv2 and (show_head_cam or show_wrist_cam):
+        now = time.time()
+        if now - last_cam_render &gt;= cam_interval:
+          last_cam_render = now
+          if show_head_cam:
+            img = cam_renderer.render("head_cam")
+            cv2.imshow("Head Camera", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+          if show_wrist_cam:
+            img = cam_renderer.render("wrist_cam")
+            cv2.imshow("Wrist Camera", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+          cv2.waitKey(1)
+
+  if cv2:
+    try:
+      cv2.destroyAllWindows()
+    except Exception:
+      pass
+  print("Done.")
+
+
+if __name__ == "__main__":
+  main()</code></pre></div>
+              </details>
+            </section>
+
           </div>
         </div>
       </main>

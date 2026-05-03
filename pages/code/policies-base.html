@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>policies/base.py — Policy Contract | Lucky Robots G1 Pick-and-Place</title>
+    <title>policies/base.py — Policy Interface and Data Contract | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Implementation</p>
-          <h1>policies/base.py — Policy Contract</h1>
-          <p class="subtitle">Defines the command packet and abstract interface shared by all policies.</p>
+          <p class="eyebrow">Implementation · policies/base.py</p>
+          <h1>policies/base.py — Policy Interface and Data Contract</h1>
+          <p class="subtitle">Defines the shared vocabulary between every policy and the controller: the <code>PolicyOutput</code> dataclass encoding the four command fields, and the <code>BasePolicy</code> ABC that all policies implement.</p>
         </div>
       </header>
 
@@ -40,10 +40,10 @@
         </div>
 
         <div class="code-subnav">
-          <a href="../implementation-deep-dive.html">Back to Implementation Overview</a>
+          <a href="../implementation-deep-dive.html">↩ Back to Implementation Overview</a>
           <div class="next-prev-nav">
-            <a href="./common-scene.html">Previous file</a>
-            <a href="./policies-keyboard.html">Next file</a>
+            <a href="./common-scene.html">← common/scene.py</a>
+            <a href="./policies-keyboard.html">policies/keyboard.py →</a>
           </div>
         </div>
 
@@ -52,32 +52,118 @@
             <div class="code-section">
               <h2>File overview</h2>
               <p><strong>Path:</strong> policies/base.py</p>
-              <p>A lightweight contract that keeps policies decoupled from controller internals.</p>
+              <p><strong>Lines:</strong> ~41</p>
+              <p>The contract layer. <code>FSMPolicy</code>, <code>KeyboardPolicy</code>, and any future policy are guaranteed to emit a <code>PolicyOutput</code> from <code>step()</code>. The controller reads four specific fields — no knowledge of which policy is running.</p>
             </div>
-            <div class="code-section">
-              <h2>Contract principles</h2>
-              <ul class="bullet-list">
-                <li>Outputs are high-level commands, not actuator targets.</li>
-                <li>Frozen dataclass protects policy output immutability.</li>
-                <li>Keyboard and FSM policies share the same interface.</li>
+            <nav class="code-section">
+              <h2>Contents</h2>
+              <ul class="toc-list">
+                <li><a href="#chunk-types">Type aliases</a></li>
+                <li><a href="#chunk-output">PolicyOutput dataclass</a></li>
+                <li><a href="#chunk-base">BasePolicy ABC</a></li>
+                <li><a href="#full-file">Full file appendix</a></li>
               </ul>
-            </div>
+              <a href="#full-file" class="jump-link">Jump to full file ↓</a>
+            </nav>
           </aside>
 
           <div class="code-main">
-            <div class="file-tabs">
-              <div class="file-tab-buttons">
-                <button class="file-tab-button" data-tab-target="output">PolicyOutput</button>
-                <button class="file-tab-button" data-tab-target="base">BasePolicy</button>
-                <button class="file-tab-button" data-tab-target="contract">Why this contract matters</button>
-              </div>
 
-              <div class="file-tab-panel" data-tab-panel="output">
-                <section class="code-section">
-                  <h2>PolicyOutput</h2>
-                  <p>The command packet keeps walking, reaching, and grip intent explicit.</p>
-                  <div class="code-block">
-                    <pre><code>WalkCommand = tuple[float, float, float]
+            <!-- ─── Chunk 1: Type aliases ──────────────────────────────────── -->
+            <section class="code-section" id="chunk-types">
+              <h3>Type aliases</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Give names to the two most common tuple types used in the policy layer — a 3-tuple walk command and a 3-tuple reach target. These aliases make function signatures self-documenting without requiring a full class.</p>
+                <h4>Why it matters</h4>
+                <p>At 3 elements, a raw <code>tuple[float, float, float]</code> is ambiguous — it could be a position, a velocity command, or a quaternion component. Naming it <code>WalkCommand</code> or <code>ReachTarget</code> communicates semantic intent in type signatures.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>"""Policy interfaces and data contracts for high-level control."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+WalkCommand = tuple[float, float, float]
+ReachTarget = tuple[float, float, float]</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 2: PolicyOutput ─────────────────────────────────── -->
+            <section class="code-section" id="chunk-output">
+              <h3>PolicyOutput dataclass</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>An immutable value object carrying the four command fields emitted each tick by any policy. Using <code>frozen=True</code> prevents accidental mutation after construction — policies must emit a new <code>PolicyOutput</code> each tick, not mutate an existing one.</p>
+                <h4>Inputs / Outputs</h4>
+                <p><strong>walk_cmd:</strong> <code>(lin_vel_x, lin_vel_y, ang_vel_z)</code> — locomotion command in m/s, m/s, rad/s.<br>
+                <strong>reach_target:</strong> <code>(x, y, z)</code> — target position in pelvis frame (metres).<br>
+                <strong>reach_active:</strong> <code>bool</code> — whether the right-arm reacher ONNX should be applied this tick. Defaults <code>False</code> so old keyboard policy tests don't need to set it.<br>
+                <strong>grip_closed:</strong> <code>bool</code> — whether the right-hand grip actuator should be commanded closed.</p>
+                <h4>Invariants</h4>
+                <p><code>reach_active=False</code> default is a backward-compatibility choice from Step 5: the keyboard policy was introduced before reaching was implemented, and it should never activate the reacher. All existing keyboard policy tests remain valid without modification.</p>
+                <h4>Why it matters</h4>
+                <p>By making <code>PolicyOutput</code> frozen and explicitly typed, the type checker catches any policy that forgets to set a field, and any code that tries to modify a returned command. The FSM's <code>_close_grip_command</code> must construct a new <code>PolicyOutput</code> to override <code>grip_closed</code> — it cannot mutate the original.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>@dataclass(frozen=True)
+class PolicyOutput:
+  """High-level command output from a policy step.
+
+  walk_cmd: (lin_vel_x, lin_vel_y, ang_vel_z)
+  reach_target: (x, y, z) target coordinates in pelvis frame
+  reach_active: True to run the right-arm reacher ONNX overlay
+  grip_closed: True when the right-hand grip should be closed
+  """
+
+  walk_cmd: WalkCommand
+  reach_target: ReachTarget
+  grip_closed: bool
+  reach_active: bool = False</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Chunk 3: BasePolicy ───────────────────────────────────── -->
+            <section class="code-section" id="chunk-base">
+              <h3>BasePolicy ABC</h3>
+              <div class="code-deep-notes">
+                <h4>Intent</h4>
+                <p>Define the minimal interface for all policies: an optional <code>handle_key</code> hook (for interactive policies like <code>KeyboardPolicy</code>) and an abstract <code>step()</code> method. The simulation loop calls <code>policy.step()</code> without knowing which concrete policy is running.</p>
+                <h4>Invariants</h4>
+                <p><code>handle_key</code> has a default no-op implementation — autonomous policies (<code>FSMPolicy</code>) simply inherit it and never override it. The simulation loop can call <code>policy.handle_key(keycode)</code> unconditionally without checking the policy type.</p>
+                <h4>Why it matters</h4>
+                <p>The ABC pattern here is the entire reason <code>run.py</code> can support both <code>--policy keyboard</code> and <code>--policy fsm</code> with a single code path. The simulation loop never imports <code>FSMPolicy</code> or <code>KeyboardPolicy</code> — it only calls the <code>BasePolicy</code> interface.</p>
+              </div>
+              <div class="code-block">
+                <pre><code>class BasePolicy(ABC):
+  """Abstract interface for policies that emit high-level commands."""
+
+  def handle_key(self, keycode: int) -&gt; None:
+    """Optional keyboard hook for interactive policies."""
+    pass
+
+  @abstractmethod
+  def step(self) -&gt; PolicyOutput:
+    """Return the latest policy output."""</code></pre>
+              </div>
+            </section>
+
+            <!-- ─── Full file appendix ─────────────────────────────────────── -->
+            <section class="code-section" id="full-file">
+              <h3>Full file — policies/base.py</h3>
+              <details class="code-details">
+                <summary>Expand full source (~41 lines)</summary>
+                <div class="code-block">
+                  <pre><code>"""Policy interfaces and data contracts for high-level control."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+WalkCommand = tuple[float, float, float]
 ReachTarget = tuple[float, float, float]
 
 
@@ -94,47 +180,31 @@ class PolicyOutput:
   walk_cmd: WalkCommand
   reach_target: ReachTarget
   grip_closed: bool
-  reach_active: bool = False</code></pre>
-                  </div>
-                </section>
-              </div>
+  reach_active: bool = False
 
-              <div class="file-tab-panel" data-tab-panel="base">
-                <section class="code-section">
-                  <h2>BasePolicy</h2>
-                  <p>
-                    BasePolicy keeps runtime code simple and lets policies optionally respond to keyboard
-                    input.
-                  </p>
-                  <div class="code-block">
-                    <pre><code>class BasePolicy(ABC):
+
+class BasePolicy(ABC):
   """Abstract interface for policies that emit high-level commands."""
 
-  def handle_key(self, keycode: int) -> None:
+  def handle_key(self, keycode: int) -&gt; None:
     """Optional keyboard hook for interactive policies."""
     pass
 
   @abstractmethod
-  def step(self) -> PolicyOutput:
+  def step(self) -&gt; PolicyOutput:
     """Return the latest policy output."""</code></pre>
-                  </div>
-                </section>
-              </div>
+                </div>
+              </details>
+            </section>
 
-              <div class="file-tab-panel" data-tab-panel="contract">
-                <section class="code-section">
-                  <h2>Why this contract matters</h2>
-                  <p>
-                    The contract ensures policies never write actuator targets directly. That separation
-                    makes it easy to swap KeyboardPolicy and FSMPolicy while keeping a single runtime path.
-                  </p>
-                </section>
-              </div>
-            </div>
-          </div>
-        </div>
+          </div><!-- .code-main -->
+        </div><!-- .code-page-layout -->
       </main>
-    </div>
+
+      <footer class="site-footer">
+        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+      </footer>
+    </div><!-- .page -->
     <script src="../../script.js"></script>
   </body>
 </html>
