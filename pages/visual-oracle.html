@@ -36,22 +36,25 @@
 
       <main class="content post">
         <section>
-          <h2>Visual Oracle</h2>
+          <h2>Visual Oracle — architectural design</h2>
+          <div class="code-note">
+            <strong>Implementation status:</strong> The Visual Oracle pipeline below is a designed
+            architectural target. The ground-truth FSM baseline (Steps 1–10) uses a direct
+            ground-truth lookup for source localization. Visual Oracle implementation files
+            (<code>policies/fsm_visual_oracle.py</code>, <code>vision/observer.py</code>,
+            <code>vision/geometry.py</code>) are not part of this submission and are future work.
+            This page documents the design so the extension path is clear.
+          </div>
           <p>
             The baseline started with a ground-truth lookup to validate motion control. The Visual
-            Oracle replaces that lookup by estimating the cylinder pose from RGB segmentation and
-            depth back-projection, then smoothing the estimate with an EMA.
+            Oracle design replaces that lookup by estimating the cylinder pose from RGB segmentation
+            and depth back-projection, then smoothing the estimate with an EMA.
           </p>
           <p>
-            The estimator is deliberately lightweight and deterministic; it is not a learned
-            detector. The pose is frozen during descent and close-grip phases to avoid
-            self-occlusion jitter.
+            The estimator is designed to be lightweight and deterministic — not a learned detector.
+            The pose would be frozen during descent and close-grip phases to avoid self-occlusion
+            jitter and preserve a consistent grasp target.
           </p>
-          <div class="code-note">
-            <strong>Important accuracy note:</strong> The detailed Step 1–10 implementation deep dive
-            is for the ground-truth FSM baseline. If Visual Oracle implementation files are added to
-            the repo later, this section should be expanded to cover them.
-          </div>
           <figure class="figure">
             <img
               src="../assets/visual-oracle.svg"
@@ -59,10 +62,26 @@
               loading="lazy"
             />
             <figcaption>
-              Visual Oracle pipeline from camera input to EMA-smoothed and frozen target pose for
-              source-side reaching.
+              Designed Visual Oracle pipeline from camera input to EMA-smoothed and frozen target
+              pose for source-side reaching. This is an architectural design; see implementation
+              status note above.
             </figcaption>
           </figure>
+        </section>
+
+        <section>
+          <h2>Why the freeze strategy matters</h2>
+          <p>
+            As the arm descends toward the cylinder, the wrist-mounted camera begins to occlude the
+            object or move rapidly. Updating the EMA target during that window would shift the reacher
+            goal mid-descent, causing instability. The design freezes the estimate once the FSM
+            transitions into DESCEND_SOURCE, so the reacher tracks a fixed world-frame point through
+            grasp closure.
+          </p>
+          <p>
+            This tradeoff accepts a static pose during the last few centimeters in exchange for
+            deterministic, jitter-free behavior in the close-grip window.
+          </p>
         </section>
       </main>
     </div>

@@ -78,12 +78,12 @@
             controller synthesis, grasp logic, and validation scripts.
           </p>
           <ul class="bullet-list">
-            <li><strong>run.py</strong> as the runtime orchestrator and entry point.</li>
-            <li><strong>common/controller.py</strong> as the walker/reacher controller layer.</li>
-            <li><strong>common/grasp.py</strong> as the kinematic grasp backend.</li>
-            <li><strong>policies/fsm_core.py</strong> for the baseline state machine.</li>
-            <li><strong>policies/fsm_visual_oracle.py</strong> for the vision-augmented extension.</li>
-            <li><strong>vision/geometry.py</strong> and <strong>vision/observer.py</strong> for perception.</li>
+            <li><strong>run.py</strong> — runtime orchestrator and entry point.</li>
+            <li><strong>common/controller.py</strong> — walker/reacher controller layer.</li>
+            <li><strong>common/grasp.py</strong> — kinematic grasp backend.</li>
+            <li><strong>policies/fsm_core.py</strong> — ground-truth FSM baseline (implemented).</li>
+            <li><strong>policies/fsm_visual_oracle.py</strong> — Visual Oracle extension (architectural target; not in this submission).</li>
+            <li><strong>vision/geometry.py</strong> and <strong>vision/observer.py</strong> — depth back-projection and EMA observer (architectural targets; not in this submission).</li>
           </ul>
           <figure class="figure">
             <img
