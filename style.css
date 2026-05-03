@@ -567,6 +567,82 @@ h3 {
   font-size: 0.95rem;
 }
 
+/* Evidence / claim-status legend badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.status-verified {
+  background: #effaf2;
+  color: #15803d;
+  border: 1px solid #c9ebd4;
+}
+
+.status-visual {
+  background: #e7f0ff;
+  color: #1d4ed8;
+  border: 1px solid #cfe2ff;
+}
+
+.status-future {
+  background: #f6f4f8;
+  color: #6d28d9;
+  border: 1px solid #e2d7f1;
+}
+
+.evidence-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0 0.5rem;
+}
+
+.evidence-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Module status markers used in architecture cards */
+.module-status {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.module-status--impl {
+  background: #effaf2;
+  color: #15803d;
+  border: 1px solid #c9ebd4;
+}
+
+.module-status--arch {
+  background: #e7f0ff;
+  color: #1d4ed8;
+  border: 1px solid #cfe2ff;
+}
+
+.module-status--future {
+  background: #f6f4f8;
+  color: #6d28d9;
+  border: 1px solid #e2d7f1;
+}
+
 @media (max-width: 900px) {
   .nav-title {
     flex-basis: 100%;
