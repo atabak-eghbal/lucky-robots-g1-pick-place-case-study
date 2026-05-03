@@ -37,37 +37,93 @@
       <main class="content post">
         <section>
           <p>
-            This page frames the starting conditions, the task scope, and why the problem is harder
-            than simply reaching for a cylinder.
+            This page frames the starting conditions, the task scope, and why autonomous
+            pick-and-place on a humanoid is harder than simply reaching for a cylinder. It also
+            distinguishes what is implemented in this submission from what is designed at the
+            architectural level and what remains future work.
           </p>
         </section>
 
         <section>
-          <h2>The Challenge</h2>
+          <h2>Starting conditions: the manual baseline</h2>
           <p>
-            The Lucky Robots G1 Pick-and-Place Challenge asked for a red cylinder to be moved from a
-            source table to a target table using the Unitree G1 humanoid in MuJoCo. The original
-            repository shipped a manual keyboard-controlled demo with walker and reacher ONNX
-            policies, a full robot model, a configured scene, and multi-camera visibility. The task
-            here was to turn that demo into an autonomous baseline without hiding where the system
-            still fails.
+            The Lucky Robots G1 challenge repository shipped a <strong>manual baseline</strong>: a
+            keyboard-controlled MuJoCo demo for the Unitree G1 humanoid. It included walker and
+            reacher ONNX policies, a full robot model, a configured scene with source and target
+            tables, and multi-camera visibility. The human operator sent velocity and arm-target
+            commands at each timestep; no autonomy was present.
           </p>
           <p>
-            The result is a modular controller: an explicit finite-state machine, a kinematic grasp
-            backend, and a lightweight Visual Oracle for source localization. It is intentionally a
-            baseline—not a production-ready stack—but it is structured for debugging and incremental
-            upgrades.
+            The task was to convert that manual baseline into an autonomous controller — without
+            hiding where the system still fails.
           </p>
         </section>
 
         <section>
-          <h2>Why It Is Hard</h2>
+          <h2>What the GT FSM baseline delivers</h2>
+          <p>
+            The <strong>ground-truth FSM baseline (GT FSM)</strong> is the primary deliverable of
+            this submission. It replaces manual input with a 12-state finite-state machine that
+            drives the robot through the full pick-and-place sequence:
+          </p>
+          <ul class="bullet-list">
+            <li>Settle and stabilize stance.</li>
+            <li>Approach the source table using the walker ONNX policy.</li>
+            <li>Hover and descend the arm to the cylinder using the always-on right reacher.</li>
+            <li>Attach the cylinder kinematically once within grasp range.</li>
+            <li>Lift and carry the object while walking to the target table.</li>
+            <li>Lower, release, and retract.</li>
+          </ul>
+          <p>
+            "Ground-truth" means the source object pose is read directly from the simulation state
+            rather than estimated from camera data. This is an intentional baseline choice: it
+            isolates sequencing and policy-coordination correctness from perception correctness.
+          </p>
+        </section>
+
+        <section>
+          <h2>What is architectural: the Visual Oracle</h2>
+          <p>
+            The <strong>Visual Oracle</strong> is a camera-based source-localization layer designed
+            to replace the ground-truth pose lookup for source-side phases. It uses deterministic
+            depth back-projection and EMA smoothing to estimate the cylinder's position from the
+            robot's head camera. The architecture is documented in the
+            <a href="./visual-oracle.html">Visual Oracle</a> appendix.
+          </p>
+          <p>
+            The Visual Oracle is an architectural design in this submission. It is not implemented.
+            Integrating it requires changing the source-pose lookup in one FSM function; the
+            sequencing logic and policy-coordination plumbing are otherwise unchanged.
+          </p>
+        </section>
+
+        <section>
+          <h2>Future research roadmap</h2>
+          <p>
+            The following are identified as high-value next steps but are not included in this
+            submission:
+          </p>
+          <ul class="bullet-list">
+            <li>Physical finger-contact grasping to replace kinematic attachment.</li>
+            <li>Programmatic post-release on-table confirmation.</li>
+            <li>Visual Oracle implementation and integration testing.</li>
+            <li>Sim-to-real transfer: calibration, domain randomization, and hardware trials.</li>
+          </ul>
+          <p>
+            See the <a href="./limitations-next-steps.html">Limitations &amp; Next Steps</a>
+            appendix for the full gap list and prioritization.
+          </p>
+        </section>
+
+        <section>
+          <h2>Why this problem is hard</h2>
           <ul class="bullet-list">
             <li>Humanoid locomotion and manipulation must be coordinated concurrently, not staged.</li>
             <li>The reacher expects pelvis-frame targets, so world-frame goals require careful transforms.</li>
             <li>Learned policies have narrow operating envelopes and drift under small distribution shifts.</li>
             <li>Grasping is contact-rich, and fingertip alignment matters more than global pose accuracy.</li>
             <li>Perception timing interacts with gait, causing jitter or occlusion at the worst moments.</li>
+            <li>The reacher accuracy floor (~12–13 cm radial error) is large relative to the cylinder diameter; thresholds must be set empirically, not analytically.</li>
           </ul>
         </section>
       </main>
