@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -49,9 +50,25 @@
               <span class="callout-label">Failure Mode</span>
               <h3>The Normalization Trap</h3>
               <p>
-                The walker ONNX policy already applied internal normalization. Adding external
-                normalization double-normalized observations, destabilized the gait, and caused
-                hard-to-trace drift.
+                The walker ONNX policy
+                <a
+                  class="term-link"
+                  href="./concepts/walker-policy.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Concept Notes: Walker Policy"
+                  >?</a
+                >
+                already applied internal normalization
+                <a
+                  class="term-link"
+                  href="./concepts/internal-normalization.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Concept Notes: Internal Normalization"
+                  >?</a
+                >. Adding external normalization double-normalized observations, destabilized the
+                gait, and caused hard-to-trace drift.
               </p>
             </article>
             <article class="callout callout--decision">
@@ -59,17 +76,33 @@
               <h3>The Always-On Reacher</h3>
               <p>
                 The walker observes arm joint positions, so the right reacher had to run
-                unconditionally. Keeping the arm in a known carry pose prevented
-                out-of-distribution walking behavior.
+                unconditionally
+                <a
+                  class="term-link"
+                  href="./concepts/reacher-policy.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Concept Notes: Reacher Policy"
+                  >?</a
+                >. Keeping the arm in a known carry pose prevented out-of-distribution walking
+                behavior.
               </p>
             </article>
             <article class="callout callout--limitation">
               <span class="callout-label">Limitation</span>
               <h3>The Reacher Accuracy Floor</h3>
               <p>
-                The right reacher had a practical accuracy floor of ~12 cm. Grasp thresholds and
-                timeout fallbacks were tuned around that floor instead of assuming perfect
-                convergence.
+                The right reacher had a practical accuracy floor
+                <a
+                  class="term-link"
+                  href="./concepts/reacher-policy.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Concept Notes: Reacher Policy"
+                  >?</a
+                >
+                of ~12 cm. Grasp thresholds and timeout fallbacks were tuned around that floor
+                instead of assuming perfect convergence.
               </p>
             </article>
             <article class="callout callout--evidence">
@@ -85,7 +118,16 @@
               <span class="callout-label">Key Insight</span>
               <h3>The Visual Oracle Freeze</h3>
               <p>
-                The vision estimate was frozen during descent and close-grip phases to avoid
+                The Visual Oracle
+                <a
+                  class="term-link"
+                  href="./concepts/visual-oracle.html"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Concept Notes: Visual Oracle"
+                  >?</a
+                >
+                vision estimate was frozen during descent and close-grip phases to avoid
                 self-occlusion jitter and preserve a consistent grasp target.
               </p>
             </article>

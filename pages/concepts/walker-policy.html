@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Walker Policy | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Walker Policy</h1>
+          <p class="subtitle">
+            The walker policy is the learned controller that produces body/joint commands for locomotion.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <p>
+                walker.onnx maps robot state and velocity commands to joint actions. It expects a
+                specific observation layout and produces the base gait and turning behavior.
+              </p>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                Locomotion stability determines whether the arm can reach and grasp at all. The
+                walker policy is the foundation of the entire pick-and-place sequence.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <ul class="bullet-list">
+                <li>The controller builds a 99D observation each tick.</li>
+                <li>Arm joint positions are part of the observation.</li>
+                <li>The model already includes internal normalization.</li>
+              </ul>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Observation order must match training.</li>
+                <li>Arm behavior feeds back into walking stability.</li>
+                <li>Action scaling must stay consistent with config.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Wrong observation order.</li>
+                <li>Double-normalizing input.</li>
+                <li>Wrong action scaling.</li>
+                <li>Arm joints outside expected distribution.</li>
+                <li>Aggressive velocity commands.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="./onnx-runtime.html">ONNX Runtime</a></li>
+                <li><a href="./internal-normalization.html">Internal Normalization</a></li>
+                <li><a href="./reacher-policy.html">Reacher Policy</a></li>
+                <li><a href="../implementation-deep-dive.html">Implementation Deep Dive</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

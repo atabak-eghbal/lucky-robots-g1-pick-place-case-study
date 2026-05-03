@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pelvis-Frame Target | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Pelvis-Frame Target</h1>
+          <p class="subtitle">
+            A pelvis-frame target describes where the robot hand should move relative to the robot
+            pelvis, not the world.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <p>
+                The reacher expects targets in the robot’s body/pelvis frame. A world-space point on
+                the table must be transformed into pelvis coordinates before the policy can use it.
+              </p>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                The robot moves while reaching. Pelvis-frame targets keep the policy stable by
+                describing the goal relative to the moving body instead of a fixed world coordinate.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <ul class="bullet-list">
+                <li>Source and target world points are converted into pelvis coordinates.</li>
+                <li>Bias and clipping keep targets inside the right-arm workspace.</li>
+                <li>Targets are sent to the right reacher every tick.</li>
+              </ul>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Every world-space goal needs a reliable frame transform.</li>
+                <li>Axis conventions must be documented and tested.</li>
+                <li>Workspace checks prevent unreachable targets.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Sending world coordinates directly to the reacher.</li>
+                <li>Wrong quaternion/rotation convention.</li>
+                <li>Target outside arm workspace.</li>
+                <li>Misunderstanding x/y/z axes.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="./coordinate-frame.html">Coordinate Frame</a></li>
+                <li><a href="../fsm-baseline.html">FSM Baseline</a></li>
+                <li><a href="../implementation-deep-dive.html">Implementation Deep Dive</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

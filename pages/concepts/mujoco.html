@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MuJoCo | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>MuJoCo</h1>
+          <p class="subtitle">
+            MuJoCo is the physics simulator used to run the Unitree G1 robot, tables, cameras, and
+            red cylinder.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <ul class="bullet-list">
+                <li>Simulates rigid-body dynamics, contacts, joints, actuators, and cameras.</li>
+                <li>XML files define the robot and scene configuration.</li>
+                <li>It is not the real world—everything is deterministic and idealized.</li>
+              </ul>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                MuJoCo enables controlled experiments that would be expensive or unsafe on real
+                hardware. It is critical for rapid iteration, but it does not guarantee sim-to-real
+                transfer.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <ul class="bullet-list">
+                <li>Robot and scene definitions live in g1.xml and scene.xml.</li>
+                <li>The physics timestep is 0.005 seconds (200 Hz) for this baseline.</li>
+                <li>The simulator drives cameras, contacts, and policy observations.</li>
+              </ul>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Deterministic simulation makes debugging repeatable.</li>
+                <li>Timing changes (timestep/decimation) affect controller stability.</li>
+                <li>Simulation shortcuts must be clearly labeled as non-realistic.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Assuming simulation success implies real-world success.</li>
+                <li>Misconfigured XML models that alter joint ordering or geometry.</li>
+                <li>Timestep mismatches that destabilize learned policies.</li>
+                <li>Ignoring contact or visual artifacts specific to the simulator.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="../architecture.html">Architecture</a></li>
+                <li><a href="../results.html">Results</a></li>
+                <li><a href="../implementation-deep-dive.html">Implementation Deep Dive</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

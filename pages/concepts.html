@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Concept Notes | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Concept Notes</h1>
+          <p class="subtitle">
+            Beginner-friendly explanations of the robotics, control, perception, and simulation terms used in this
+            case study.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">Home</a>
+            <a href="./challenge.html">Challenge</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">Visual Oracle</a>
+            <a href="./lessons.html">Lessons</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Implementation</a>
+            <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
+            <a href="./references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <p>
+            These notes are not generic dictionary definitions. Each note explains what the concept means, why it
+            matters in robotics, and how it appears in this specific G1 pick-and-place baseline.
+          </p>
+        </section>
+
+        <section>
+          <h2>Simulation and Runtime</h2>
+          <div class="concept-grid">
+            <a class="concept-card" href="./concepts/mujoco.html">
+              <h3>MuJoCo</h3>
+              <p>Physics simulator for the Unitree G1, tables, cameras, and cylinder.</p>
+              <div class="concept-meta">Simulation environment and runtime loop.</div>
+            </a>
+            <a class="concept-card" href="./concepts/freejoint.html">
+              <h3>Freejoint</h3>
+              <p>Lets the cylinder move freely in 3D with position and orientation updates.</p>
+              <div class="concept-meta">Simulation joints and object state.</div>
+            </a>
+            <a class="concept-card" href="./concepts/decimation.html">
+              <h3>Decimation</h3>
+              <p>Controls how many physics steps happen per high-level control update.</p>
+              <div class="concept-meta">Timing, stability, and policy expectations.</div>
+            </a>
+            <a class="concept-card" href="./concepts/pd-control.html">
+              <h3>PD Control</h3>
+              <p>Position/velocity feedback that turns policy outputs into joint motion.</p>
+              <div class="concept-meta">Actuation and target tracking.</div>
+            </a>
+          </div>
+        </section>
+
+        <section>
+          <h2>Learned Policy Runtime</h2>
+          <div class="concept-grid">
+            <a class="concept-card" href="./concepts/onnx-runtime.html">
+              <h3>ONNX Runtime</h3>
+              <p>Runs the pre-trained walker and reacher neural-network policies.</p>
+              <div class="concept-meta">Model execution and inference pipeline.</div>
+            </a>
+            <a class="concept-card" href="./concepts/walker-policy.html">
+              <h3>Walker Policy</h3>
+              <p>Learned locomotion controller that outputs body and joint commands.</p>
+              <div class="concept-meta">Navigation and gait stability.</div>
+            </a>
+            <a class="concept-card" href="./concepts/reacher-policy.html">
+              <h3>Reacher Policy</h3>
+              <p>Learned controller that drives the right arm toward a target.</p>
+              <div class="concept-meta">Arm overlay and manipulation.</div>
+            </a>
+            <a class="concept-card" href="./concepts/internal-normalization.html">
+              <h3>Internal Normalization</h3>
+              <p>Observation scaling handled inside the model instead of outside.</p>
+              <div class="concept-meta">Model assumptions and preprocessing.</div>
+            </a>
+          </div>
+        </section>
+
+        <section>
+          <h2>Robotics and Control</h2>
+          <div class="concept-grid">
+            <a class="concept-card" href="./concepts/finite-state-machine.html">
+              <h3>Finite-State Machine</h3>
+              <p>Explicit task phases with clear transitions and checks.</p>
+              <div class="concept-meta">Sequencing and recoverability.</div>
+            </a>
+            <a class="concept-card" href="./concepts/coordinate-frame.html">
+              <h3>Coordinate Frame</h3>
+              <p>Defines origins and axes used for positions and rotations.</p>
+              <div class="concept-meta">Transforms and frame consistency.</div>
+            </a>
+            <a class="concept-card" href="./concepts/pelvis-frame.html">
+              <h3>Pelvis-Frame Target</h3>
+              <p>Arm targets expressed relative to the robot body frame.</p>
+              <div class="concept-meta">Reacher targets and transforms.</div>
+            </a>
+            <a class="concept-card" href="./concepts/kinematic-grasp.html">
+              <h3>Kinematic Grasp</h3>
+              <p>Simulation shortcut that attaches the object to the hand.</p>
+              <div class="concept-meta">Deterministic pickup and release.</div>
+            </a>
+            <a class="concept-card" href="./concepts/sim-to-real.html">
+              <h3>Sim-to-Real Transfer</h3>
+              <p>Challenges of taking simulation-tested behavior to real robots.</p>
+              <div class="concept-meta">Reality gap and deployment risk.</div>
+            </a>
+          </div>
+        </section>
+
+        <section>
+          <h2>Perception</h2>
+          <div class="concept-grid">
+            <a class="concept-card" href="./concepts/depth-back-projection.html">
+              <h3>Depth Back-Projection</h3>
+              <p>Convert a pixel + depth reading into a 3D point.</p>
+              <div class="concept-meta">Camera geometry and localization.</div>
+            </a>
+            <a class="concept-card" href="./concepts/visual-oracle.html">
+              <h3>Visual Oracle</h3>
+              <p>Deterministic perception shortcut for object pose estimation.</p>
+              <div class="concept-meta">Simulation-friendly localization.</div>
+            </a>
+            <a class="concept-card" href="./concepts/ema-smoothing.html">
+              <h3>EMA Smoothing</h3>
+              <p>Exponential moving average used to steady pose estimates.</p>
+              <div class="concept-meta">Noise reduction and lag tradeoffs.</div>
+            </a>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>

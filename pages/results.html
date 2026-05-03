@@ -12,7 +12,17 @@
         <div class="hero-content">
           <p class="eyebrow">Results</p>
           <h1>Simulation Milestones</h1>
-          <p class="subtitle">What the autonomous baseline demonstrated in MuJoCo.</p>
+          <p class="subtitle">
+            What the autonomous baseline demonstrated in MuJoCo
+            <a
+              class="term-link"
+              href="./concepts/mujoco.html"
+              target="_blank"
+              rel="noopener"
+              aria-label="Concept Notes: MuJoCo"
+              >?</a
+            >.
+          </p>
         </div>
       </header>
 
@@ -29,6 +39,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -55,14 +66,36 @@
               <tr>
                 <td>Headless smoke test</td>
                 <td>Environment and assets were ready for autonomous control.</td>
-                <td>Scene, cameras, bodies, sites, joints, and ONNX policy warmups were verified.</td>
+                <td>
+                  Scene, cameras, bodies, sites, joints, and ONNX policy warmups
+                  <a
+                    class="term-link"
+                    href="./concepts/onnx-runtime.html"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Concept Notes: ONNX Runtime"
+                    >?</a
+                  >
+                  were verified.
+                </td>
                 <td>It validates loading, not task success.</td>
               </tr>
               <tr>
                 <td>Source approach</td>
                 <td>The walker could move the robot into a source-side reach corridor.</td>
                 <td>FSM reached HOVER_SOURCE after the settle and approach phases.</td>
-                <td>Ground-truth or Visual Oracle pose quality affects this transition.</td>
+                <td>
+                  Ground-truth or Visual Oracle
+                  <a
+                    class="term-link"
+                    href="./concepts/visual-oracle.html"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Concept Notes: Visual Oracle"
+                    >?</a
+                  >
+                  pose quality affects this transition.
+                </td>
               </tr>
               <tr>
                 <td>Hover and descend</td>
@@ -71,7 +104,17 @@
                 <td>The reacher showed an empirical accuracy floor around 12 cm.</td>
               </tr>
               <tr>
-                <td>Kinematic grasp</td>
+                <td>
+                  Kinematic grasp
+                  <a
+                    class="term-link"
+                    href="./concepts/kinematic-grasp.html"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Concept Notes: Kinematic Grasp"
+                    >?</a
+                  >
+                </td>
                 <td>A deterministic grasp backend could stabilize object pickup.</td>
                 <td>
                   Attachment triggered near the close-grip window, with observed attach distance
@@ -103,7 +146,18 @@
                   Camera-based source localization could replace ground-truth lookup for the
                   source-side phases.
                 </td>
-                <td>EMA-smoothed depth back-projection provided a stable source target.</td>
+                <td>
+                  EMA-smoothed depth back-projection
+                  <a
+                    class="term-link"
+                    href="./concepts/depth-back-projection.html"
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="Concept Notes: Depth Back-Projection"
+                    >?</a
+                  >
+                  provided a stable source target.
+                </td>
                 <td>
                   It is deterministic segmentation/depth logic, not a learned detector, and
                   occlusion remains a risk.

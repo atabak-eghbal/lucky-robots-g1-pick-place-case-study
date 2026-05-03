@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Oracle | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Visual Oracle</h1>
+          <p class="subtitle">
+            A Visual Oracle is a deterministic perception shortcut that estimates object position
+            from simulated camera/depth information.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <p>
+                A Visual Oracle replaces ground-truth object lookup with camera-derived estimates. It
+                is not a learned detector; it uses deterministic segmentation, depth, and geometry to
+                estimate a pose.
+              </p>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                The Oracle acts as a bridge between ground-truth control and learned perception. It
+                lets the baseline exercise the perception/control interface without claiming
+                production-ready sensing.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <ul class="bullet-list">
+                <li>Uses segmentation/depth/back-projection plus EMA smoothing.</li>
+                <li>Estimates are frozen during close-grasp phases to avoid occlusion jitter.</li>
+                <li>The Oracle feeds the FSM with a target pose for the source table.</li>
+              </ul>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Useful for controlled experiments, not for real-world deployment.</li>
+                <li>Requires clear gating and freeze logic to avoid jitter during grasp.</li>
+                <li>Depends on simulator-specific segmentation and camera calibration.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Mistaking it for production perception.</li>
+                <li>Trusting estimates during occlusion.</li>
+                <li>Not freezing estimates during grasp.</li>
+                <li>Forgetting that segmentation may be simulation-specific.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="./depth-back-projection.html">Depth Back-Projection</a></li>
+                <li><a href="./ema-smoothing.html">EMA Smoothing</a></li>
+                <li><a href="../visual-oracle.html">Visual Oracle Case Study</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

@@ -734,3 +734,99 @@ h3 {
     position: static;
   }
 }
+
+.term-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.2rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+.term-link:hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+
+.concept-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.2rem;
+  background: #ffffff;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.concept-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(31, 111, 235, 0.12);
+}
+
+.concept-card p {
+  color: var(--muted);
+}
+
+.concept-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+.concept-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 1.5rem;
+}
+
+.concept-aside {
+  align-self: start;
+  position: sticky;
+  top: 5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.concept-aside a {
+  display: block;
+  color: var(--muted);
+  text-decoration: none;
+  margin: 0.4rem 0;
+}
+
+.concept-aside a:hover {
+  color: var(--accent);
+}
+
+.implication-list li {
+  margin-bottom: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .concept-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-aside {
+    position: static;
+  }
+}

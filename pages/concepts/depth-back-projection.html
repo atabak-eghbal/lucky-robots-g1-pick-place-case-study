@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Depth Back-Projection | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Depth Back-Projection</h1>
+          <p class="subtitle">
+            Depth back-projection converts a pixel and depth value into a 3D point.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <p>
+                A camera image gives a pixel location, and a depth map tells how far that pixel is
+                from the camera. Camera intrinsics map the pixel into a 3D ray, and back-projection
+                estimates the object position in camera space.
+              </p>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                Back-projection is the bridge from perception to control. It turns image-space
+                detections into 3D coordinates that the reacher can use.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <p>
+                The Visual Oracle uses segmentation to find a pixel on the cylinder and back-projects
+                it using calibrated intrinsics to estimate the source pose.
+              </p>
+              <div class="code-block">
+                <pre><code>x = (u - cx) * z / fx
+y = (v - cy) * z / fy
+z = depth</code></pre>
+              </div>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Camera calibration and intrinsics must stay in sync with the simulator.</li>
+                <li>Frame transforms are required to move from camera to world/pelvis space.</li>
+                <li>Depth sampling must be robust to partial occlusion.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Wrong camera intrinsics.</li>
+                <li>Wrong frame convention.</li>
+                <li>Sampling depth from the wrong pixel.</li>
+                <li>Object partially outside the frame.</li>
+                <li>Depth discontinuities at object edges.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="./visual-oracle.html">Visual Oracle</a></li>
+                <li><a href="./coordinate-frame.html">Coordinate Frame</a></li>
+                <li><a href="../visual-oracle.html">Visual Oracle Case Study</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

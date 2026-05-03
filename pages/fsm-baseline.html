@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -36,12 +37,41 @@
 
       <main class="content post">
         <section>
-          <h2>FSM Baseline</h2>
-          <p>
-            The first autonomous version used an explicit finite-state machine so each phase could
-            be tuned independently. The state ordering also makes timeouts and fallback paths
-            visible during debugging.
-          </p>
+            <h2>FSM Baseline</h2>
+            <p>
+              The first autonomous version used an explicit finite-state machine
+              <a
+                class="term-link"
+                href="./concepts/finite-state-machine.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Finite-State Machine"
+                >?</a
+              >
+              so each phase could be tuned independently. The state ordering also makes timeouts and
+              fallback paths visible during debugging.
+            </p>
+            <p>
+              The sequencing ties pelvis-frame
+              <a
+                class="term-link"
+                href="./concepts/pelvis-frame.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Pelvis-Frame Target"
+                >?</a
+              >
+              reach targets to the kinematic grasp
+              <a
+                class="term-link"
+                href="./concepts/kinematic-grasp.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Kinematic Grasp"
+                >?</a
+              >
+              handoff so each phase remains inspectable.
+            </p>
           <div class="code-block">
             <pre>
 SETTLE

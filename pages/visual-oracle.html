@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -36,12 +37,37 @@
 
       <main class="content post">
         <section>
-          <h2>Visual Oracle</h2>
-          <p>
-            The baseline started with a ground-truth lookup to validate motion control. The Visual
-            Oracle replaces that lookup by estimating the cylinder pose from RGB segmentation and
-            depth back-projection, then smoothing the estimate with an EMA.
-          </p>
+            <h2>Visual Oracle</h2>
+            <p>
+              The baseline started with a ground-truth lookup to validate motion control. The Visual
+              Oracle
+              <a
+                class="term-link"
+                href="./concepts/visual-oracle.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Visual Oracle"
+                >?</a
+              >
+              replaces that lookup by estimating the cylinder pose from RGB segmentation and depth
+              back-projection
+              <a
+                class="term-link"
+                href="./concepts/depth-back-projection.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Depth Back-Projection"
+                >?</a
+              >, then smoothing the estimate with an EMA
+              <a
+                class="term-link"
+                href="./concepts/ema-smoothing.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: EMA Smoothing"
+                >?</a
+              >.
+            </p>
           <p>
             The estimator is deliberately lightweight and deterministic; it is not a learned
             detector. The pose is frozen during descent and close-grip phases to avoid

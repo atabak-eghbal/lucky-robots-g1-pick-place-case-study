@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -39,12 +40,45 @@
           <h2>Limitations</h2>
           <ul class="bullet-list">
             <li>The baseline is a modular controller, not a production-ready robotics stack.</li>
-            <li>Kinematic grasping is a shortcut that hides contact dynamics.</li>
-            <li>The Visual Oracle is deterministic and is not a learned detector.</li>
+            <li>
+              Kinematic grasping
+              <a
+                class="term-link"
+                href="./concepts/kinematic-grasp.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Kinematic Grasp"
+                >?</a
+              >
+              is a shortcut that hides contact dynamics.
+            </li>
+            <li>
+              The Visual Oracle
+              <a
+                class="term-link"
+                href="./concepts/visual-oracle.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Visual Oracle"
+                >?</a
+              >
+              is deterministic and is not a learned detector.
+            </li>
             <li>Target-side alignment still relies on empirical tuning.</li>
             <li>On-table checks still need robust post-settle validation.</li>
             <li>The wrist camera is not fully exploited yet.</li>
-            <li>Sim-to-real transfer will require additional work and validation.</li>
+            <li>
+              Sim-to-real transfer
+              <a
+                class="term-link"
+                href="./concepts/sim-to-real.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Sim-to-Real Transfer"
+                >?</a
+              >
+              will require additional work and validation.
+            </li>
           </ul>
         </section>
 

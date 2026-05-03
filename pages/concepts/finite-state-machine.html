@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finite-State Machine | Concept Notes</title>
+    <link rel="stylesheet" href="../../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Concept Notes</p>
+          <h1>Finite-State Machine</h1>
+          <p class="subtitle">
+            A finite-state machine breaks the robot task into named phases with explicit transitions.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../../index.html">Home</a>
+            <a href="../challenge.html">Challenge</a>
+            <a href="../architecture.html">Architecture</a>
+            <a href="../fsm-baseline.html">FSM Baseline</a>
+            <a href="../visual-oracle.html">Visual Oracle</a>
+            <a href="../lessons.html">Lessons</a>
+            <a href="../results.html">Results</a>
+            <a href="../implementation-deep-dive.html">Implementation</a>
+            <a href="../limitations-next-steps.html">Limitations</a>
+            <a href="../concepts.html">Concept Notes</a>
+            <a href="../references.html">References</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+        <section>
+          <div class="concept-layout">
+            <div>
+              <h2 id="what-it-means">What it means</h2>
+              <p>
+                An FSM represents behavior as states and transition rules. At any moment, the robot is
+                in one state, such as APPROACH_SOURCE or CLOSE_GRIP, and the code decides when to move
+                to the next state.
+              </p>
+
+              <h2 id="why-it-matters">Why it matters</h2>
+              <p>
+                For robotics tasks, FSMs are useful when behavior needs to be inspectable and
+                recoverable. They make it clear whether a failure happened during navigation, reaching,
+                grasping, transport, or release.
+              </p>
+
+              <h2 id="how-it-appears">How it appears in this repo</h2>
+              <p>
+                The FSM baseline uses explicit phases for walking, reaching, grasping, and placing.
+              </p>
+              <div class="code-block">
+                <pre>SETTLE
+APPROACH_SOURCE
+HOVER_SOURCE
+DESCEND_SOURCE
+CLOSE_GRIP
+LIFT_SOURCE
+APPROACH_TARGET
+LOWER_TARGET
+OPEN_GRIP
+RETRACT
+DONE</pre>
+              </div>
+              <p>Each state emits high-level commands instead of direct actuator targets.</p>
+
+              <h2 id="design-implications">Design implications</h2>
+              <ul class="bullet-list implication-list">
+                <li>Easier debugging than end-to-end policies.</li>
+                <li>Clear timeout and debounce rules.</li>
+                <li>Easier to add logs and safety checks.</li>
+                <li>More hand-tuned than learned end-to-end behavior.</li>
+              </ul>
+
+              <h2 id="common-failures">Common failure modes or misunderstandings</h2>
+              <ul class="bullet-list implication-list">
+                <li>Too many magic thresholds.</li>
+                <li>Transitions that fire too early.</li>
+                <li>States that never exit because the robot asymptotes near a target.</li>
+                <li>Success checks that happen before the object settles.</li>
+              </ul>
+
+              <h2 id="related-pages">Related pages</h2>
+              <ul class="bullet-list">
+                <li><a href="../fsm-baseline.html">FSM Baseline</a></li>
+                <li><a href="../implementation-deep-dive.html">Implementation Deep Dive</a></li>
+                <li><a href="../lessons.html">Lessons</a></li>
+              </ul>
+            </div>
+
+            <aside class="concept-aside">
+              <strong>In this note</strong>
+              <a href="#what-it-means">What it means</a>
+              <a href="#why-it-matters">Why it matters</a>
+              <a href="#how-it-appears">How it appears</a>
+              <a href="#design-implications">Design implications</a>
+              <a href="#common-failures">Common failure modes</a>
+              <a href="#related-pages">Related pages</a>
+              <a href="../concepts.html">Back to Concept Notes</a>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="../../script.js"></script>
+  </body>
+</html>

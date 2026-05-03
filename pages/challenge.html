@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./concepts.html">Concept Notes</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -46,11 +47,43 @@
           <h2>The Challenge</h2>
           <p>
             The Lucky Robots G1 Pick-and-Place Challenge asked for a red cylinder to be moved from a
-            source table to a target table using the Unitree G1 humanoid in MuJoCo. The original
-            repository shipped a manual keyboard-controlled demo with walker and reacher ONNX
-            policies, a full robot model, a configured scene, and multi-camera visibility. The task
-            here was to turn that demo into an autonomous baseline without hiding where the system
-            still fails.
+            source table to a target table using the Unitree G1 humanoid in MuJoCo
+            <a
+              class="term-link"
+              href="./concepts/mujoco.html"
+              target="_blank"
+              rel="noopener"
+              aria-label="Concept Notes: MuJoCo"
+              >?</a
+            >. The original repository shipped a manual keyboard-controlled demo with walker
+            <a
+              class="term-link"
+              href="./concepts/walker-policy.html"
+              target="_blank"
+              rel="noopener"
+              aria-label="Concept Notes: Walker Policy"
+              >?</a
+            >
+            and reacher
+            <a
+              class="term-link"
+              href="./concepts/reacher-policy.html"
+              target="_blank"
+              rel="noopener"
+              aria-label="Concept Notes: Reacher Policy"
+              >?</a
+            >
+            ONNX policies
+            <a
+              class="term-link"
+              href="./concepts/onnx-runtime.html"
+              target="_blank"
+              rel="noopener"
+              aria-label="Concept Notes: ONNX Runtime"
+              >?</a
+            >, a full robot model, a configured scene, and multi-camera visibility. The task here
+            was to turn that demo into an autonomous baseline without hiding where the system still
+            fails.
           </p>
           <p>
             The result is a modular controller: an explicit finite-state machine, a kinematic grasp
@@ -64,10 +97,50 @@
           <h2>Why It Is Hard</h2>
           <ul class="bullet-list">
             <li>Humanoid locomotion and manipulation must be coordinated concurrently, not staged.</li>
-            <li>The reacher expects pelvis-frame targets, so world-frame goals require careful transforms.</li>
-            <li>Learned policies have narrow operating envelopes and drift under small distribution shifts.</li>
+            <li>
+              The reacher expects pelvis-frame
+              <a
+                class="term-link"
+                href="./concepts/pelvis-frame.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Pelvis-Frame Target"
+                >?</a
+              >
+              targets, so world-frame goals require careful transforms.
+            </li>
+            <li>
+              Learned policies
+              <a
+                class="term-link"
+                href="./concepts/walker-policy.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Walker Policy"
+                >?</a
+              ><a
+                class="term-link"
+                href="./concepts/reacher-policy.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Reacher Policy"
+                >?</a
+              >
+              have narrow operating envelopes and drift under small distribution shifts.
+            </li>
             <li>Grasping is contact-rich, and fingertip alignment matters more than global pose accuracy.</li>
-            <li>Perception timing interacts with gait, causing jitter or occlusion at the worst moments.</li>
+            <li>
+              Perception timing
+              <a
+                class="term-link"
+                href="./concepts/visual-oracle.html"
+                target="_blank"
+                rel="noopener"
+                aria-label="Concept Notes: Visual Oracle"
+                >?</a
+              >
+              interacts with gait, causing jitter or occlusion at the worst moments.
+            </li>
           </ul>
         </section>
       </main>
