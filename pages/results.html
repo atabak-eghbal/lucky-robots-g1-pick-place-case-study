@@ -34,147 +34,203 @@
         </div>
       </nav>
 
-      <main class="content post">
-        <section>
-          <h2>Evidence legend</h2>
-          <p>
-            Every milestone row in the table below carries an explicit status label. No claim is
-            presented without a status.
-          </p>
-          <div class="evidence-legend">
-            <div class="evidence-legend-item">
-              <span class="status-badge status-verified">✓ Verified</span>
-              <span>Confirmed by headless smoke test or a logged development run.</span>
-            </div>
-            <div class="evidence-legend-item">
-              <span class="status-badge status-visual">◎ Visually verified</span>
-              <span>Observed in a reference MuJoCo run; not programmatically confirmed.</span>
-            </div>
-            <div class="evidence-legend-item">
-              <span class="status-badge status-future">○ Proposed</span>
-              <span>Documented architecture or planned next step; not implemented in this submission.</span>
-            </div>
-          </div>
-        </section>
+<main class="content post">
+  <section>
+    <h2>Results summary</h2>
+    <p>
+      This page distinguishes four kinds of outcome: verified readiness checks, verified source-side
+      and transport milestones, visually verified target-side placement, and future / proposed work.
+      That distinction is deliberate. It reflects the actual evidence in the Step 1–10 development log.
+    </p>
 
-        <section>
-          <h2>Simulation milestones</h2>
-          <p>
-            The milestones below summarize what the GT FSM autonomous baseline demonstrated in
-            simulation. The evidence comes from development logs, headless checks, and visual
-            inspection of reference runs. No result is promoted to a higher evidence level than
-            its source warrants.
-          </p>
-          <table class="milestone-table">
-            <thead>
-              <tr>
-                <th>Milestone</th>
-                <th>What it demonstrated</th>
-                <th>Outcome</th>
-                <th>Status</th>
-                <th>Caveat</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Headless smoke test</td>
-                <td>Environment and assets were ready for autonomous control.</td>
-                <td>Scene, cameras, bodies, sites, joints, and ONNX policy warmups were verified.</td>
-                <td><span class="status-badge status-verified">✓ Verified</span></td>
-                <td>Validates asset loading, not task success.</td>
-              </tr>
-              <tr>
-                <td>Source approach</td>
-                <td>The walker could move the robot into a source-side reach corridor.</td>
-                <td>FSM reached HOVER_SOURCE after the settle and approach phases.</td>
-                <td><span class="status-badge status-visual">◎ Visually verified</span></td>
-                <td>Ground-truth pose quality drives this transition; Visual Oracle is not yet integrated.</td>
-              </tr>
-              <tr>
-                <td>Hover and descend</td>
-                <td>The right reacher could move toward hover and grasp-height targets.</td>
-                <td>Palm approached the object within the practical grasp window.</td>
-                <td><span class="status-badge status-visual">◎ Visually verified</span></td>
-                <td>The reacher showed an empirical accuracy floor around 12 cm; threshold was set accordingly.</td>
-              </tr>
-              <tr>
-                <td>Kinematic grasp</td>
-                <td>A deterministic grasp backend could stabilize object pickup.</td>
-                <td>
-                  Attachment triggered near the close-grip window; observed attach distance was
-                  0.128 m in the reference run (snap_offset 0.030 m).
-                </td>
-                <td><span class="status-badge status-verified">✓ Verified</span></td>
-                <td>This is a simulation shortcut, not physical finger contact.</td>
-              </tr>
-              <tr>
-                <td>Source lift</td>
-                <td>The attached object could be lifted and carried in the right hand.</td>
-                <td>The cylinder tracked the palm through lift and transport.</td>
-                <td><span class="status-badge status-visual">◎ Visually verified</span></td>
-                <td>Lift height depends on reacher convergence and carry-pose stability.</td>
-              </tr>
-              <tr>
-                <td>Target transport</td>
-                <td>The walker could transport the attached object toward the target side.</td>
-                <td>The robot carried the cylinder while maintaining the reacher carry pose.</td>
-                <td><span class="status-badge status-visual">◎ Visually verified</span></td>
-                <td>Target-side navigation required empirical tuning; false-positive guard added.</td>
-              </tr>
-              <tr>
-                <td>Placement and release</td>
-                <td>The FSM could lower, open grip, detach, and retract.</td>
-                <td>The object was released above the target surface and placement was visually successful in the reference simulation run.</td>
-                <td><span class="status-badge status-visual">◎ Visually verified</span></td>
-                <td>Post-release settling is not validated programmatically. On-table confirmation requires a post-DONE proximity check that is not yet implemented.</td>
-              </tr>
-              <tr>
-                <td>Visual Oracle source localization</td>
-                <td>
-                  The system could localize the source object from camera data, replacing the
-                  ground-truth simulation state read for source-side phases.
-                </td>
-                <td>Architecture designed; depth back-projection and EMA observer modules specified.</td>
-                <td><span class="status-badge status-future">○ Proposed</span></td>
-                <td>Deterministic segmentation/depth logic, not a learned detector; occlusion and lighting variation remain risks.</td>
-              </tr>
-            </tbody>
-          </table>
-          <figure class="figure">
-            <img
-              src="../assets/reacher-floor.svg"
-              alt="Reacher error over time flattening at the practical accuracy floor."
-              loading="lazy"
-            />
-            <figcaption>
-              Reacher accuracy floor showing radial error clustering around ~12 cm and the tuned
-              threshold window. <span class="status-badge status-verified">✓ Verified</span>
-            </figcaption>
-          </figure>
-          <figure class="figure">
-            <img
-              src="../assets/navigation-phase.svg"
-              alt="Heading error plot showing rapid initial turning and asymptotic slowdown."
-              loading="lazy"
-            />
-            <figcaption>
-              Walker heading vs. time during target-side alignment, highlighting the asymptotic
-              turn-rate slowdown. <span class="status-badge status-visual">◎ Visually verified</span>
-            </figcaption>
-          </figure>
-          <figure class="figure">
-            <img
-              src="../assets/staircase-speed.svg"
-              alt="Piecewise speed schedule showing slower velocities as distance closes."
-              loading="lazy"
-            />
-            <figcaption>
-              Stepwise speed schedule used to keep gait stable during approach and retreat phases.
-              <span class="status-badge status-verified">✓ Verified</span>
-            </figcaption>
-          </figure>
-        </section>
-      </main>
+    <div class="evidence-legend">
+      <div class="evidence-legend-item">
+        <span class="status-badge status-verified">Verified</span>
+        <span>Confirmed by headless script or logged development run.</span>
+      </div>
+      <div class="evidence-legend-item">
+        <span class="status-badge status-visual">Visually verified</span>
+        <span>Observed in reference MuJoCo playback, but not fully settled-and-checked programmatically.</span>
+      </div>
+      <div class="evidence-legend-item">
+        <span class="status-badge status-future">Future / proposed</span>
+        <span>Architectural extension or planned upgrade; not implemented in this submission.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What is proven</h2>
+    <ul class="bullet-list">
+      <li>Environment readiness: scene, cameras, bodies, sites, joints, and ONNX models loaded and warmed successfully.</li>
+      <li>Source-side walk-in: the robot reached the source reach corridor and transitioned into hover.</li>
+      <li>Hover and descend behaviour: the palm approached the object within the empirically reachable range.</li>
+      <li>Kinematic grasp and source lift: attachment triggered at the practical reacher floor and the object left the source table.</li>
+      <li>Target-side transport: the robot carried the attached cylinder while maintaining the carry pose.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What is visually verified</h2>
+    <p>
+      Final blue-table placement should be presented as visually successful in simulation, not as a fully
+      verified end-state checker result. The development log records that the first target-side PASS was a
+      false positive. A later run visually landed the cylinder on the blue table, but the DONE-time
+      checker still observed the cylinder before full post-release settling.
+    </p>
+  </section>
+
+  <section>
+    <h2>What remains future / proposed</h2>
+    <ul class="bullet-list">
+      <li>Visual Oracle source localization integration</li>
+      <li>Post-release settle-and-check validation</li>
+      <li>Physical grasping instead of kinematic attachment</li>
+      <li>Robustness across scene variation, noise, and hardware transfer</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Milestone table</h2>
+    <table class="milestone-table">
+      <thead>
+        <tr>
+          <th>Milestone</th>
+          <th>Status</th>
+          <th>What is supported</th>
+          <th>Caveat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Headless smoke test</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>Scene, camera names, body names, site names, joints, and ONNX warmups all passed.</td>
+          <td>Validates environment readiness, not task success.</td>
+        </tr>
+        <tr>
+          <td>Source approach</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>FSM reached <code>HOVER_SOURCE</code>; cylinder pelvis-frame position was logged inside the reach corridor.</td>
+          <td>Ground-truth object pose was used for this baseline.</td>
+        </tr>
+        <tr>
+          <td>Hover and descend</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>Hover threshold was met; descend timed out at the practical reacher floor of roughly 12–13 cm.</td>
+          <td>That floor constrains source-side and target-side reach quality.</td>
+        </tr>
+        <tr>
+          <td>Kinematic grasp</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>Attach fired at 0.128 m with a 0.030 m snap offset.</td>
+          <td>Simulation shortcut, not contact-rich finger grasping.</td>
+        </tr>
+        <tr>
+          <td>Source lift</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>The cylinder tracked the palm and cleared the source table.</td>
+          <td>Lift completion depended on timeout fallback rather than ideal reacher convergence.</td>
+        </tr>
+        <tr>
+          <td>Target transport</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>The robot transported the attached object while maintaining the carry pose.</td>
+          <td>Target-side approach logic required several rounds of correction.</td>
+        </tr>
+        <tr>
+          <td>Target release and placement</td>
+          <td><span class="status-badge status-visual">Visually verified</span></td>
+          <td>Later post-fix runs visually landed the cylinder on the blue table near the near edge.</td>
+          <td>DONE-time table-membership was timing-sensitive; a post-settle check is still needed.</td>
+        </tr>
+        <tr>
+          <td>Visual Oracle source localization</td>
+          <td><span class="status-badge status-future">Future / proposed</span></td>
+          <td>Architecture documented separately as a ground-truth replacement for source-side phases.</td>
+          <td>Not implemented in the Step 1–10 baseline.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Failure analysis that should stay visible</h2>
+    <div class="callout-grid">
+      <article class="callout callout--failure">
+        <span class="callout-label">False positive</span>
+        <h3>Premature target-side success</h3>
+        <p>
+          Pelvis-frame reach-window logic allowed the FSM to stop walking while the world-frame robot
+          pose was still wrong for the target table.
+        </p>
+      </article>
+
+      <article class="callout callout--decision">
+        <span class="callout-label">Correction</span>
+        <h3>World proximity and yaw gating</h3>
+        <p>
+          The target-side stopping condition was hardened with world-frame waypoint distance and yaw
+          alignment instead of relying only on pelvis-frame reach geometry.
+        </p>
+      </article>
+
+      <article class="callout callout--limitation">
+        <span class="callout-label">Remaining caveat</span>
+        <h3>Post-release settle timing</h3>
+        <p>
+          A visually successful placement can still look false at the exact instant DONE is entered if the
+          cylinder has not finished settling onto the table.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Reproducible figures</h2>
+
+    <figure class="figure">
+      <img
+        src="../assets/fig-state-duration-timeline.svg"
+        alt="FSM state-duration timeline generated from DEV_LOG values."
+        loading="lazy"
+      />
+      <figcaption>
+        Nominal full-pipeline state durations from the first fully specified Step 10 timing sequence.
+        Caption this explicitly as a nominal logged run, not as the final fully validated placement run.
+      </figcaption>
+    </figure>
+
+    <figure class="figure">
+      <img
+        src="../assets/fig-reacher-accuracy-floor.svg"
+        alt="Measured palm-distance checkpoints showing the practical reacher floor."
+        loading="lazy"
+      />
+      <figcaption>
+        Palm-distance checkpoints from the source-side hover, descend, and close-grip sequence, showing
+        why thresholds were tuned around a practical 12–13 cm floor.
+      </figcaption>
+    </figure>
+
+    <figure class="figure">
+      <img
+        src="../assets/fig-attach-distance-threshold.svg"
+        alt="Attach distance, threshold, and snap offset comparison."
+        loading="lazy"
+      />
+      <figcaption>
+        Kinematic grasp metrics: observed attach distance, attach threshold, and clamp-limited snap offset.
+      </figcaption>
+    </figure>
+
+    <p class="small">
+      Provenance: generate all three figures directly from DEV_LOG values. Do not keep decorative plots
+      whose underlying time-series values are not available in the snapshot.
+    </p>
+  </section>
+</main>
+
     </div>
     <script src="../script.js"></script>
   </body>
