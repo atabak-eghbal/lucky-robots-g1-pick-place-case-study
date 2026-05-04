@@ -61,19 +61,32 @@
 
         <section>
           <h2>The Breakthrough: Taming the "Ghost in the Machine"</h2>
-          <p>
-            The most significant engineering hurdle wasn't the walking or the reaching—it was the 
-            <strong>transition from kinematic to physical reality</strong>. During early autonomous 
-            runs, the robot would successfully reach the target table, only to "break the scene" with 
-            NaN errors the moment it released the cylinder.
-          </p>
-          <p>
-            By introducing a <strong>delayed collision restoration</strong> (giving the fingers 
-            time to physically clear the object before restoring contact physics) and 
-            <strong>Sweet-Spot Navigation</strong> (positioning the robot so the right arm works in its 
-            optimal workspace), we moved the baseline from "visually successful sometimes" to 
-            <strong>robustly verified</strong>.
-          </p>
+          <div class="card-grid" style="grid-template-columns: 1.5fr 1fr; align-items: center; gap: 2rem;">
+            <div>
+              <p>
+                The most significant engineering hurdle wasn't the walking or the reaching—it was the 
+                <strong>transition from kinematic to physical reality</strong>. During early autonomous 
+                runs, the robot would successfully reach the target table, only to "break the scene" with 
+                NaN errors the moment it released the cylinder.
+              </p>
+              <p>
+                By introducing a <strong>delayed collision restoration</strong> (giving the fingers 
+                time to physically clear the object before restoring contact physics) and 
+                <strong>Sweet-Spot Navigation</strong> (positioning the robot so the right arm works in its 
+                optimal workspace), we moved the baseline from "visually successful sometimes" to 
+                <strong>robustly verified</strong>.
+              </p>
+              <p>
+                <a href="pages/video-walkthrough.html" class="status-badge status-visual" style="text-decoration: none; padding: 0.5rem 1rem;">View Full Autonomous Demo →</a>
+              </p>
+            </div>
+            <div style="text-align: center;">
+              <a href="pages/video-walkthrough.html">
+                <img src="assets/demo_highlight.gif" alt="Autonomous G1 demo highlight" style="width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+              </a>
+              <p class="small" style="margin-top: 0.5rem; color: var(--muted);">Autonomous transport phase (GIF highlight)</p>
+            </div>
+          </div>
         </section>
       
         <section>
@@ -97,6 +110,10 @@
             Whether you have 3 minutes or 30, this report is structured to provide value at every level of depth.
           </p>
           <div class="card-grid">
+            <a class="card card-link" href="pages/video-walkthrough.html">
+              <h3>Video Walkthrough</h3>
+              <p>The final autonomous G1 run, recorded head-to-tail in MuJoCo.</p>
+            </a>
             <a class="card card-link" href="pages/results.html">
               <h3>Results & Milestones</h3>
               <p>What was built, what is proven by code, and where the caveats lie.</p>
@@ -121,7 +138,7 @@
           <div class="code-note">
             <ul class="bullet-list">
               <li><strong>Implementation Repository:</strong> <a href="https://github.com/atabak-eghbal/g1-manipulation-challenge-v2">g1-manipulation-challenge-v2</a></li>
-              <li><strong>Demo Video:</strong> <a href="#">Final Autonomous Run (YouTube)</a></li>
+              <li><strong>Demo Walkthrough:</strong> <a href="pages/video-walkthrough.html">In-Depth Sequence Walkthrough</a></li>
               <li><strong>Technical Write-up:</strong> <a href="#">G1-Pick-Place-Analysis.pdf</a></li>
             </ul>
           </div>
