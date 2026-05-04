@@ -48,143 +48,200 @@
 
       <main class="content post">
         <section>
-          <h2>Implementation appendix</h2>
+          <h2>Executive summary</h2>
           <p>
-            This appendix turns the Step 1–10 implementation snapshot into an audit-friendly code report.
-            The intent is not to summarize the code loosely. The intent is to let a reviewer inspect the
-            actual implementation without leaving the site.
+            This submission converts the original manual keyboard-controlled MuJoCo demo for the
+            Unitree G1 humanoid into an autonomous pick-and-place controller. The primary deliverable
+            is the <strong>ground-truth FSM baseline (GT FSM)</strong>: a 12-state finite-state
+            machine that coordinates the walker and right-reacher ONNX policies, attaches objects
+            kinematically, and completes the end-to-end pick-and-place sequence in simulation.
           </p>
-          <div class="code-note">
-            <strong>Scope boundary</strong>
-            <p>
-              This appendix covers the implemented ground-truth FSM baseline only. The Visual Oracle remains
-              architectural unless corresponding source files are actually added to the repository.
-            </p>
-          </div>
-        </section>
-      
-        <section>
-          <h2>How every code page should read</h2>
-          <ol class="bullet-list">
-            <li><strong>File overview:</strong> purpose, runtime role, and why the file matters.</li>
-            <li><strong>Chunked walkthrough:</strong> original-order sections with anchors for direct linking.</li>
-            <li><strong>Per-chunk notes:</strong> intent, inputs / outputs, invariants, subtle points, and failure modes.</li>
-            <li><strong>Exact full source appendix:</strong> one HTML-escaped full-file block on the same page, represented exactly once.</li>
-            <li><strong>Evidence note:</strong> which DEV_LOG milestones or tests make this file important.</li>
-          </ol>
-          <p class="small">
-            Replace snippet-only tabbed narration with search-friendly anchored sections. Tabs are acceptable
-            for a quick skim, but they should not be the only way the code is presented.
+          <p>
+            A <strong>Visual Oracle</strong> perception extension is documented as an architectural
+            follow-on for source-side localization. It is explicitly out of scope for the implemented
+            baseline and is treated throughout this report as <em>future / proposed</em>, not as completed
+            functionality.
+          </p>
+          <p>
+            The GT FSM baseline is scoped as a debuggable baseline, not a production robotics stack.
+            Every threshold and timeout is tied to an observation in the development log. Simulation-only
+            caveats — kinematic grasping, no hardware transfer, and incomplete post-release validation —
+            are stated explicitly rather than hidden behind a polished clip.
           </p>
         </section>
       
         <section>
-          <h2>Reviewer reading order</h2>
+          <h2>Reviewer guide</h2>
+          <p>
+            This site is structured as an engineering report, not a demo showcase. Use the path that matches
+            your available time.
+          </p>
           <table class="milestone-table">
             <thead>
               <tr>
-                <th>File</th>
-                <th>Why open it</th>
-                <th>Required chunk anchors</th>
+                <th>Reading path</th>
+                <th>Pages</th>
+                <th>What you will learn</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><a href="./code/run.html"><code>run.py</code></a></td>
-                <td>Shows the orchestration boundary and policy-to-controller bridge.</td>
-                <td><code>#imports</code>, <code>#setup</code>, <code>#policy-bridge</code>, <code>#sim-loop</code>, <code>#full-file</code></td>
+                <td><strong>3 min</strong></td>
+                <td><a href="pages/results.html">Results</a></td>
+                <td>What was built, what is actually supported by evidence, and the key caveats.</td>
               </tr>
               <tr>
-                <td><a href="./code/common-controller.html"><code>common/controller.py</code></a></td>
-                <td>Most important low-level file; encodes raw walker obs, always-on reacher, and PD output.</td>
-                <td><code>#init</code>, <code>#mappings</code>, <code>#state-helpers</code>, <code>#step</code>, <code>#pd-control</code>, <code>#full-file</code></td>
+                <td><strong>10 min</strong></td>
+                <td>
+                  <a href="pages/fsm-baseline.html">FSM Baseline</a> +
+                  <a href="pages/lessons.html">Lessons</a> +
+                  <a href="pages/results.html">Results</a>
+                </td>
+                <td>The control decomposition, the key engineering decisions, and the validated milestones.</td>
               </tr>
               <tr>
-                <td><a href="./code/common-grasp.html"><code>common/grasp.py</code></a></td>
-                <td>Shows deterministic attach/release semantics and simulation shortcuts explicitly.</td>
-                <td><code>#interface</code>, <code>#attach</code>, <code>#update-pose</code>, <code>#release</code>, <code>#full-file</code></td>
-              </tr>
-              <tr>
-                <td><a href="./code/policies-fsm-core.html"><code>policies/fsm_core.py</code></a></td>
-                <td>Main autonomous logic; every threshold, timeout, and target-side caveat lives here.</td>
-                <td><code>#constants</code>, <code>#state-enum</code>, <code>#tick-dispatch</code>, <code>#geometry</code>, <code>#source-states</code>, <code>#target-states</code>, <code>#validation</code>, <code>#full-file</code></td>
-              </tr>
-              <tr>
-                <td><a href="./code/policies-fsm.html"><code>policies/fsm.py</code></a></td>
-                <td>Thin adapter that proves the FSM is isolated from the grasp backend implementation.</td>
-                <td><code>#adapter</code>, <code>#grip-guard</code>, <code>#full-file</code></td>
-              </tr>
-              <tr>
-                <td><a href="./code/scripts-smoke-env.html"><code>scripts/smoke_env.py</code></a></td>
-                <td>Best reviewer-facing proof that environment assumptions were checked before FSM work started.</td>
-                <td><code>#checks</code>, <code>#scene</code>, <code>#onnx</code>, <code>#summary</code>, <code>#full-file</code></td>
-              </tr>
-              <tr>
-                <td><a href="./code/scripts-test-fsm-approach.html"><code>scripts/test_fsm_approach.py</code></a></td>
-                <td>Headless task runner; essential for understanding what was verified versus visually inspected.</td>
-                <td><code>#harness</code>, <code>#loop</code>, <code>#stop-conditions</code>, <code>#summary</code>, <code>#full-file</code></td>
+                <td><strong>20 min</strong></td>
+                <td>
+                  <a href="pages/implementation-deep-dive.html">Implementation</a> +
+                  <a href="pages/architecture.html">Architecture</a> +
+                  <a href="pages/limitations-next-steps.html">Limitations</a> +
+                  <a href="pages/video-walkthrough.html">Video Walkthrough</a>
+                </td>
+                <td>File-by-file code auditability, module boundaries, evidence provenance, and next steps.</td>
               </tr>
             </tbody>
           </table>
         </section>
       
         <section>
-          <h2>File manifest</h2>
-          <div class="implementation-grid">
-            <article class="directory-card">
-              <span class="directory-label">Runtime</span>
-              <h3><a href="./code/run.html">run.py</a></h3>
-              <p>CLI, model loading, controller construction, policy selection, simulation loop, viewer loop.</p>
-            </article>
+          <h2>Contribution statement</h2>
+          <h3>What changed from the manual baseline</h3>
+          <p>
+            The challenge repository shipped a keyboard-controlled MuJoCo demo. This submission replaces
+            manual input with an explicit 12-state FSM that drives locomotion, source approach, hover,
+            descent, kinematic attachment, source lift, target transport, release, and retraction.
+          </p>
       
-            <article class="directory-card">
-              <span class="directory-label">common/</span>
-              <h3>Controller and grasp layers</h3>
-              <ul class="bullet-list">
-                <li><a href="./code/common-controller.html"><strong>controller.py</strong></a> — walker/reacher composition and final actuator targets</li>
-                <li><a href="./code/common-grasp.html"><strong>grasp.py</strong></a> — kinematic attachment backend</li>
-                <li><a href="./code/common-onnx-policy.html"><strong>onnx_policy.py</strong></a> — ONNX Runtime wrapper</li>
-                <li><a href="./code/common-scene.html"><strong>scene.py</strong></a> — reset and camera helpers</li>
-              </ul>
-            </article>
+          <h3>What is implemented</h3>
+          <ul class="bullet-list">
+            <li>Shared runtime orchestration in <code>run.py</code>.</li>
+            <li>Walker / right-reacher composition in <code>common/controller.py</code>.</li>
+            <li>Kinematic grasp backend in <code>common/grasp.py</code>.</li>
+            <li>GT FSM sequencing and geometry logic in <code>policies/fsm_core.py</code>.</li>
+            <li>Headless smoke and integration checks in <code>scripts/</code>.</li>
+          </ul>
       
-            <article class="directory-card">
-              <span class="directory-label">policies/</span>
-              <h3>High-level decisions</h3>
-              <ul class="bullet-list">
-                <li><a href="./code/policies-base.html"><strong>base.py</strong></a> — policy contract and command packet</li>
-                <li><a href="./code/policies-keyboard.html"><strong>keyboard.py</strong></a> — preserved manual path</li>
-                <li><a href="./code/policies-fsm.html"><strong>fsm.py</strong></a> — adapter between runtime, FSM, and grasp backend</li>
-                <li><a href="./code/policies-fsm-core.html"><strong>fsm_core.py</strong></a> — autonomous sequencing and geometry logic</li>
-              </ul>
-            </article>
+          <h3>What is intentionally limited</h3>
+          <ul class="bullet-list">
+            <li>Grasping is kinematic attachment, not physical finger-contact grasping.</li>
+            <li>Final post-release table membership is not robustly validated after settling.</li>
+            <li>The Visual Oracle is documented architecturally but not implemented in this submission.</li>
+            <li>All results are simulation-only in MuJoCo; no hardware transfer has been attempted.</li>
+          </ul>
+        </section>
       
-            <article class="directory-card">
-              <span class="directory-label">Validation</span>
-              <h3>Reproducibility checks</h3>
-              <ul class="bullet-list">
-                <li><a href="./code/scripts-smoke-env.html"><strong>smoke_env.py</strong></a> — environment readiness</li>
-                <li><a href="./code/scripts-test-fsm-approach.html"><strong>test_fsm_approach.py</strong></a> — headless integration harness</li>
-                <li><a href="./code/dev-log.html"><strong>DEV_LOG.md</strong></a> — decision and evidence record</li>
-              </ul>
+        <section>
+          <h2>Evidence legend</h2>
+          <div class="evidence-legend">
+            <div class="evidence-legend-item">
+              <span class="status-badge status-verified">Verified</span>
+              <span>Confirmed by headless smoke test or a logged development run.</span>
+            </div>
+            <div class="evidence-legend-item">
+              <span class="status-badge status-visual">Visually verified</span>
+              <span>Observed in a reference MuJoCo run, but not fully confirmed by an end-state checker.</span>
+            </div>
+            <div class="evidence-legend-item">
+              <span class="status-badge status-future">Future / proposed</span>
+              <span>Architectural extension or research direction; not implemented in this submission.</span>
+            </div>
+          </div>
+        </section>
+      
+        <section>
+          <h2>What is proven, what is visual, what is future</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3><span class="status-badge status-verified">Verified</span></h3>
+              <p>
+                Environment readiness, source-side approach, hover and descend behaviour, kinematic attach,
+                source lift, and target-side transport logic are all supported by DEV_LOG entries or headless
+                checks.
+              </p>
+            </article>
+            <article class="card">
+              <h3><span class="status-badge status-visual">Visually verified</span></h3>
+              <p>
+                Final blue-table placement is best presented as visually successful in simulation, with a
+                known caveat around when table-membership is evaluated relative to post-release settling.
+              </p>
+            </article>
+            <article class="card">
+              <h3><span class="status-badge status-future">Future / proposed</span></h3>
+              <p>
+                The Visual Oracle source-localization layer, more robust release validation, and broader
+                perception / learned-policy upgrades belong in the future-work band.
+              </p>
             </article>
           </div>
         </section>
       
         <section>
-          <h2>Required code-page contract</h2>
+          <h2>Why this approach</h2>
+          <ul class="bullet-list">
+            <li><strong>Problem decomposition:</strong> perception, locomotion, manipulation, grasp, and sequencing are separated behind explicit interfaces.</li>
+            <li><strong>Methodological reasoning:</strong> thresholds are derived from measurements, not guessed.</li>
+            <li><strong>Adaptability:</strong> the report surfaces failed assumptions, including the normalization and target-side false-positive bugs.</li>
+            <li><strong>Technical depth:</strong> non-obvious policy interactions, including the always-on reacher requirement, are documented explicitly.</li>
+            <li><strong>Communication:</strong> the site distinguishes implemented work from architecture and future work on every reviewer-facing page.</li>
+          </ul>
+        </section>
+      
+        <section>
+          <h2>Key evidence from the development log</h2>
+          <ul class="bullet-list">
+            <li>Headless smoke test passed for scene load, camera names, body names, site names, joints, and ONNX warmup.</li>
+            <li>Walker double-normalization bug found and corrected by passing raw observations to the walker policy.</li>
+            <li>Right reacher must run continuously to preserve the walker's expected arm-joint distribution.</li>
+            <li>Reacher accuracy floor plateaued around 12–13 cm, which set hover, descend, and attach thresholds.</li>
+            <li>Kinematic attach was observed at 0.128 m with a 0.030 m snap offset.</li>
+            <li>Target-side placement initially produced a false positive and required a more honest validation story.</li>
+          </ul>
+        </section>
+      
+        <section>
+          <h2>Artifact manifest</h2>
           <div class="code-note">
-            <strong>Apply this to every <code>pages/code/*.html</code> file</strong>
+            <strong>Replace before submission</strong>
             <p>
-              Each page should contain one anchored table of contents, chunked explanations in original order,
-              and one raw full-file appendix with the exact file contents HTML-escaped. Do not paraphrase or
-              silently edit the source when rendering the appendix.
+              Set the three external links below once. Do not leave reviewer-facing <code>TBD</code> markers
+              anywhere else in the site.
             </p>
+            <ul class="bullet-list">
+              <li>Implementation repository: <a href="{{REPO_URL}}">{{REPO_URL}}</a></li>
+              <li>Demo video: <a href="{{VIDEO_URL}}">{{VIDEO_URL}}</a></li>
+              <li>Write-up PDF: <a href="{{WRITEUP_URL}}">{{WRITEUP_URL}}</a></li>
+            </ul>
           </div>
-          <p class="small">
-            If you only make one structural improvement to the code appendix, make it this one. It changes the
-            site from “good walkthrough” to “auditable submission”.
-          </p>
+      
+          <div class="card-grid">
+            <a class="card card-link" href="pages/results.html">
+              <h3>Results</h3>
+              <p>Milestone table with evidence status and reproducible figures.</p>
+            </a>
+            <a class="card card-link" href="pages/implementation-deep-dive.html">
+              <h3>Implementation</h3>
+              <p>Audit-oriented entry point to the GT FSM source files.</p>
+            </a>
+            <a class="card card-link" href="pages/video-walkthrough.html">
+              <h3>Video Walkthrough</h3>
+              <p>Reviewer-facing 7–8 minute script and on-screen sequence.</p>
+            </a>
+            <a class="card card-link" href="pages/references.html">
+              <h3>References</h3>
+              <p>Official docs, official research pages, and future-work references.</p>
+            </a>
+          </div>
         </section>
       </main>
 
