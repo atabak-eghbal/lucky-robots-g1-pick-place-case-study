@@ -20,146 +20,72 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
 
       <main class="content post">
         <section>
-          <h2>FSM Baseline</h2>
+          <h2>Managing Complexity with States</h2>
           <p>
-            The first autonomous version used an explicit finite-state machine so each phase could
-            be tuned independently. The state ordering also makes timeouts and fallback paths
-            visible during debugging.
+            The pick-and-place task is decomposed into 12 distinct states. This makes 
+            locomotion, perception, and grasping failures separable and traceable.
           </p>
           <div class="code-block">
             <pre>
-SETTLE
-APPROACH_SOURCE
-HOVER_SOURCE
-DESCEND_SOURCE
-CLOSE_GRIP
-LIFT_SOURCE
-APPROACH_TARGET
-HOVER_TARGET
-LOWER_TARGET
-OPEN_GRIP
-RETRACT
-DONE</pre>
+SETTLE            → APPROACH_SOURCE  → HOVER_SOURCE
+DESCEND_SOURCE    → CLOSE_GRIP       → LIFT_SOURCE
+APPROACH_TARGET   → HOVER_TARGET     → LOWER_TARGET
+OPEN_GRIP         → RETRACT          → DONE</pre>
           </div>
-          <p class="small">
-            FSMs were selected over end-to-end RL because they make locomotion, perception, and
-            grasping failures separable and traceable within a short development cycle.
-          </p>
-          <figure class="figure">
-            <img
-              src="../assets/fsm-diagram.svg"
-              alt="Finite-state machine diagram showing source approach, grasp, transport, and placement phases."
-              loading="lazy"
-            />
-            <figcaption>
-              FSM sequencing with debounce, timeout fallback, attach/release events, and frozen
-              vision estimates during the close-grip window.
-            </figcaption>
-          </figure>
         </section>
 
         <section>
-          <h2>State table</h2>
+          <h2>Critical State Transitions</h2>
           <table class="milestone-table">
             <thead>
               <tr>
                 <th>State</th>
-                <th>Purpose</th>
-                <th>Exit condition</th>
-                <th>Risk handled</th>
+                <th>Exit Condition</th>
+                <th>Safety Risk Mitigated</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>SETTLE</td>
-                <td>Stabilize the sim and controller before commanding motion.</td>
-                <td>Settle timeout elapses.</td>
-                <td>Initial drift or unstable gait.</td>
+                <td><strong>APPROACH_TARGET</strong></td>
+                <td>Near waypoint + Yaw Aligned</td>
+                <td><strong>New:</strong> Prevents premature arm extension during turns.</td>
               </tr>
               <tr>
-                <td>APPROACH_SOURCE</td>
-                <td>Walk into the source-side reach corridor.</td>
-                <td>Source window held for the debounce period.</td>
-                <td>Overshoot and lateral drift.</td>
+                <td><strong>OPEN_GRIP</strong></td>
+                <td>Wait 15 ticks after release</td>
+                <td><strong>Critical:</strong> Prevents NaN crashes from finger-object overlap.</td>
               </tr>
               <tr>
-                <td>HOVER_SOURCE</td>
-                <td>Move the palm above the cylinder.</td>
-                <td>Palm distance inside hover window.</td>
-                <td>Early descent from a misaligned pose.</td>
-              </tr>
-              <tr>
-                <td>DESCEND_SOURCE</td>
-                <td>Lower the palm to grasp height.</td>
-                <td>Grasp-height window reached or timeout.</td>
-                <td>Table collision or occlusion jitter.</td>
-              </tr>
-              <tr>
-                <td>CLOSE_GRIP</td>
-                <td>Close fingers and attempt attachment.</td>
-                <td>Attachment confirmed or timeout.</td>
-                <td>Missed grasp attempts.</td>
-              </tr>
-              <tr>
-                <td>LIFT_SOURCE</td>
-                <td>Lift the object into a stable carry pose.</td>
-                <td>Carry pose reached.</td>
-                <td>Dragging or premature release.</td>
-              </tr>
-              <tr>
-                <td>APPROACH_TARGET</td>
-                <td>Navigate to the target table.</td>
-                <td>Target stand waypoint reached.</td>
-                <td>Mis-navigation and yaw drift.</td>
-              </tr>
-              <tr>
-                <td>HOVER_TARGET</td>
-                <td>Align the palm above the target surface.</td>
-                <td>Palm distance inside hover window.</td>
-                <td>Placement offset from misalignment.</td>
-              </tr>
-              <tr>
-                <td>LOWER_TARGET</td>
-                <td>Lower the object for release.</td>
-                <td>Release-height window reached.</td>
-                <td>Collision with the table surface.</td>
-              </tr>
-              <tr>
-                <td>OPEN_GRIP</td>
-                <td>Open the hand and detach the object.</td>
-                <td>Grip open for the debounce period.</td>
-                <td>Sticky attachment or delayed release.</td>
-              </tr>
-              <tr>
-                <td>RETRACT</td>
-                <td>Return the arm to a safe carry pose.</td>
-                <td>Arm pose reset confirmed.</td>
-                <td>Arm collisions after release.</td>
-              </tr>
-              <tr>
-                <td>DONE</td>
-                <td>Hold the final pose and stop commanding motion.</td>
-                <td>Terminal state.</td>
-                <td>Uncontrolled motion after success.</td>
+                <td><strong>LIFT_SOURCE</strong></td>
+                <td>Palm clearance > 25cm</td>
+                <td>Ensures object has physically left the table before transport.</td>
               </tr>
             </tbody>
           </table>
+          <figure class="figure">
+            <img
+              src="../assets/fsm-diagram.svg"
+              alt="FSM diagram showing state flow."
+              loading="lazy"
+            />
+            <figcaption>
+              FSM flow with debounce, timeout fallbacks, and the newly added release delay guard.
+            </figcaption>
+          </figure>
         </section>
       </main>
     </div>

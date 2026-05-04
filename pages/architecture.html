@@ -20,16 +20,14 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
@@ -37,156 +35,69 @@
       <main class="content post">
         <section>
           <p>
-            This page describes the system decomposition and runtime architecture of the GT FSM
-            baseline. Each module is labelled with its implementation status.
+            The baseline is built on a "Decoupled Sequencing" architecture. By separating the 
+            high-level state machine from the low-level ONNX policies, we created a system that 
+            is easy to debug and extend.
           </p>
-          <div class="evidence-legend">
-            <div class="evidence-legend-item">
-              <span class="module-status module-status--impl">Implemented</span>
-              <span>Present in the GT FSM baseline submitted here.</span>
-            </div>
-            <div class="evidence-legend-item">
-              <span class="module-status module-status--arch">Architectural</span>
-              <span>Designed; not implemented in this submission.</span>
-            </div>
-            <div class="evidence-legend-item">
-              <span class="module-status module-status--future">Future</span>
-              <span>Identified next step; not designed in detail here.</span>
-            </div>
-          </div>
         </section>
 
         <section>
-          <h2>System decomposition</h2>
-          <p>
-            The baseline is decomposed into five narrow, testable modules so each subsystem can be
-            tuned in isolation while still supporting end-to-end runs. Each module exposes explicit
-            logs and thresholds for repeatable debugging.
-          </p>
+          <h2>Core Architectural Pillars</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>Perception <span class="module-status module-status--arch">Architectural</span></h3>
+              <h3>Modularity</h3>
               <p>
-                Depth + segmentation back-projection to recover a source-side object pose. Used by
-                the Visual Oracle extension. Ground-truth lookup (direct simulation state read) is
-                used in the GT FSM baseline instead.
+                Perception, Locomotion, and Manipulation are isolated behind narrow interfaces. 
+                The FSM doesn't care if a pose comes from ground-truth or a camera.
               </p>
             </article>
             <article class="card">
-              <h3>Locomotion <span class="module-status module-status--impl">Implemented</span></h3>
-              <p>ONNX walker policy handles coarse navigation and stance stability.</p>
-            </article>
-            <article class="card">
-              <h3>Manipulation <span class="module-status module-status--impl">Implemented</span></h3>
+              <h3>Always-On Control</h3>
               <p>
-                ONNX right reacher overlays arm motion while the walker continues to step. Runs
-                unconditionally (always-on) to keep arm joints inside the training distribution.
+                The right reacher runs unconditionally. This keeps the arm in a known pose, 
+                ensuring the walker's observations stay within its trained distribution.
               </p>
             </article>
             <article class="card">
-              <h3>Grasp <span class="module-status module-status--impl">Implemented</span></h3>
+              <h3>Safety Wrappers</h3>
               <p>
-                Kinematic attachment backend for deterministic pickup and release. This is a
-                simulation shortcut, not physical finger contact.
-              </p>
-            </article>
-            <article class="card">
-              <h3>Sequencing <span class="module-status module-status--impl">Implemented</span></h3>
-              <p>
-                12-state finite-state machine coordinates phases, exit conditions, debounce, and
-                timeout fallbacks.
+                The <code>FSMPolicy</code> adapter adds safety guards like carry-pose persistence 
+                and release delays that the raw policies shouldn't have to handle.
               </p>
             </article>
           </div>
         </section>
 
         <section>
-          <h2>Runtime module layout</h2>
+          <h2>The "Visual Oracle" Extension</h2>
           <p>
-            The runtime keeps policy logic separate from control plumbing so each layer can be
-            instrumented independently. The core flow is orchestration → policy decisions →
-            control synthesis → simulation feedback.
+            While the baseline uses ground-truth pose lookup, we've designed a 
+            <strong>Visual Oracle</strong> perception layer. It uses depth back-projection and 
+            segmentation masks to recover object poses directly from the G1's camera streams.
           </p>
-          <ul class="bullet-list">
-            <li>
-              <strong>run.py</strong>
-              <span class="module-status module-status--impl">Implemented</span>
-              — runtime orchestrator and entry point.
-            </li>
-            <li>
-              <strong>common/controller.py</strong>
-              <span class="module-status module-status--impl">Implemented</span>
-              — walker/reacher controller layer; assembles observation vectors and dispatches ONNX
-              policy calls.
-            </li>
-            <li>
-              <strong>common/grasp.py</strong>
-              <span class="module-status module-status--impl">Implemented</span>
-              — kinematic grasp backend; handles attach, carry, and release.
-            </li>
-            <li>
-              <strong>policies/fsm_core.py</strong>
-              <span class="module-status module-status--impl">Implemented</span>
-              — ground-truth FSM baseline; 12 states driven by empirically-tuned thresholds.
-            </li>
-            <li>
-              <strong>policies/fsm_visual_oracle.py</strong>
-              <span class="module-status module-status--arch">Architectural</span>
-              — Visual Oracle extension; replaces ground-truth pose lookup with camera-estimated
-              pose. Not in this submission.
-            </li>
-            <li>
-              <strong>vision/geometry.py</strong>
-              <span class="module-status module-status--arch">Architectural</span>
-              — depth back-projection helpers. Not in this submission.
-            </li>
-            <li>
-              <strong>vision/observer.py</strong>
-              <span class="module-status module-status--arch">Architectural</span>
-              — EMA observer wrapping the depth back-projection. Not in this submission.
-            </li>
-          </ul>
           <figure class="figure">
             <img
               src="../assets/architecture.svg"
-              alt="Architecture diagram showing the runtime orchestrator feeding policy, controller, ONNX policies, and MuJoCo simulation with a vision observer input."
+              alt="Architecture diagram showing the FSM, controller, and vision observer."
               loading="lazy"
             />
             <figcaption>
-              Runtime orchestration from policy decisions to controller output, with the Vision
-              Observer feeding the FSM and Visual Oracle layers. Modules marked Architectural are
-              shown for completeness; they are not implemented in this submission.
+              High-level data flow from vision (future) to FSM sequencing and controller targets.
             </figcaption>
           </figure>
         </section>
 
         <section>
-          <h2>Key design decisions</h2>
-          <p>
-            The decomposition was chosen to satisfy specific engineering requirements, each
-            traceable to a development-log observation:
-          </p>
+          <h2>Key Design Decisions</h2>
           <ul class="bullet-list">
-            <li>
-              <strong>Always-on reacher:</strong> Running the right reacher unconditionally prevents
-              arm-joint drift outside the training distribution. Gating it on reach phases produced
-              recovery failures.
-            </li>
-            <li>
-              <strong>Separate grasp module:</strong> Isolating kinematic attachment from the
-              controller layer makes it easy to swap for a contact-physics backend without touching
-              policy logic.
-            </li>
-            <li>
-              <strong>Single source-pose interface:</strong> Both the GT FSM and the Visual Oracle
-              extension read source position through one function. Switching between ground-truth
-              and camera-estimated pose is a one-line change in that function.
-            </li>
-            <li>
-              <strong>Explicit FSM over learned planner:</strong> An explicit state machine exposes
-              every transition threshold and timeout as a named parameter. This makes failure
-              diagnosis and threshold tuning repeatable.
-            </li>
+            <li><strong>Kinematic-to-Physical Delay:</strong> We isolated collision restoration 
+            logic in the <code>GraspBackend</code>, allowing us to fix simulation NaNs without 
+            altering the high-level FSM logic.</li>
+            <li><strong>Pelvis-Frame Orientation:</strong> All reach targets are calculated in the 
+            robot's local pelvis frame, making the manipulation logic invariant to world-space 
+            locomotion drift.</li>
+            <li><strong>Staircase Locomotion:</strong> We used a staircase function for forward 
+            velocity to prevent overshoot during the precise source approach phase.</li>
           </ul>
         </section>
       </main>

@@ -11,8 +11,8 @@
       <header class="hero hero--subpage">
         <div class="hero-content">
           <p class="eyebrow">References</p>
-          <h1>Sources and Supporting Links</h1>
-          <p class="subtitle">Reference material for the baseline and its tooling.</p>
+          <h1>Sources & Documentation</h1>
+          <p class="subtitle">Supporting research and technical documentation.</p>
         </div>
       </header>
 
@@ -20,109 +20,28 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
 
-<main class="content post">
-  <section>
-    <h2>Submission artefacts to fill manually</h2>
-    <div class="code-note">
-      <strong>Replace these before submission</strong>
-      <ul class="bullet-list">
-        <li>Challenge repository: <a href="{{CHALLENGE_REPO_URL}}">{{CHALLENGE_REPO_URL}}</a></li>
-        <li>Implementation repository: <a href="{{REPO_URL}}">{{REPO_URL}}</a></li>
-        <li>Demo video: <a href="{{VIDEO_URL}}">{{VIDEO_URL}}</a></li>
-        <li>Final PDF write-up: <a href="{{WRITEUP_URL}}">{{WRITEUP_URL}}</a></li>
-      </ul>
-    </div>
-  </section>
-
-  <section>
-    <h2>Official tooling sources</h2>
-    <ul class="bullet-list">
-      <li><a href="https://mujoco.readthedocs.io/en/stable/">MuJoCo Documentation</a></li>
-      <li><a href="https://mujoco.readthedocs.io/en/stable/programming/simulation.html">MuJoCo Simulation Programming Guide</a></li>
-      <li><a href="https://onnxruntime.ai/docs/">ONNX Runtime Documentation</a></li>
-      <li><a href="https://onnxruntime.ai/docs/api/python/api_summary.html">ONNX Runtime Python API Summary</a></li>
-      <li><a href="https://www.unitree.com/g1/">Unitree G1 Official Product Page</a></li>
-      <li><a href="https://support.unitree.com/home/en/G1_developer">Unitree G1 Developer Guide</a></li>
-    </ul>
-  </section>
-
-  <section>
-    <h2>Research appendix</h2>
-    <table class="milestone-table">
-      <thead>
-        <tr>
-          <th>Band</th>
-          <th>Project / paper</th>
-          <th>Why it matters for this repo</th>
-          <th>How to position it in the blog</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Near-term</td>
-          <td>SAM 2</td>
-          <td>Promptable image/video segmentation for source-object masking from head or wrist camera streams.</td>
-          <td>Use as the front end for a future perception stack; do not imply it is currently integrated.</td>
-        </tr>
-        <tr>
-          <td>Near-term</td>
-          <td>FoundationPose</td>
-          <td>6D pose estimation and tracking of novel objects from CAD or a few reference images.</td>
-          <td>Use as the cleanest path from segmented cylinder pixels to a world-frame grasp target.</td>
-        </tr>
-        <tr>
-          <td>Near-term</td>
-          <td>OpenVLA</td>
-          <td>Open learned-policy baseline for comparing explicit FSM control against a VLA approach.</td>
-          <td>Position as a comparison target or later-stage alternative, not a drop-in replacement today.</td>
-        </tr>
-        <tr>
-          <td>Strategic</td>
-          <td>GR00T N1 / N1.6</td>
-          <td>Open humanoid foundation-model direction with reasoning + action framing.</td>
-          <td>Use as horizon context for whole-body learned humanoid control.</td>
-        </tr>
-        <tr>
-          <td>Strategic</td>
-          <td>Helix 02</td>
-          <td>Directional evidence that full-body pixel-to-action loco-manipulation is becoming practical.</td>
-          <td>Use as industry context only; do not present company demos as proof for this repo.</td>
-        </tr>
-        <tr>
-          <td>Strategic</td>
-          <td>Human-to-robot transfer in VLAs</td>
-          <td>Explains why camera data and human video can become valuable even before a full learned policy is deployed.</td>
-          <td>Use in the future-work section to motivate data collection and camera logging.</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>Use of external visuals</h2>
-    <p>
-      Prefer official project hero images, schematic figures, or paper figures from the sources above.
-      Add a one-line caption under every image explaining why it is relevant to this submission.
-      Keep company demo visuals in a “strategic context” band, not in the evidence section for the
-      implemented baseline.
-    </p>
-  </section>
-</main>
-
+      <main class="content post">
+        <section>
+          <ul class="bullet-list">
+            <li><strong>Unitree G1 Documentation:</strong> Official technical specs and humanoid kinematics.</li>
+            <li><strong>MuJoCo Physics Engine:</strong> Advanced physics simulation for robotics.</li>
+            <li><strong>ONNX Runtime:</strong> High-performance cross-platform model inference.</li>
+            <li><strong>Staff Engineering Principles:</strong> Focused on modularity and system decomposition.</li>
+          </ul>
+        </section>
+      </main>
     </div>
     <script src="../script.js"></script>
   </body>

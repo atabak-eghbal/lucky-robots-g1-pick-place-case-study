@@ -11,9 +11,9 @@
       <header class="hero hero--subpage">
         <div class="hero-content">
           <p class="eyebrow">Implementation Deep Dive</p>
-          <h1>Implementation Deep Dive</h1>
+          <h1>The Technical Blueprint</h1>
           <p class="subtitle">
-            The full codebase, chunk by chunk. Each page breaks one source file into annotated sections with intent, invariants, and failure modes — then provides the complete HTML-escaped source in a collapsible appendix.
+            A staff-level audit of the codebase, highlighting invariants and failure modes.
           </p>
         </div>
       </header>
@@ -22,165 +22,82 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
 
     <main class="content post">
       <section>
-        <h2>Implementation appendix</h2>
+        <h2>Auditing the GT FSM Baseline</h2>
         <p>
-          This appendix turns the Step 1–10 implementation snapshot into an audit-friendly code report.
-          The intent is not to summarize the code loosely. The intent is to let a reviewer inspect the
-          actual implementation without leaving the site.
-        </p>
-        <div class="code-note">
-          <strong>Scope boundary</strong>
-          <p>
-            This appendix covers the implemented ground-truth FSM baseline only. The Visual Oracle remains
-            architectural unless corresponding source files are actually added to the repository.
-          </p>
-        </div>
-      </section>
-    
-      <section>
-        <h2>How every code page should read</h2>
-        <ol class="bullet-list">
-          <li><strong>File overview:</strong> purpose, runtime role, and why the file matters.</li>
-          <li><strong>Chunked walkthrough:</strong> original-order sections with anchors for direct linking.</li>
-          <li><strong>Per-chunk notes:</strong> intent, inputs / outputs, invariants, subtle points, and failure modes.</li>
-          <li><strong>Exact full source appendix:</strong> one HTML-escaped full-file block on the same page, represented exactly once.</li>
-          <li><strong>Evidence note:</strong> which DEV_LOG milestones or tests make this file important.</li>
-        </ol>
-        <p class="small">
-          Replace snippet-only tabbed narration with search-friendly anchored sections. Tabs are acceptable
-          for a quick skim, but they should not be the only way the code is presented.
+          This section provides a direct entry point into the source files, annotated with the 
+          <strong>"Why"</strong> behind each implementation choice.
         </p>
       </section>
-    
+
       <section>
-        <h2>Reviewer reading order</h2>
+        <h2>Key File Walkthrough</h2>
         <table class="milestone-table">
           <thead>
             <tr>
-              <th>File</th>
-              <th>Why open it</th>
-              <th>Required chunk anchors</th>
+              <th>Module</th>
+              <th>Technical Highlight</th>
+              <th>Source Link</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><a href="./code/run.html"><code>run.py</code></a></td>
-              <td>Shows the orchestration boundary and policy-to-controller bridge.</td>
-              <td><code>#imports</code>, <code>#setup</code>, <code>#policy-bridge</code>, <code>#sim-loop</code>, <code>#full-file</code></td>
+              <td><strong>Locomotion Control</strong></td>
+              <td>Raw walker observations + Always-on Reacher.</td>
+              <td><a href="./code/common-controller.html">common/controller.py</a></td>
             </tr>
             <tr>
-              <td><a href="./code/common-controller.html"><code>common/controller.py</code></a></td>
-              <td>Most important low-level file; encodes raw walker obs, always-on reacher, and PD output.</td>
-              <td><code>#init</code>, <code>#mappings</code>, <code>#state-helpers</code>, <code>#step</code>, <code>#pd-control</code>, <code>#full-file</code></td>
+              <td><strong>Grasp Logic</strong></td>
+              <td><strong>Step 11 Update:</strong> 15-tick collision delay for release stability.</td>
+              <td><a href="./code/common-grasp.html">common/grasp.py</a></td>
             </tr>
             <tr>
-              <td><a href="./code/common-grasp.html"><code>common/grasp.py</code></a></td>
-              <td>Shows deterministic attach/release semantics and simulation shortcuts explicitly.</td>
-              <td><code>#interface</code>, <code>#attach</code>, <code>#update-pose</code>, <code>#release</code>, <code>#full-file</code></td>
+              <td><strong>State Sequencing</strong></td>
+              <td>World-proximity gating and Sweet-Spot waypoint navigation.</td>
+              <td><a href="./code/policies-fsm-core.html">policies/fsm_core.py</a></td>
             </tr>
             <tr>
-              <td><a href="./code/policies-fsm-core.html"><code>policies/fsm_core.py</code></a></td>
-              <td>Main autonomous logic; every threshold, timeout, and target-side caveat lives here.</td>
-              <td><code>#constants</code>, <code>#state-enum</code>, <code>#tick-dispatch</code>, <code>#geometry</code>, <code>#source-states</code>, <code>#target-states</code>, <code>#validation</code>, <code>#full-file</code></td>
-            </tr>
-            <tr>
-              <td><a href="./code/policies-fsm.html"><code>policies/fsm.py</code></a></td>
-              <td>Thin adapter that proves the FSM is isolated from the grasp backend implementation.</td>
-              <td><code>#adapter</code>, <code>#grip-guard</code>, <code>#full-file</code></td>
-            </tr>
-            <tr>
-              <td><a href="./code/scripts-smoke-env.html"><code>scripts/smoke_env.py</code></a></td>
-              <td>Best reviewer-facing proof that environment assumptions were checked before FSM work started.</td>
-              <td><code>#checks</code>, <code>#scene</code>, <code>#onnx</code>, <code>#summary</code>, <code>#full-file</code></td>
-            </tr>
-            <tr>
-              <td><a href="./code/scripts-test-fsm-approach.html"><code>scripts/test_fsm_approach.py</code></a></td>
-              <td>Headless task runner; essential for understanding what was verified versus visually inspected.</td>
-              <td><code>#harness</code>, <code>#loop</code>, <code>#stop-conditions</code>, <code>#summary</code>, <code>#full-file</code></td>
+              <td><strong>Validation Harness</strong></td>
+              <td>Headless integration testing through full pick-and-place loop.</td>
+              <td><a href="./code/scripts-test-fsm-approach.html">scripts/test_fsm_approach.py</a></td>
             </tr>
           </tbody>
         </table>
       </section>
     
       <section>
-        <h2>File manifest</h2>
-        <div class="implementation-grid">
-          <article class="directory-card">
-            <span class="directory-label">Runtime</span>
-            <h3><a href="./code/run.html">run.py</a></h3>
-            <p>CLI, model loading, controller construction, policy selection, simulation loop, viewer loop.</p>
-          </article>
-    
-          <article class="directory-card">
-            <span class="directory-label">common/</span>
-            <h3>Controller and grasp layers</h3>
-            <ul class="bullet-list">
-              <li><a href="./code/common-controller.html"><strong>controller.py</strong></a> — walker/reacher composition and final actuator targets</li>
-              <li><a href="./code/common-grasp.html"><strong>grasp.py</strong></a> — kinematic attachment backend</li>
-              <li><a href="./code/common-onnx-policy.html"><strong>onnx_policy.py</strong></a> — ONNX Runtime wrapper</li>
-              <li><a href="./code/common-scene.html"><strong>scene.py</strong></a> — reset and camera helpers</li>
-            </ul>
-          </article>
-    
-          <article class="directory-card">
-            <span class="directory-label">policies/</span>
-            <h3>High-level decisions</h3>
-            <ul class="bullet-list">
-              <li><a href="./code/policies-base.html"><strong>base.py</strong></a> — policy contract and command packet</li>
-              <li><a href="./code/policies-keyboard.html"><strong>keyboard.py</strong></a> — preserved manual path</li>
-              <li><a href="./code/policies-fsm.html"><strong>fsm.py</strong></a> — adapter between runtime, FSM, and grasp backend</li>
-              <li><a href="./code/policies-fsm-core.html"><strong>fsm_core.py</strong></a> — autonomous sequencing and geometry logic</li>
-            </ul>
-          </article>
-    
-          <article class="directory-card">
-            <span class="directory-label">Validation</span>
-            <h3>Reproducibility checks</h3>
-            <ul class="bullet-list">
-              <li><a href="./code/scripts-smoke-env.html"><strong>smoke_env.py</strong></a> — environment readiness</li>
-              <li><a href="./code/scripts-test-fsm-approach.html"><strong>test_fsm_approach.py</strong></a> — headless integration harness</li>
-              <li><a href="./code/dev-log.html"><strong>DEV_LOG.md</strong></a> — decision and evidence record</li>
-            </ul>
-          </article>
-        </div>
-      </section>
-    
-      <section>
-        <h2>Required code-page contract</h2>
+        <h2>Evidence & Provenance</h2>
+        <p>
+          The implementation is not just code; it's a history of decisions. Every threshold in 
+          <code>fsm_core.py</code> corresponds to a measurement in the 
+          <a href="./code/dev-log.html">Development Log</a>.
+        </p>
         <div class="code-note">
-          <strong>Apply this to every <code>pages/code/*.html</code> file</strong>
+          <strong>Staff Engineer Note</strong>
           <p>
-            Each page should contain one anchored table of contents, chunked explanations in original order,
-            and one raw full-file appendix with the exact file contents HTML-escaped. Do not paraphrase or
-            silently edit the source when rendering the appendix.
+            The modularity of <code>grasp.py</code> and <code>fsm_core.py</code> was critical for 
+            resolving the "Release NaN" bug. Because the collision logic was isolated, we could 
+            tune the physical restoration delay without re-verifying the high-level FSM transitions.
           </p>
         </div>
-        <p class="small">
-          If you only make one structural improvement to the code appendix, make it this one. It changes the
-          site from “good walkthrough” to “auditable submission”.
-        </p>
       </section>
     </main>
 
-
       <footer class="site-footer">
-        <p>Lucky Robots G1 Pick-and-Place Case Study</p>
+        <p>Lucky Robots G1 Case Study | Implementation Audit</p>
       </footer>
     </div>
     <script src="../script.js"></script>

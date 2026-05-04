@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Limitations and Next Steps | Lucky Robots G1 Pick-and-Place</title>
+    <title>Next Steps | Lucky Robots G1 Pick-and-Place</title>
     <link rel="stylesheet" href="../style.css" />
   </head>
   <body>
     <div class="page">
       <header class="hero hero--subpage">
         <div class="hero-content">
-          <p class="eyebrow">Limitations</p>
-          <h1>Limitations and Next Steps</h1>
-          <p class="subtitle">Known gaps and follow-on work for the baseline stack.</p>
+          <p class="eyebrow">Limitations & Next Steps</p>
+          <h1>Beyond the Baseline</h1>
+          <p class="subtitle">Where the baseline ends and the production stack begins.</p>
         </div>
       </header>
 
@@ -20,44 +20,50 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
 
       <main class="content post">
         <section>
-          <h2>Limitations</h2>
+          <h2>Honest Engineering: Current Limitations</h2>
           <ul class="bullet-list">
-            <li>The baseline is a debuggable modular controller, not a production-ready robotics stack.</li>
-            <li>Kinematic grasping is a simulation shortcut that hides contact dynamics and finger forces.</li>
-            <li>The Visual Oracle is an architectural design, not an implemented module in this submission.</li>
-            <li>Target-side alignment relies on empirical threshold tuning, not closed-loop pose feedback.</li>
-            <li>Post-DONE on-table validation is not implemented; placement success was confirmed by visual inspection of the simulation.</li>
-            <li>The wrist camera is not exploited in the current baseline.</li>
-            <li>Sim-to-real transfer has not been attempted and will require additional validation.</li>
+            <li><strong>Kinematic Grasping:</strong> The cylinder is teleported to the palm 
+            rather than grasped via physical finger contact. Moving to contact-rich grasping is 
+            the most significant next step for physical realism.</li>
+            <li><strong>Ground-Truth Dependency:</strong> While navigation and transport are 
+            autonomous, they rely on knowing the object's simulated pose. Implementing the 
+            Visual Oracle design is required for full camera-only autonomy.</li>
+            <li><strong>Environment Variance:</strong> The current thresholds are tuned for a 
+            specific table-block arrangement. Generalizing to different heights and lighting 
+            conditions remains future work.</li>
           </ul>
         </section>
 
         <section>
-          <h2>Next Steps</h2>
-          <ul class="bullet-list">
-            <li>Implement the Visual Oracle: RGB segmentation, depth back-projection, EMA smoothing, and freeze logic.</li>
-            <li>Add post-DONE proximity checks to programmatically confirm on-table placement.</li>
-            <li>Add contact-aware grasping with slip detection and physical release validation.</li>
-            <li>Refine target-side navigation with closed-loop yaw and distance feedback.</li>
-            <li>Apply domain randomization and sensor noise for robustness evaluation.</li>
-            <li>Expand dashboards for timing, failure recovery, and pose drift metrics.</li>
-          </ul>
+          <h2>The Product Roadmap</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>1. Visual Integration</h3>
+              <p>Execute the Visual Oracle perception design using RGB-D camera streams.</p>
+            </article>
+            <article class="card">
+              <h3>2. Physical Grasping</h3>
+              <p>Replace kinematic attachment with a force-control finger backend.</p>
+            </article>
+            <article class="card">
+              <h3>3. End-to-End Learning</h3>
+              <p>Collect data from the FSM baseline to train a residual RL policy for robust manipulation.</p>
+            </article>
+          </div>
         </section>
       </main>
     </div>

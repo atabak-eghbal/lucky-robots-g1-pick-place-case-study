@@ -11,8 +11,8 @@
       <header class="hero hero--subpage">
         <div class="hero-content">
           <p class="eyebrow">Challenge</p>
-          <h1>The G1 Pick-and-Place Task</h1>
-          <p class="subtitle">Why this autonomous baseline is harder than it first appears.</p>
+          <h1>The Humanoid Complexity</h1>
+          <p class="subtitle">Why autonomous pick-and-place is an engineering problem, not just a control one.</p>
         </div>
       </header>
 
@@ -20,110 +20,52 @@
         <div class="nav-content">
           <span class="nav-title">Lucky Robots G1</span>
           <div class="nav-links">
-            <a href="../index.html">Home</a>
-            <a href="./challenge.html">Challenge</a>
+            <a href="../index.html">The Story</a>
             <a href="./architecture.html">Architecture</a>
             <a href="./fsm-baseline.html">FSM Baseline</a>
-            <a href="./visual-oracle.html">Visual Oracle</a>
-            <a href="./lessons.html">Lessons</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./lessons.html">Lessons Learned</a>
             <a href="./results.html">Results</a>
-            <a href="./implementation-deep-dive.html">Implementation</a>
-            <a href="./limitations-next-steps.html">Limitations</a>
-            <a href="./references.html">References</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
           </div>
         </div>
       </nav>
 
       <main class="content post">
         <section>
+          <h2>The Starting Line</h2>
           <p>
-            This page frames the starting conditions, the task scope, and why autonomous
-            pick-and-place on a humanoid is harder than simply reaching for a cylinder. It also
-            distinguishes what is implemented in this submission from what is designed at the
-            architectural level and what remains future work.
+            The project began with a manual keyboard demo for the Unitree G1. While it 
+            demonstrated that the underlying ONNX policies for walking and reaching were 
+            capable, it lacked the sequencing and decision-making required for autonomy.
+          </p>
+          <p>
+            Our challenge was to bridge the gap between "capable policies" and a "robust task 
+            machine"—while ensuring the system remains debuggable and stable.
           </p>
         </section>
 
         <section>
-          <h2>Starting conditions: the manual baseline</h2>
+          <h2>The Goal: Robust Autonomy</h2>
           <p>
-            The Lucky Robots G1 challenge repository shipped a <strong>manual baseline</strong>: a
-            keyboard-controlled MuJoCo demo for the Unitree G1 humanoid. It included walker and
-            reacher ONNX policies, a full robot model, a configured scene with source and target
-            tables, and multi-camera visibility. The human operator sent velocity and arm-target
-            commands at each timestep; no autonomy was present.
-          </p>
-          <p>
-            The task was to convert that manual baseline into an autonomous controller — without
-            hiding where the system still fails.
-          </p>
-        </section>
-
-        <section>
-          <h2>What the GT FSM baseline delivers</h2>
-          <p>
-            The <strong>ground-truth FSM baseline (GT FSM)</strong> is the primary deliverable of
-            this submission. It replaces manual input with a 12-state finite-state machine that
-            drives the robot through the full pick-and-place sequence:
+            We delivered a 12-state <strong>Finite-State Machine (FSM)</strong> that coordinates 
+            locomotion and manipulation concurrently. The system handles:
           </p>
           <ul class="bullet-list">
-            <li>Settle and stabilize stance.</li>
-            <li>Approach the source table using the walker ONNX policy.</li>
-            <li>Hover and descend the arm to the cylinder using the always-on right reacher.</li>
-            <li>Attach the cylinder kinematically once within grasp range.</li>
-            <li>Lift and carry the object while walking to the target table.</li>
-            <li>Lower, release, and retract.</li>
+            <li><strong>Dynamic Approach:</strong> Walking to the cylinder with staircase speed scaling.</li>
+            <li><strong>Precision Reaching:</strong> Managing a 12cm reacher accuracy floor via empirical thresholds.</li>
+            <li><strong>Safe Transport:</strong> Maintaining carry poses during 180-degree navigation turns.</li>
+            <li><strong>Reliable Release:</strong> Preventing simulation crashes through delayed physics restoration.</li>
           </ul>
-          <p>
-            "Ground-truth" means the source object pose is read directly from the simulation state
-            rather than estimated from camera data. This is an intentional baseline choice: it
-            isolates sequencing and policy-coordination correctness from perception correctness.
-          </p>
         </section>
 
         <section>
-          <h2>What is architectural: the Visual Oracle</h2>
-          <p>
-            The <strong>Visual Oracle</strong> is a camera-based source-localization layer designed
-            to replace the ground-truth pose lookup for source-side phases. It uses deterministic
-            depth back-projection and EMA smoothing to estimate the cylinder's position from the
-            robot's head camera. The architecture is documented in the
-            <a href="./visual-oracle.html">Visual Oracle</a> appendix.
-          </p>
-          <p>
-            The Visual Oracle is an architectural design in this submission. It is not implemented.
-            Integrating it requires changing the source-pose lookup in one FSM function; the
-            sequencing logic and policy-coordination plumbing are otherwise unchanged.
-          </p>
-        </section>
-
-        <section>
-          <h2>Future research roadmap</h2>
-          <p>
-            The following are identified as high-value next steps but are not included in this
-            submission:
-          </p>
+          <h2>Why This Problem is Hard</h2>
           <ul class="bullet-list">
-            <li>Physical finger-contact grasping to replace kinematic attachment.</li>
-            <li>Programmatic post-release on-table confirmation.</li>
-            <li>Visual Oracle implementation and integration testing.</li>
-            <li>Sim-to-real transfer: calibration, domain randomization, and hardware trials.</li>
-          </ul>
-          <p>
-            See the <a href="./limitations-next-steps.html">Limitations &amp; Next Steps</a>
-            appendix for the full gap list and prioritization.
-          </p>
-        </section>
-
-        <section>
-          <h2>Why this problem is hard</h2>
-          <ul class="bullet-list">
-            <li>Humanoid locomotion and manipulation must be coordinated concurrently, not staged.</li>
-            <li>The reacher expects pelvis-frame targets, so world-frame goals require careful transforms.</li>
-            <li>Learned policies have narrow operating envelopes and drift under small distribution shifts.</li>
-            <li>Grasping is contact-rich, and fingertip alignment matters more than global pose accuracy.</li>
-            <li>Perception timing interacts with gait, causing jitter or occlusion at the worst moments.</li>
-            <li>The reacher accuracy floor (~12–13 cm radial error) is large relative to the cylinder diameter; thresholds must be set empirically, not analytically.</li>
+            <li><strong>Policy Distribution Shift:</strong> If the arm isn't in its expected carry pose, the walker's observations drift, leading to unstable gaits.</li>
+            <li><strong>Coordinate Invariants:</strong> Reaching from a walking base requires transforming world-frame goals into pelvis-frame targets at every tick.</li>
+            <li><strong>The Kinematic-to-Physical Gap:</strong> Releasing an object in simulation is a discrete event that can trigger explosive contact forces if not handled with temporal delays.</li>
           </ul>
         </section>
       </main>
