@@ -36,22 +36,15 @@ Claims carry one of three status levels:
 - **Visually verified** — observed in a reference MuJoCo run; not programmatically confirmed
 - **Future / proposed** — documented architecture or planned next step; not implemented
 
+## Reviewer guide
+
+- **3 minutes:** `index.html` + `pages/results.html`
+- **10 minutes:** add `pages/fsm-baseline.html` + `pages/lessons.html`
+- **Deep dive:** add `pages/implementation-deep-dive.html` + `pages/architecture.html` + `pages/limitations-next-steps.html`
+
 ## How to view locally
 
 Open `index.html` directly in a browser, or run a simple local server:
 
-```
+```bash
 python -m http.server
-```
-
-Then visit `http://localhost:8000`.
-
-## External links
-
-The following external assets are not attached to this static report:
-
-- Lucky Robots G1 challenge repository
-- Original implementation repository
-- Demo video
-- Final write-up PDF (optional)
-
