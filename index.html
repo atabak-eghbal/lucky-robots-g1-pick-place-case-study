@@ -41,6 +41,7 @@
             <a href="pages/results.html">Results</a>
             <a href="pages/implementation-deep-dive.html">Implementation</a>
             <a href="pages/limitations-next-steps.html">Limitations</a>
+            <a href="pages/video-walkthrough.html">Video</a>
             <a href="pages/references.html">References</a>
           </div>
         </div>
@@ -71,9 +72,60 @@
         </section>
       
         <section>
-          <h2>Reviewer guide</h2>
+          <h2>Result preview</h2>
           <p>
-            This site is structured as an engineering report, not a demo showcase. Use the path that matches
+            The best way to read this submission is to first see the behaviour, then inspect the evidence.
+            The media below should show the progression from manual baseline to autonomous FSM execution.
+          </p>
+
+          <div class="media-grid">
+            <article class="media-card">
+              <video controls muted playsinline preload="metadata" poster="assets/poster-full-run.jpg">
+                <source src="assets/demo-full-run.webm" type="video/webm" />
+                <source src="assets/demo-full-run.mp4" type="video/mp4" />
+              </video>
+              <h3>Best full run</h3>
+              <p>
+                End-to-end GT FSM run: approach, hover, descend, kinematic attach, lift, transport,
+                lower, release, and retract. Final placement should be interpreted with the evidence
+                status explained in the Results appendix.
+              </p>
+              <span class="status-badge status-visual">Visually verified</span>
+            </article>
+
+            <article class="media-card">
+              <img src="assets/gif-source-approach.gif" alt="Robot approaching the source table." loading="lazy" />
+              <h3>Source approach</h3>
+              <p>
+                The walker moves the robot into the right-arm reach corridor using the GT object pose.
+              </p>
+              <span class="status-badge status-verified">Verified</span>
+            </article>
+
+            <article class="media-card">
+              <img src="assets/gif-grasp-lift.gif" alt="Robot attaching and lifting the red cylinder." loading="lazy" />
+              <h3>Attach and lift</h3>
+              <p>
+                Kinematic attachment fires near the empirical reacher floor and the cylinder tracks the palm.
+              </p>
+              <span class="status-badge status-verified">Verified</span>
+            </article>
+
+            <article class="media-card">
+              <img src="assets/gif-target-release.gif" alt="Robot lowering and releasing the cylinder near the target table." loading="lazy" />
+              <h3>Target-side release</h3>
+              <p>
+                Target-side release is shown visually; final settled table membership should still be discussed
+                with the post-release validation caveat.
+              </p>
+              <span class="status-badge status-visual">Visually verified</span>
+            </article>
+          </div>
+        </section>
+      
+        <section>
+          <h2>Reviewer guide</h2>
+          <p> Use the path that matches
             your available time.
           </p>
           <table class="milestone-table">

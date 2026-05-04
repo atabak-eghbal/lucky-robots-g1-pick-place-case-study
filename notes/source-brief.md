@@ -1,21 +1,24 @@
-# Source Brief: Modular Pick-and-Place Baseline Case Study
+# Source Brief: Lucky Robots G1 Pick-and-Place Engineering Report
 
 ## Narrative summary
-This case study documents how a manual Unitree G1 MuJoCo demo was converted into a modular
-pick-and-place baseline. The focus is on clear system decomposition, an explicit FSM sequence, a
-lightweight Visual Oracle for source localization, and honest reporting of what the simulation
-baseline can and cannot do.
+
+This report documents how the original manual Unitree G1 MuJoCo demo was converted into a
+ground-truth finite-state-machine baseline for pick-and-place. The emphasis is on decomposition,
+evidence, debugging, and honest scope control.
+
+The implemented deliverable is the GT FSM baseline. The Visual Oracle is an architectural extension,
+not an implemented component in this submission.
 
 ## Core story beats
-- **Challenge framing:** move a red cylinder between tables using a humanoid in simulation.
-- **Modular stack:** separate perception, locomotion, manipulation, grasping, and sequencing.
-- **FSM baseline:** explicit states with timeouts and deterministic transitions for debugging.
-- **Visual Oracle:** deterministic depth back-projection with EMA smoothing and frozen estimates.
-- **Key lessons:** normalization pitfalls, always-on reacher constraints, accuracy limits, turn-rate
-  behavior, and vision freeze strategy.
-- **Results + limitations:** milestone table, plot placeholders, and clear caveats about kinematic
-  grasping and sim-only validation.
+
+- **Original baseline:** manual keyboard-controlled MuJoCo simulation with pretrained walker and reacher ONNX policies.
+- **Implemented contribution:** autonomous GT FSM baseline coordinating locomotion, reaching, kinematic grasping, transport, release, and retraction.
+- **Engineering discoveries:** raw walker observations, always-on right reacher, empirical reacher accuracy floor, kinematic attach threshold, target-side false-positive correction.
+- **Evidence model:** verified, visually verified, and future/proposed claims are separated throughout.
+- **Known limitations:** kinematic grasping, simulation-only validation, incomplete post-release settle checker, no hardware transfer.
+- **Future direction:** Visual Oracle implementation, post-release validation, physical grasping, robustness testing, and learned-policy comparisons.
 
 ## Tone goals
-Professional, technical, and portfolio-ready. Be explicit about tradeoffs, avoid exaggerated
-claims, and keep the focus on engineering decisions.
+
+Reviewer-facing, precise, evidence-first, and technically honest. Avoid portfolio language, hype,
+or claims that blur implemented work with future work.

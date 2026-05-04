@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./video-walkthrough.html">Video</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -58,6 +59,55 @@
             <li>Apply domain randomization and sensor noise for robustness evaluation.</li>
             <li>Expand dashboards for timing, failure recovery, and pose drift metrics.</li>
           </ul>
+        </section>
+
+        <section>
+          <h2>Research-informed future work</h2>
+          <p>
+            The next step is not to replace the FSM immediately with a black-box policy. The safer path is
+            to upgrade perception and validation first, then compare the explicit FSM baseline against
+            learned-policy alternatives.
+          </p>
+
+          <div class="card-grid">
+            <article class="card">
+              <h3>SAM 2 for object masks</h3>
+              <p>
+                SAM 2 is a promptable segmentation model for images and videos. In this repo, it would be
+                most useful as a future source-object mask generator for head or wrist camera frames.
+              </p>
+              <span class="status-badge status-future">Future / proposed</span>
+            </article>
+
+            <article class="card">
+              <h3>FoundationPose for 6D pose</h3>
+              <p>
+                FoundationPose is relevant because the red cylinder has a simple known geometry. A future
+                perception stack could combine segmentation with 6D pose tracking to estimate a world-frame
+                grasp target instead of reading MuJoCo ground truth.
+              </p>
+              <span class="status-badge status-future">Future / proposed</span>
+            </article>
+
+            <article class="card">
+              <h3>OpenVLA / openpi as learned-policy comparators</h3>
+              <p>
+                Open VLA-style policies are useful future comparison points, but they should be evaluated
+                against this deterministic baseline rather than substituted blindly.
+              </p>
+              <span class="status-badge status-future">Future / proposed</span>
+            </article>
+
+            <article class="card">
+              <h3>Humanoid foundation-model context</h3>
+              <p>
+                Systems such as GR00T and Helix 02 show where whole-body humanoid control is moving:
+                tighter integration between perception, locomotion, manipulation, and language-conditioned
+                behaviour. They are strategic context, not evidence for this implementation.
+              </p>
+              <span class="status-badge status-future">Future / proposed</span>
+            </article>
+          </div>
         </section>
       </main>
     </div>

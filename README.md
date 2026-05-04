@@ -42,3 +42,25 @@ Open `index.html` directly in a browser, or run a simple local server:
 
 ```bash
 python -m http.server
+```
+
+## Visual evidence assets
+
+Before submission, confirm these files exist:
+
+```text
+assets/demo-full-run.webm
+assets/demo-full-run.mp4
+assets/poster-full-run.jpg
+assets/gif-source-approach.gif
+assets/gif-grasp-lift.gif
+assets/gif-target-release.gif
+assets/fig-state-duration-timeline.svg
+assets/fig-reacher-accuracy-floor.svg
+assets/fig-attach-distance-threshold.svg
+pages/video-walkthrough.html
+notes/video-script.md
+```
+
+The video and GIF assets are visual evidence only. The written report remains the source of truth
+for which results are verified, visually verified, or future/proposed.

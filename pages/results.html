@@ -29,6 +29,7 @@
             <a href="./results.html">Results</a>
             <a href="./implementation-deep-dive.html">Implementation</a>
             <a href="./limitations-next-steps.html">Limitations</a>
+            <a href="./video-walkthrough.html">Video</a>
             <a href="./references.html">References</a>
           </div>
         </div>
@@ -73,10 +74,12 @@
   <section>
     <h2>What is visually verified</h2>
     <p>
-      Final blue-table placement should be presented as visually successful in simulation, not as a fully
-      verified end-state checker result. The development log records that the first target-side PASS was a
-      false positive. A later run visually landed the cylinder on the blue table, but the DONE-time
-      checker still observed the cylinder before full post-release settling.
+      The final blue-table placement is presented conservatively. The corrected Step 10 run reached
+      DONE with the cylinder detached and on the target table in the logged checker, but earlier
+      target-side validation produced a false positive and exposed how sensitive placement validation
+      is to frame choice, fallback logic, and post-release settling. For that reason, the report treats
+      the final placement as visually successful in simulation and identifies a stronger post-release
+      settle-and-check validator as future work.
     </p>
   </section>
 
