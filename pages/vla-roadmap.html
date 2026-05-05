@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VLA Roadmap | Lucky Robots G1 Pick-and-Place</title>
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero hero--subpage">
+        <div class="hero-content">
+          <p class="eyebrow">Research Extension</p>
+          <h1>OpenVLA / VLA Roadmap for the G1 Pick-and-Place Challenge</h1>
+          <p class="subtitle">
+            A staged feasibility plan for using Vision-Language-Action models without breaking
+            the working FSM baseline.
+          </p>
+        </div>
+      </header>
+
+      <nav class="top-nav" aria-label="Primary">
+        <div class="nav-content">
+          <span class="nav-title">Lucky Robots G1</span>
+          <div class="nav-links">
+            <a href="../index.html">The Story</a>
+            <a href="./architecture.html">Architecture</a>
+            <a href="./fsm-baseline.html">FSM Baseline</a>
+            <a href="./visual-oracle.html">The Vision</a>
+            <a href="./vla-roadmap.html">VLA Roadmap</a>
+            <a href="./lessons.html">Lessons Learned</a>
+            <a href="./results.html">Results</a>
+            <a href="./implementation-deep-dive.html">Code Audit</a>
+            <a href="./limitations-next-steps.html">Next Steps</a>
+          </div>
+        </div>
+      </nav>
+
+      <main class="content post">
+
+        <!-- ── 1. Status Banner ──────────────────────────────────────── -->
+        <section>
+          <div class="code-note">
+            <ul class="bullet-list">
+              <li><strong>Status:</strong> Future / proposed</li>
+              <li><strong>Current implementation status:</strong> Not implemented in this submission</li>
+              <li><strong>Purpose:</strong> Research branch for evaluating whether OpenVLA-style policies
+                can augment or replace parts of the FSM pipeline</li>
+              <li><strong>Safety principle:</strong> The existing FSM remains the teacher, fallback,
+                and evaluation baseline</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- ── 2. Why This Page Exists ───────────────────────────────── -->
+        <section>
+          <h2>Why This Page Exists</h2>
+          <p>
+            The current submission solves the task with a ground-truth FSM baseline and documents
+            a Visual Oracle perception extension. The next research question is whether a generalist
+            Vision-Language-Action model such as OpenVLA can be adapted to this G1 humanoid task.
+          </p>
+          <p>
+            However, OpenVLA should <strong>not</strong> be plugged directly into the G1 controller,
+            because the action spaces and embodiments differ significantly. This page documents the
+            reasoning, staged plan, and decision log for doing this carefully.
+          </p>
+        </section>
+
+        <!-- ── 3. Core Goal ──────────────────────────────────────────── -->
+        <section>
+          <h2>Core Goal</h2>
+          <div class="code-note">
+            <p>
+              <strong>Goal:</strong> Investigate whether a VLA model can map G1 camera observations
+              and a language instruction into useful manipulation actions for the red-cylinder
+              pick-and-place task.
+            </p>
+            <p>
+              <strong>Language instruction example:</strong><br />
+              <code>"Pick up the red cylinder and place it on the blue table."</code>
+            </p>
+          </div>
+        </section>
+
+        <!-- ── 4. Main Engineering Constraint ───────────────────────── -->
+        <section>
+          <h2>Main Engineering Constraint</h2>
+          <p>OpenVLA predicts a 7-DoF robot action for supported robot embodiments:</p>
+          <pre class="code-block">[dx, dy, dz, droll, dpitch, dyaw, gripper]</pre>
+          <p>The G1 stack consumes:</p>
+          <ul class="bullet-list">
+            <li><code>walk_cmd</code></li>
+            <li><code>reach_target</code> in pelvis frame</li>
+            <li><code>reach_active</code></li>
+            <li><code>grip_closed</code></li>
+          </ul>
+          <p>
+            Therefore, the first engineering challenge is <strong>not model loading</strong>.
+            It is defining an adapter between OpenVLA-style actions and the G1
+            walker / reacher / grip stack.
+          </p>
+        </section>
+
+        <!-- ── 5. Recommended Architecture ──────────────────────────── -->
+        <section>
+          <h2>Recommended Architecture</h2>
+          <pre class="code-block">Vision / Language Input
+        ↓
+OpenVLA or VLA model
+        ↓
+7D end-effector action proposal
+        ↓
+G1VLAActionAdapter
+        ↓
+existing walker + right_reacher + grip backend
+        ↓
+MuJoCo G1 task execution</pre>
+          <ul class="bullet-list">
+            <li>The walker should remain classical at first.</li>
+            <li>The right_reacher ONNX should remain the arm controller at first.</li>
+            <li>OpenVLA should first propose manipulation deltas or waypoints,
+              not full-body humanoid joint targets.</li>
+          </ul>
+        </section>
+
+        <!-- ── 6. Why Not Replace the Whole Controller First ────────── -->
+        <section>
+          <h2>Why We Should Not Replace the Whole Controller First</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Embodiment mismatch</h3>
+              <p>
+                OpenVLA was not trained specifically on this G1 MuJoCo humanoid setup.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Action-space mismatch</h3>
+              <p>
+                The G1 stack uses pelvis-frame reach targets and a walker/reacher abstraction,
+                not direct OpenVLA actions.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Infrastructure cost</h3>
+              <p>
+                OpenVLA inference/fine-tuning needs GPU/cloud resources, while adapter and
+                replay tests can run locally.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Debuggability</h3>
+              <p>
+                The FSM baseline is already working and should remain the teacher and
+                safety fallback.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <!-- ── 7. First Research Hypothesis ─────────────────────────── -->
+        <section>
+          <h2>First Research Hypothesis</h2>
+          <div class="code-note">
+            <p>
+              <strong>Hypothesis:</strong> If the FSM palm trajectory can be converted into
+              OpenVLA-style 7D actions and replayed through the existing G1 reacher, then
+              OpenVLA fine-tuning becomes a meaningful next step.
+            </p>
+            <p>
+              If this replay fails, then OpenVLA is not yet a good fit for this task without
+              redesigning the action space.
+            </p>
+          </div>
+        </section>
+
+        <!-- ── 8. Progressive Roadmap ────────────────────────────────── -->
+        <section>
+          <h2>Progressive Roadmap</h2>
+          <div style="overflow-x: auto;">
+            <table class="data-table" style="width:100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th>Step</th>
+                  <th>MVP</th>
+                  <th>Purpose</th>
+                  <th>Verification</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>0 — Documentation setup</strong></td>
+                  <td>Add this VLA roadmap and decision log to the blog</td>
+                  <td>Keep the research branch explainable</td>
+                  <td>Page exists and is linked in nav</td>
+                  <td><span class="status-badge status-future">Proposed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>1 — G1 VLA action adapter</strong></td>
+                  <td>Map [dx, dy, dz, droll, dpitch, dyaw, gripper] to reach_target/grip</td>
+                  <td>Test action-space compatibility</td>
+                  <td>Unit test converts world palm target to pelvis-frame reach target</td>
+                  <td><span class="status-badge status-future">Proposed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>2 — FSM demonstration recorder</strong></td>
+                  <td>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action</td>
+                  <td>Generate teacher data from the working FSM</td>
+                  <td>Saved JSONL/NPZ has synchronized images and actions</td>
+                  <td><span class="status-badge status-future">Proposed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>3 — 7D action replay</strong></td>
+                  <td>Replay recorded 7D actions without FSM target lookups</td>
+                  <td>Check whether the VLA action representation is executable</td>
+                  <td>Robot reaches source hover, descends, grips, lifts, and releases approximately</td>
+                  <td><span class="status-badge status-future">Proposed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>4 — Dataset cleanup</strong></td>
+                  <td>Downsample to 5–10 Hz and filter idle actions</td>
+                  <td>Match VLA training assumptions</td>
+                  <td>No long pause segments; action magnitudes are smooth</td>
+                  <td><span class="status-badge status-future">Proposed</span></td>
+                </tr>
+                <tr>
+                  <td><strong>5 — OpenVLA shadow mode</strong></td>
+                  <td>Run OpenVLA on saved frames but do not control the robot</td>
+                  <td>Compare predicted actions to FSM teacher actions</td>
+                  <td>Directional agreement and L1 action error metrics</td>
+                  <td><span class="status-badge status-future">Future</span></td>
+                </tr>
+                <tr>
+                  <td><strong>6 — Remote/cloud inference</strong></td>
+                  <td>Serve OpenVLA from Colab/cloud and query from local MuJoCo</td>
+                  <td>Avoid local GPU constraints</td>
+                  <td>End-to-end latency and stable API calls</td>
+                  <td><span class="status-badge status-future">Future</span></td>
+                </tr>
+                <tr>
+                  <td><strong>7 — Fine-tuning feasibility</strong></td>
+                  <td>Evaluate LoRA/OFT fine-tuning only after replay passes</td>
+                  <td>Adapt OpenVLA to G1 demonstrations</td>
+                  <td>Offline validation on held-out FSM demos</td>
+                  <td><span class="status-badge status-future">Future</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ── 9. Infrastructure Plan ────────────────────────────────── -->
+        <section>
+          <h2>Infrastructure Plan</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Local Mac / local machine</h3>
+              <ul class="bullet-list">
+                <li>MuJoCo simulation</li>
+                <li>FSM baseline</li>
+                <li>demonstration recording</li>
+                <li>action adapter</li>
+                <li>replay tests</li>
+                <li>dataset inspection</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Cloud / Colab / GPU</h3>
+              <ul class="bullet-list">
+                <li>OpenVLA inference</li>
+                <li>possible LoRA fine-tuning</li>
+                <li>possible OFT experiment</li>
+                <li>model serving through REST API</li>
+              </ul>
+            </article>
+          </div>
+          <div class="code-note" style="margin-top: 1rem;">
+            <strong>Note:</strong> No CUDA or OpenVLA setup is needed for Step 1. The first
+            milestone only needs the existing MuJoCo + ONNX Runtime stack.
+          </div>
+        </section>
+
+        <!-- ── 10. Decision Log ──────────────────────────────────────── -->
+        <section>
+          <h2>Decision Log</h2>
+
+          <article class="card" style="margin-bottom: 1rem;">
+            <h3>Decision 001 — Do not directly replace the FSM/walker/reacher with OpenVLA</h3>
+            <ul class="bullet-list">
+              <li><strong>Reason:</strong> Too many mismatches at once: embodiment, action space,
+                camera distribution, and compute.</li>
+              <li><strong>Expected result:</strong> Safer incremental research branch.</li>
+              <li><strong>Rejected alternative:</strong> Zero-shot OpenVLA live control.</li>
+            </ul>
+          </article>
+
+          <article class="card" style="margin-bottom: 1rem;">
+            <h3>Decision 002 — Use the FSM as a teacher policy</h3>
+            <ul class="bullet-list">
+              <li><strong>Reason:</strong> The FSM already solves the task and exposes phase labels,
+                reach targets, palm pose, grip commands, and object/table metadata.</li>
+              <li><strong>Expected result:</strong> Consistent image-action demonstrations without
+                manual teleoperation.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>Decision 003 — Build the action adapter before loading OpenVLA</h3>
+            <ul class="bullet-list">
+              <li><strong>Reason:</strong> If 7D replay cannot control the G1 stack, fine-tuning
+                OpenVLA is not yet meaningful.</li>
+              <li><strong>Expected result:</strong> A local, cheap feasibility test before
+                cloud/model work.</li>
+            </ul>
+          </article>
+        </section>
+
+        <!-- ── 11. First Implementation Target ──────────────────────── -->
+        <section>
+          <h2>First Implementation Target</h2>
+          <pre class="code-block">vla_bridge/
+  __init__.py
+  action_adapter.py
+  demo_schema.py
+
+scripts/
+  record_vla_demo.py
+  replay_vla_demo.py</pre>
+          <p>
+            The first actual code change should only create the adapter and schema.
+            <strong>Do not load OpenVLA yet.</strong>
+          </p>
+        </section>
+
+        <!-- ── 12. Expected First Test ───────────────────────────────── -->
+        <section>
+          <h2>Expected First Test</h2>
+          <pre class="code-block">1. Run the existing FSM once.
+2. Record palm_world at each selected timestep.
+3. Convert consecutive palm positions into 7D delta actions.
+4. Replay those 7D actions through G1VLAActionAdapter.
+5. Check whether the robot reaches the same major milestones.</pre>
+          <p><strong>Pass criteria:</strong></p>
+          <ul class="bullet-list">
+            <li>Source hover reached</li>
+            <li>Source descent reached</li>
+            <li>Grip command represented</li>
+            <li>Lift represented</li>
+            <li>Target-side release approximately represented</li>
+          </ul>
+        </section>
+
+        <!-- ── 13. Relationship to Existing Pages ────────────────────── -->
+        <section>
+          <h2>Relationship to Existing Pages</h2>
+          <ul class="bullet-list">
+            <li><strong>FSM Baseline</strong> = implemented teacher and fallback</li>
+            <li><strong>Visual Oracle</strong> = classical perception path</li>
+            <li><strong>VLA Roadmap</strong> = learned-policy research path</li>
+            <li><strong>Next Steps</strong> = summary of future work</li>
+          </ul>
+        </section>
+
+        <!-- ── 14. Closing Summary ───────────────────────────────────── -->
+        <section>
+          <h2>Closing Summary</h2>
+          <p>
+            The practical engineering strategy is to make OpenVLA earn control authority gradually.
+            The FSM remains the baseline. The adapter is the translation layer. The replay test is
+            the gate. Only after that should OpenVLA be placed in shadow mode or fine-tuned.
+          </p>
+        </section>
+
+      </main>
+    </div>
+    <script src="../script.js"></script>
+  </body>
+</html>

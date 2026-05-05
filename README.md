@@ -19,6 +19,9 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
+The report now includes a VLA Roadmap page describing how OpenVLA-style models could be tested
+as a future research branch using the FSM as a teacher policy.
+
 ## Terminology used in this report
 
 | Term | Meaning |
@@ -26,6 +29,7 @@ explicitly throughout.
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
+| VLA Roadmap | Research plan for adapting OpenVLA-style policies to the G1 stack; not implemented |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
