@@ -19,8 +19,7 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report now includes a VLA Roadmap page describing how OpenVLA-style models could be tested
-as a future research branch using the FSM as a teacher policy.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents Step 12, the research scaffold, and Step 13, the planned G1 VLA Action Adapter that maps OpenVLA-style 7D actions into the repo's existing `PolicyOutput` contract.
 
 ## Terminology used in this report
 
@@ -29,7 +28,7 @@ as a future research branch using the FSM as a teacher policy.
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Research plan for adapting OpenVLA-style policies to the G1 stack; not implemented |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, currently covering the Step 12 scaffold and Step 13 action-adapter plan |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status

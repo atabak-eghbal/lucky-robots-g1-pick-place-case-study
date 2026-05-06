@@ -52,6 +52,132 @@
           </div>
         </section>
 
+        <!-- ── 1b. VLA Branch Progress Tracker ─────────────────────────── -->
+        <section>
+          <h2>VLA Branch Progress Tracker</h2>
+          <div class="file-tabs">
+            <div class="file-tab-buttons">
+              <button class="file-tab-button" data-tab-target="tracker-overview">Overview</button>
+              <button class="file-tab-button" data-tab-target="tracker-step12">Step 12 — Research Scaffold</button>
+              <button class="file-tab-button" data-tab-target="tracker-step13">Step 13 — Action Adapter</button>
+              <button class="file-tab-button" data-tab-target="tracker-step14plus">Step 14+ — Data and Replay</button>
+              <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-overview">
+              <div class="card-grid">
+                <article class="card">
+                  <h3>Branch philosophy</h3>
+                  <p>The VLA branch is a staged research path layered on top of the working FSM baseline.
+                    Each step must pass an evidence gate before the next begins.</p>
+                </article>
+                <article class="card">
+                  <h3>Current position</h3>
+                  <p>
+                    <span class="status-badge status-verified">Done</span> Step 12 — research scaffold documented.<br />
+                    <span class="status-badge status-future">Next</span> Step 13 — G1 VLA action adapter.
+                  </p>
+                </article>
+                <article class="card">
+                  <h3>What is not happening yet</h3>
+                  <ul class="bullet-list">
+                    <li>No OpenVLA model loading</li>
+                    <li>No demonstration recording</li>
+                    <li>No fine-tuning</li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step12">
+              <div class="code-note">
+                <p><strong>Step 12 — VLA Research Scaffold</strong> &nbsp;<span class="status-badge status-verified">Done</span></p>
+                <ul class="bullet-list">
+                  <li>VLA Roadmap page added to the report and linked in navigation</li>
+                  <li>Decision log documents why direct OpenVLA integration is deferred</li>
+                  <li>Progressive roadmap defines Steps 12–19 and their evidence gates</li>
+                  <li>Architecture diagram shows the planned <code>G1VLAActionAdapter</code> position in the stack</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step13">
+              <div class="code-note">
+                <p><strong>Step 13 — G1 VLA Action Adapter</strong> &nbsp;<span class="status-badge status-future">Planned</span></p>
+                <p>This is the first real code milestone. It does not require a GPU or OpenVLA model inference.</p>
+              </div>
+              <div class="card-grid">
+                <article class="card">
+                  <h3>Deliverable</h3>
+                  <ul class="bullet-list">
+                    <li><code>vla_bridge/action_adapter.py</code> — <code>G1VLAActionAdapter</code> class</li>
+                    <li><code>vla_bridge/demo_schema.py</code> — 7D action and observation schema</li>
+                    <li>Unit tests: world palm target → pelvis-frame <code>reach_target</code></li>
+                  </ul>
+                </article>
+                <article class="card">
+                  <h3>What it maps</h3>
+                  <pre class="code-block">[dx, dy, dz, droll, dpitch, dyaw, gripper]
+        ↓
+reach_target  (pelvis frame)
+reach_active  (bool)
+grip_closed   (bool)</pre>
+                </article>
+                <article class="card">
+                  <h3>Pass criteria</h3>
+                  <ul class="bullet-list">
+                    <li>Unit test converts a known world palm position to the correct pelvis-frame target</li>
+                    <li>Gripper threshold maps correctly to <code>grip_closed</code></li>
+                    <li>No model loading, no CUDA dependency</li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step14plus">
+              <div class="code-note">
+                <p>Steps 14–19 are gated behind Step 13 passing its unit tests.</p>
+              </div>
+              <div class="card-grid">
+                <article class="card">
+                  <h3>Step 14 — FSM Demo Recorder</h3>
+                  <p>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action into JSONL/NPZ.</p>
+                  <span class="status-badge status-future">Proposed</span>
+                </article>
+                <article class="card">
+                  <h3>Step 15 — 7D Action Replay</h3>
+                  <p>Replay recorded 7D actions through the adapter without FSM target lookups.</p>
+                  <span class="status-badge status-future">Proposed</span>
+                </article>
+                <article class="card">
+                  <h3>Steps 16–19</h3>
+                  <ul class="bullet-list">
+                    <li>16 — Dataset cleanup (5–10 Hz, filter idle)</li>
+                    <li>17 — OpenVLA shadow mode (observe, don't control)</li>
+                    <li>18 — Remote/cloud inference</li>
+                    <li>19 — Fine-tuning feasibility (LoRA/OFT)</li>
+                  </ul>
+                  <span class="status-badge status-future">Future</span>
+                </article>
+              </div>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-evidence">
+              <div class="code-note">
+                <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
+              </div>
+              <ul class="bullet-list">
+                <li><strong>Step 12 gate:</strong> This VLA Roadmap page exists and is linked in navigation. ✓</li>
+                <li><strong>Step 13 gate:</strong> Unit test converts world palm target to pelvis-frame reach target without errors.</li>
+                <li><strong>Step 14 gate:</strong> Saved JSONL/NPZ contains synchronized images and actions from at least one FSM run.</li>
+                <li><strong>Step 15 gate:</strong> Replay reaches source hover, descends, grips, lifts, and releases approximately.</li>
+                <li><strong>Step 17 gate:</strong> Directional agreement and L1 action error metrics logged against FSM teacher.</li>
+                <li><strong>Step 19 gate:</strong> Offline validation on held-out FSM demos passes a defined accuracy threshold.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         <!-- ── 2. Why This Page Exists ───────────────────────────────── -->
         <section>
           <h2>Why This Page Exists</h2>
@@ -190,56 +316,56 @@ MuJoCo G1 task execution</pre>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>0 — Documentation setup</strong></td>
+                  <td><strong>12 — VLA research scaffold</strong></td>
                   <td>Add this VLA roadmap and decision log to the blog</td>
                   <td>Keep the research branch explainable</td>
                   <td>Page exists and is linked in nav</td>
-                  <td><span class="status-badge status-future">Proposed</span></td>
+                  <td><span class="status-badge status-verified">Done</span></td>
                 </tr>
                 <tr>
-                  <td><strong>1 — G1 VLA action adapter</strong></td>
+                  <td><strong>13 — G1 VLA action adapter</strong></td>
                   <td>Map [dx, dy, dz, droll, dpitch, dyaw, gripper] to reach_target/grip</td>
                   <td>Test action-space compatibility</td>
                   <td>Unit test converts world palm target to pelvis-frame reach target</td>
-                  <td><span class="status-badge status-future">Proposed</span></td>
+                  <td><span class="status-badge status-future">Next</span></td>
                 </tr>
                 <tr>
-                  <td><strong>2 — FSM demonstration recorder</strong></td>
+                  <td><strong>14 — FSM demonstration recorder</strong></td>
                   <td>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action</td>
                   <td>Generate teacher data from the working FSM</td>
                   <td>Saved JSONL/NPZ has synchronized images and actions</td>
                   <td><span class="status-badge status-future">Proposed</span></td>
                 </tr>
                 <tr>
-                  <td><strong>3 — 7D action replay</strong></td>
+                  <td><strong>15 — 7D action replay</strong></td>
                   <td>Replay recorded 7D actions without FSM target lookups</td>
                   <td>Check whether the VLA action representation is executable</td>
                   <td>Robot reaches source hover, descends, grips, lifts, and releases approximately</td>
                   <td><span class="status-badge status-future">Proposed</span></td>
                 </tr>
                 <tr>
-                  <td><strong>4 — Dataset cleanup</strong></td>
+                  <td><strong>16 — Dataset cleanup</strong></td>
                   <td>Downsample to 5–10 Hz and filter idle actions</td>
                   <td>Match VLA training assumptions</td>
                   <td>No long pause segments; action magnitudes are smooth</td>
                   <td><span class="status-badge status-future">Proposed</span></td>
                 </tr>
                 <tr>
-                  <td><strong>5 — OpenVLA shadow mode</strong></td>
+                  <td><strong>17 — OpenVLA shadow mode</strong></td>
                   <td>Run OpenVLA on saved frames but do not control the robot</td>
                   <td>Compare predicted actions to FSM teacher actions</td>
                   <td>Directional agreement and L1 action error metrics</td>
                   <td><span class="status-badge status-future">Future</span></td>
                 </tr>
                 <tr>
-                  <td><strong>6 — Remote/cloud inference</strong></td>
+                  <td><strong>18 — Remote/cloud inference</strong></td>
                   <td>Serve OpenVLA from Colab/cloud and query from local MuJoCo</td>
                   <td>Avoid local GPU constraints</td>
                   <td>End-to-end latency and stable API calls</td>
                   <td><span class="status-badge status-future">Future</span></td>
                 </tr>
                 <tr>
-                  <td><strong>7 — Fine-tuning feasibility</strong></td>
+                  <td><strong>19 — Fine-tuning feasibility</strong></td>
                   <td>Evaluate LoRA/OFT fine-tuning only after replay passes</td>
                   <td>Adapt OpenVLA to G1 demonstrations</td>
                   <td>Offline validation on held-out FSM demos</td>
@@ -276,8 +402,8 @@ MuJoCo G1 task execution</pre>
             </article>
           </div>
           <div class="code-note" style="margin-top: 1rem;">
-            <strong>Note:</strong> No CUDA or OpenVLA setup is needed for Step 1. The first
-            milestone only needs the existing MuJoCo + ONNX Runtime stack.
+            <strong>Note:</strong> No CUDA or OpenVLA setup is needed for Step 13. The first
+            code milestone only needs the existing MuJoCo + ONNX Runtime stack.
           </div>
         </section>
 
@@ -318,36 +444,35 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. First Implementation Target ──────────────────────── -->
         <section>
-          <h2>First Implementation Target</h2>
+          <h2>First Implementation Target — Step 13</h2>
           <pre class="code-block">vla_bridge/
   __init__.py
-  action_adapter.py
-  demo_schema.py
+  action_adapter.py   ← G1VLAActionAdapter: maps 7D → PolicyOutput
+  demo_schema.py      ← observation + action dataclass schema
 
-scripts/
-  record_vla_demo.py
-  replay_vla_demo.py</pre>
+tests/
+  test_action_adapter.py  ← unit tests for world→pelvis conversion</pre>
           <p>
-            The first actual code change should only create the adapter and schema.
-            <strong>Do not load OpenVLA yet.</strong>
+            Step 13 is the first actual code change in the VLA branch.
+            <strong>Do not load OpenVLA yet.</strong> No GPU or cloud resources are required.
+            The adapter must satisfy its unit tests before any demonstration recording begins.
           </p>
         </section>
 
         <!-- ── 12. Expected First Test ───────────────────────────────── -->
         <section>
-          <h2>Expected First Test</h2>
-          <pre class="code-block">1. Run the existing FSM once.
-2. Record palm_world at each selected timestep.
-3. Convert consecutive palm positions into 7D delta actions.
-4. Replay those 7D actions through G1VLAActionAdapter.
-5. Check whether the robot reaches the same major milestones.</pre>
+          <h2>Expected First Test — Step 13 Unit Test</h2>
+          <pre class="code-block">1. Instantiate G1VLAActionAdapter with the robot's current pelvis pose.
+2. Provide a known world-frame palm target as a 7D action delta.
+3. Assert that reach_target matches the expected pelvis-frame coordinates.
+4. Assert that gripper value above threshold sets grip_closed = True.
+5. Assert no model loading, no MuJoCo step, no ONNX call occurs.</pre>
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Source hover reached</li>
-            <li>Source descent reached</li>
-            <li>Grip command represented</li>
-            <li>Lift represented</li>
-            <li>Target-side release approximately represented</li>
+            <li>World-to-pelvis coordinate conversion is numerically correct</li>
+            <li>Gripper threshold maps correctly to <code>grip_closed</code></li>
+            <li>Test runs offline without any GPU, cloud, or OpenVLA dependency</li>
+            <li>Step 14 (demo recorder) does not begin until this test passes</li>
           </ul>
         </section>
 
