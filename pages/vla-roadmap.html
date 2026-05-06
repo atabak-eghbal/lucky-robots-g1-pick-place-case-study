@@ -60,7 +60,7 @@
               <button class="file-tab-button" data-tab-target="tracker-overview">Overview</button>
               <button class="file-tab-button" data-tab-target="tracker-step12">Step 12 — Research Scaffold</button>
               <button class="file-tab-button" data-tab-target="tracker-step13">Step 13 — Action Adapter</button>
-              <button class="file-tab-button" data-tab-target="tracker-step14plus">Step 14+ — Data and Replay</button>
+              <button class="file-tab-button" data-tab-target="tracker-step14plus">Step 14 — Demonstration Recorder</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -76,15 +76,17 @@
                   <p>
                     <span class="status-badge status-verified">Done</span> Step 12 — research scaffold documented.<br />
                     <span class="status-badge status-verified">Done</span> Step 13 — G1 VLA action adapter validated.<br />
-                    <span class="status-badge status-future">Next</span> Step 14 — FSM demonstration recorder.
+                    <span class="status-badge status-verified">Validated</span> Step 14 — FSM demonstration recorder.<br />
+                    <span class="status-badge status-future">Next</span> Step 15 — 7D action replay.
                   </p>
                 </article>
                 <article class="card">
                   <h3>What is not happening yet</h3>
                   <ul class="bullet-list">
                     <li>No OpenVLA model loading</li>
-                    <li>No demonstration recording</li>
+                    <li>No learned VLA policy controlling the robot</li>
                     <li>No fine-tuning</li>
+                    <li>No Step 15 replay implemented yet</li>
                   </ul>
                 </article>
               </div>
@@ -189,19 +191,97 @@ tests/test_vla_action_adapter.py::test_no_mujoco_import PASSED
             </div>
 
             <div class="file-tab-panel" data-tab-panel="tracker-step14plus">
+
+              <!-- Step 14 completion header -->
               <div class="code-note">
-                <p>Steps 14–19 are gated behind Step 13 passing its unit tests.</p>
+                <p><strong>Step 14 — FSM Demonstration Recorder</strong> &nbsp;<span class="status-badge status-verified">Validated</span></p>
+                <p>
+                  The FSM teacher rollout was recorded into a synchronized VLA-style demonstration dataset.
+                  <strong>This is teacher-data recording only.</strong> OpenVLA is still not implemented
+                  and no learned VLA policy controls the robot.
+                </p>
               </div>
-              <div class="card-grid">
+
+              <!-- Step 14 deliverables + evidence -->
+              <div class="card-grid" style="margin-top: 1rem;">
                 <article class="card">
-                  <h3>Step 14 — FSM Demo Recorder</h3>
-                  <p>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action into JSONL/NPZ.</p>
-                  <span class="status-badge status-future">Proposed</span>
+                  <h3>Deliverable</h3>
+                  <ul class="bullet-list">
+                    <li><code>record_vla_demo.py</code> — demonstration recorder script</li>
+                    <li><code>demos/rollout_001/observations.jsonl</code> — 554 JSONL records</li>
+                    <li><code>demos/rollout_001/frames/</code> — 554 image frames</li>
+                    <li><code>demos/rollout_001/summary.json</code> — rollout metadata</li>
+                  </ul>
                 </article>
                 <article class="card">
+                  <h3>What each record contains</h3>
+                  <pre class="code-block">{
+  "step": 0,
+  "fsm_phase": "WALK_TO_SOURCE",
+  "palm_pos_world": [x, y, z],
+  "reach_target_pelvis": [x, y, z],
+  "grip_closed": false,
+  "action_7d": [dx,dy,dz,dr,dp,dy,g],
+  "image_path": "frames/frame_000000.png"
+}</pre>
+                </article>
+                <article class="card">
+                  <h3>Rollout outcome</h3>
+                  <ul class="bullet-list">
+                    <li>Final FSM state reached: <strong>DONE</strong></li>
+                    <li>Cylinder placed on target table ✓</li>
+                    <li>Total steps recorded: <strong>554</strong></li>
+                    <li>Total image frames: <strong>554</strong></li>
+                    <li>First frame: <code>frames/frame_000000.png</code></li>
+                    <li>Last frame: <code>frames/frame_000553.png</code></li>
+                  </ul>
+                </article>
+              </div>
+
+              <!-- Step 14 action statistics -->
+              <div class="code-note" style="margin-top: 1.5rem;">
+                <p><strong>Step 14 Completion Evidence — recorder output</strong></p>
+                <pre class="code-block">$ python record_vla_demo.py
+
+[recorder] Rollout started.
+[recorder] Step   0 | phase=WALK_TO_SOURCE  | grip=False | |action|=0.000000
+...
+[recorder] Step 553 | phase=DONE            | grip=False | |action|=0.000000
+[recorder] Rollout complete. Final phase: DONE
+[recorder] Saved 554 JSONL records  →  demos/rollout_001/observations.jsonl
+[recorder] Saved 554 image frames   →  demos/rollout_001/frames/
+[recorder] Saved summary            →  demos/rollout_001/summary.json</pre>
+              </div>
+
+              <div class="card-grid" style="margin-top: 1rem;">
+                <article class="card">
+                  <h3>Action magnitude statistics</h3>
+                  <pre class="code-block">max  action magnitude: 0.084568
+mean action magnitude: 0.007885
+grip closed steps:     380 / 554</pre>
+                </article>
+                <article class="card">
+                  <h3>What this confirms — and what it does not</h3>
+                  <ul class="bullet-list">
+                    <li>The FSM can serve as a teacher policy for VLA-style data generation.</li>
+                    <li>Images and 7D actions are synchronized at every step.</li>
+                    <li>The rollout reached <strong>DONE</strong>, confirming a complete task execution.</li>
+                    <li><strong>OpenVLA is not implemented.</strong> No model is loaded, no GPU is used,
+                      and no learned VLA policy controls the robot.</li>
+                    <li>Step 15 (7D action replay) is now the current next step.</li>
+                  </ul>
+                </article>
+              </div>
+
+              <!-- Step 15 and 16–19 future steps -->
+              <div class="code-note" style="margin-top: 1.5rem;">
+                <p><strong>Steps 15–19</strong> are gated behind Step 14 producing a valid dataset.</p>
+              </div>
+              <div class="card-grid" style="margin-top: 1rem;">
+                <article class="card">
                   <h3>Step 15 — 7D Action Replay</h3>
-                  <p>Replay recorded 7D actions through the adapter without FSM target lookups.</p>
-                  <span class="status-badge status-future">Proposed</span>
+                  <p>Replay the recorded 7D actions through the adapter without FSM target lookups.</p>
+                  <span class="status-badge status-future">Current next step</span>
                 </article>
                 <article class="card">
                   <h3>Steps 16–19</h3>
@@ -241,8 +321,11 @@ tests/test_vla_action_adapter.py::test_no_mujoco_import PASSED
                       <td>Proceed to Step 14 — FSM demonstration recording.</td>
                     </tr>
                     <tr>
-                      <td><strong>Step 14</strong></td>
-                      <td>Saved JSONL/NPZ contains synchronized images and actions from at least one FSM run.</td>
+                      <td><strong>Gate 14</strong></td>
+                      <td>
+                        <code>record_vla_demo.py</code> produced <code>554</code> JSONL records, <code>554</code> image frames,
+                        <code>summary.json</code>, and a rollout that reached <code>DONE</code>. ✓
+                      </td>
                       <td>Proceed to Step 15 — 7D action replay.</td>
                     </tr>
                     <tr>
@@ -263,6 +346,10 @@ tests/test_vla_action_adapter.py::test_no_mujoco_import PASSED
                   </tbody>
                 </table>
               </div>
+              <p>
+                Gate 14 is the first data-production gate in the VLA branch. It confirms that the FSM can be used
+                as a teacher policy for future replay and shadow-mode experiments.
+              </p>
             </div>
           </div>
         </section>
@@ -423,14 +510,14 @@ MuJoCo G1 task execution</pre>
                   <td>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action</td>
                   <td>Generate teacher data from the working FSM</td>
                   <td>Saved JSONL/NPZ has synchronized images and actions</td>
-                  <td><span class="status-badge status-future">Next</span></td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
                 </tr>
                 <tr>
                   <td><strong>15 — 7D action replay</strong></td>
                   <td>Replay recorded 7D actions without FSM target lookups</td>
                   <td>Check whether the VLA action representation is executable</td>
                   <td>Robot reaches source hover, descends, grips, lifts, and releases approximately</td>
-                  <td><span class="status-badge status-future">Proposed</span></td>
+                  <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
                   <td><strong>16 — Dataset cleanup</strong></td>
@@ -531,37 +618,81 @@ MuJoCo G1 task execution</pre>
           </article>
         </section>
 
-        <!-- ── 11. First Implementation Target ──────────────────────── -->
+        <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
         <section>
-          <h2>First Implementation Target — Step 13</h2>
-          <pre class="code-block">vla_bridge/
-  __init__.py
-  action_adapter.py   ← G1VLAActionAdapter: maps 7D → PolicyOutput
-  demo_schema.py      ← observation + action dataclass schema
-
-tests/
-  test_action_adapter.py  ← unit tests for world→pelvis conversion</pre>
-          <p>
-            Step 13 is the first actual code change in the VLA branch.
-            <strong>Do not load OpenVLA yet.</strong> No GPU or cloud resources are required.
-            The adapter must satisfy its unit tests before any demonstration recording begins.
-          </p>
+          <h2>Step 14 Dataset Summary</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Dataset contents</h3>
+              <ul class="bullet-list">
+                <li>Total records: <strong>554</strong> JSONL entries</li>
+                <li>Total image frames: <strong>554</strong> PNG files</li>
+                <li>First frame: <code>frames/frame_000000.png</code></li>
+                <li>Last frame: <code>frames/frame_000553.png</code></li>
+                <li>Summary file: <code>summary.json</code></li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Action statistics</h3>
+              <ul class="bullet-list">
+                <li>Max action magnitude: <strong>0.084568</strong></li>
+                <li>Mean action magnitude: <strong>0.007885</strong></li>
+                <li>Grip-closed steps: <strong>380</strong> / 554</li>
+                <li>Final FSM state: <strong>DONE</strong></li>
+                <li>Task outcome: cylinder placed on target table ✓</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>What the data enables</h3>
+              <ul class="bullet-list">
+                <li>Step 15 — replay recorded actions without FSM</li>
+                <li>Step 16 — downsample and filter for VLA training</li>
+                <li>Step 17 — OpenVLA shadow-mode comparison</li>
+                <li>No OpenVLA inference or fine-tuning in this dataset</li>
+              </ul>
+            </article>
+          </div>
         </section>
 
-        <!-- ── 12. Expected First Test ───────────────────────────────── -->
+        <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Expected First Test — Step 13 Unit Test</h2>
-          <pre class="code-block">1. Instantiate G1VLAActionAdapter with the robot's current pelvis pose.
-2. Provide a known world-frame palm target as a 7D action delta.
-3. Assert that reach_target matches the expected pelvis-frame coordinates.
-4. Assert that gripper value above threshold sets grip_closed = True.
-5. Assert no model loading, no MuJoCo step, no ONNX call occurs.</pre>
+          <h2>Current Implementation Target — Step 15</h2>
+          <pre class="code-block">vla_bridge/
+  replay_demo.py   ← loads observations.jsonl and replays 7D actions
+                     through G1VLAActionAdapter without FSM target lookups
+
+tests/
+  test_replay_demo.py  ← verify replay reaches source hover and completes grasp</pre>
+          <p>
+            Step 15 is the first <em>replay</em> milestone in the VLA branch.
+            <strong>Do not load OpenVLA yet.</strong> No GPU or cloud resources are required.
+            The replay script must drive the robot using only the recorded 7D actions,
+            with no access to FSM phase targets. This tests whether the recorded action
+            representation is executable without teacher guidance.
+          </p>
+          <div class="code-note" style="margin-top: 1rem;">
+            <strong>Prerequisite:</strong> Step 14 validated — 554 JSONL records and 554 image
+            frames recorded from a rollout that reached <code>DONE</code>.
+          </div>
+        </section>
+
+        <!-- ── 12. Expected Step 15 Test ──────────────────────────── -->
+        <section>
+          <h2>Expected Step 15 Test — 7D Action Replay</h2>
+          <pre class="code-block">1. Load observations.jsonl from demos/rollout_001/.
+2. For each step, feed the recorded 7D action into G1VLAActionAdapter.
+3. Step the MuJoCo environment using the adapter output (no FSM target lookups).
+4. Assert robot reaches source hover position.
+5. Assert grip_closed activates during the grasp phase.
+6. Assert robot lifts the cylinder and moves toward the target table.
+7. Assert no FSM phase state is read during replay.</pre>
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>World-to-pelvis coordinate conversion is numerically correct</li>
-            <li>Gripper threshold maps correctly to <code>grip_closed</code></li>
+            <li>Replay reaches source hover without FSM guidance</li>
+            <li>Gripper activates at the correct recorded step</li>
+            <li>Cylinder is lifted off the source table</li>
             <li>Test runs offline without any GPU, cloud, or OpenVLA dependency</li>
-            <li>Step 14 (demo recorder) does not begin until this test passes</li>
+            <li>Step 16 (dataset cleanup) does not begin until this test passes</li>
           </ul>
         </section>
 
