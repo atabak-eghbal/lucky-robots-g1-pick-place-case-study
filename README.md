@@ -19,9 +19,11 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents Step 12, the research scaffold, and Step 13, the planned G1 VLA Action Adapter that maps OpenVLA-style 7D actions into the repo's existing `PolicyOutput` contract.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents the Step 12 research scaffold, the validated Step 13 action adapter, and the validated Step 14 FSM Demonstration Recorder.
 
-The Step 13 action-adapter milestone has been validated: the adapter unit suite passed 9 tests, and the existing MuJoCo/FSM/ONNX smoke test still passes. This confirms that the VLA branch can translate 7D end-effector-style actions into the existing `PolicyOutput` interface without breaking the FSM baseline.
+The Step 13 action-adapter milestone validated the local action bridge: the adapter unit suite passed 9 tests, and the existing MuJoCo/FSM/ONNX smoke test still passes.
+
+The Step 14 demonstration-recorder milestone generated the first VLA-style teacher dataset from the FSM baseline. The recorder produced 554 synchronized JSONL records and 554 image frames from a rollout that reached `DONE` and placed the cylinder on the target table. This confirms the repo can produce image/action demonstrations without letting OpenVLA control the robot.
 
 ## Terminology used in this report
 
@@ -30,7 +32,7 @@ The Step 13 action-adapter milestone has been validated: the adapter unit suite 
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering the Step 12 scaffold, the validated Step 13 action adapter, and future steps |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering the Step 12 scaffold, validated Step 13 action adapter, validated Step 14 FSM demonstration recorder, and future replay/shadow-mode steps |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status

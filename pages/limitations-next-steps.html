@@ -66,9 +66,19 @@
             </article>
             <a class="card card-link" href="./vla-roadmap.html">
               <h3>OpenVLA / VLA Research Branch</h3>
-              <p>The VLA Roadmap now tracks this as a staged branch. Step 13 focuses on a pure
-                action adapter and unit tests before any model inference, demonstration recording,
-                or fine-tuning.</p>
+              <p>The VLA Roadmap now tracks this as a staged branch. Step 14 confirmed that the FSM
+                can serve as a teacher policy: the recorder produced 554 synchronized JSONL records
+                and 554 image frames from a rollout that reached DONE. Step 15 is the current next
+                step — replaying those 7D actions without FSM target lookups.</p>
+              <p style="margin-top: 0.75rem;">
+                Step 14 now confirms that the FSM can serve as a teacher policy for the VLA branch.
+                The system recorded a full synchronized image/action dataset with 554 records and
+                554 frames. The next limitation to study is replay fidelity: can those 7D
+                palm-delta actions reproduce the task without FSM target lookups?
+              </p>
+              <p style="margin-top: 0.75rem;">
+                <a href="./vla-roadmap.html">View the updated VLA Roadmap →</a>
+              </p>
             </a>
           </div>
         </section>
