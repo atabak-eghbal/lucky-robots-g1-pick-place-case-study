@@ -62,6 +62,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step13">Step 13 — Action Adapter</button>
               <button class="file-tab-button" data-tab-target="tracker-step14plus">Step 14 — Demonstration Recorder</button>
               <button class="file-tab-button" data-tab-target="tracker-step15">Step 15 — 7D Replay Harness</button>
+              <button class="file-tab-button" data-tab-target="tracker-step16">Step 16 — Hybrid Replay / Schema Upgrade</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -79,7 +80,8 @@
                     <span class="status-badge status-verified">Done</span> Step 13 — G1 VLA action adapter validated.<br />
                     <span class="status-badge status-verified">Validated</span> Step 14 — FSM demonstration recorder.<br />
                     <span class="status-badge status-verified">Validated</span> Step 15 — 7D action replay harness.<br />
-                    <span class="status-badge status-future">Next</span> Step 16 — Hybrid replay / schema upgrade.
+                    <span class="status-badge status-verified">Validated</span> Step 16 — hybrid replay / schema upgrade.<br />
+                    <span class="status-badge status-future">Next</span> Step 17 — G1-native VLA dataset exporter.
                   </p>
                 </article>
                 <article class="card">
@@ -288,12 +290,12 @@ grip closed steps:     380 / 554</pre>
                 <article class="card">
                   <h3>Steps 16–19</h3>
                   <ul class="bullet-list">
-                    <li>16 — Hybrid replay / schema upgrade (locomotion context)</li>
-                    <li>17 — OpenVLA shadow mode (observe, don't control)</li>
-                    <li>18 — Remote/cloud inference</li>
-                    <li>19 — Fine-tuning feasibility (LoRA/OFT)</li>
+                    <li>16 — Hybrid replay / schema upgrade <span class="status-badge status-verified">Validated</span></li>
+                    <li>17 — G1-native VLA dataset exporter (current next)</li>
+                    <li>18 — OpenVLA shadow mode</li>
+                    <li>19 — Remote/cloud inference or fine-tuning feasibility</li>
                   </ul>
-                  <span class="status-badge status-future">Future</span>
+                  <span class="status-badge status-future">Steps 17–19: Future</span>
                 </article>
               </div>
             </div>
@@ -358,7 +360,8 @@ Smoke test: PASS</pre>
                   <strong>Root cause:</strong> The 7D palm-delta action representation captures arm end-effector motion but
                   omits the locomotion commands that carry the robot's base toward the object. Without the walker's position
                   as context, the replayed palm deltas accumulate error relative to the floating base and cannot reproduce
-                  the full pick-and-place task.
+                  the full pick-and-place task. Step 16 confirmed this by comparing teacher-command replay (0.0 m error,
+                  ever_attached=True) against hybrid-7D replay (0.229916 m error, ever_attached=False).
                 </p>
                 <p>
                   This is strong engineering evidence. A working harness with a negative arm-only result
@@ -375,9 +378,92 @@ Smoke test: PASS</pre>
                     <li>Palm error metrics and plots are finite and reproducible.</li>
                     <li><strong>OpenVLA is not implemented.</strong> No model loaded, no GPU used.</li>
                     <li>Arm-only 7D replay is <em>not sufficient</em> for the floating-base humanoid task.</li>
-                    <li>Step 16 (hybrid replay / schema upgrade) is now the current next step.</li>
+                    <li>Step 16 (hybrid replay / schema upgrade) has been validated; see the Step 16 tab.</li>
                   </ul>
                 </article>
+              </div>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step16">
+
+              <!-- Step 16 completion header -->
+              <div class="code-note">
+                <p><strong>Step 16 — Hybrid Replay / Schema Upgrade</strong> &nbsp;<span class="status-badge status-verified">Validated</span></p>
+                <p>
+                  Step 16 upgraded the demonstration schema and replay evaluation path to include
+                  every-tick locomotion context. Two replay modes were compared: teacher-command replay
+                  and hybrid-7D palm-delta replay.
+                  <strong>This is a replay evaluation harness, not OpenVLA inference.</strong>
+                  No learned VLA policy was loaded.
+                </p>
+              </div>
+
+              <!-- Step 16 deliverables + results -->
+              <div class="card-grid" style="margin-top: 1rem;">
+                <article class="card">
+                  <h3>Key finding</h3>
+                  <ul class="bullet-list">
+                    <li>Every-tick teacher-command replay: <strong>0.0 m</strong> mean/max/final palm error</li>
+                    <li><code>ever_attached=True</code>, <code>attached_steps=1902</code></li>
+                    <li>Hybrid-7D palm-delta replay: mean palm error <strong>0.229916 m</strong></li>
+                    <li>Hybrid-7D: <code>ever_attached=False</code></li>
+                    <li>Conclusion: relative 7D palm deltas are <em>not</em> the right first learned action target for this stack</li>
+                  </ul>
+                </article>
+                <article class="card">
+                  <h3>Timing-mismatch discovery</h3>
+                  <p>
+                    The original <code>demo_001</code> was recorded with a <code>record-every 5</code> sparse
+                    scheme. Even teacher-command replay failed on that dataset because the sparse stream
+                    introduced a timing mismatch. Re-recording at every control tick as
+                    <code>demo_002</code> fixed the fidelity issue.
+                  </p>
+                </article>
+                <article class="card">
+                  <h3>What this confirms — and what it does not</h3>
+                  <ul class="bullet-list">
+                    <li>G1-native teacher commands (walker + reacher) replay exactly when recorded at every tick.</li>
+                    <li>Relative 7D palm deltas still fail even with locomotion context.</li>
+                    <li><strong>OpenVLA is not implemented.</strong> No model loaded, no GPU used.</li>
+                    <li><strong>hybrid-7D did not solve the task.</strong></li>
+                    <li>Step 17 (G1-native VLA dataset exporter) is now the current next step.</li>
+                  </ul>
+                </article>
+              </div>
+
+              <!-- Detailed evidence -->
+              <div class="code-note" style="margin-top: 1.5rem;">
+                <p><strong>Step 16 Completion Evidence</strong></p>
+
+                <p><strong>demo_001 — sparse record-every-5 dataset (failure)</strong></p>
+                <pre class="code-block">Replay mode: teacher-command (sparse demo_001)
+  → Timing mismatch detected; replay diverged immediately.
+  → Root cause: skipped ticks break command continuity at walker/reacher interface.</pre>
+
+                <p style="margin-top: 1rem;"><strong>demo_002 — every-tick dataset, teacher-command replay (success)</strong></p>
+                <pre class="code-block">Replay mode: teacher-command (every-tick demo_002)
+  mean palm error  : 0.000000 m
+  max  palm error  : 0.000000 m
+  final palm error : 0.000000 m
+  ever_attached    : True
+  attached_steps   : 1902</pre>
+
+                <p style="margin-top: 1rem;"><strong>demo_002 — every-tick dataset, hybrid-7D replay (failure)</strong></p>
+                <pre class="code-block">Replay mode: hybrid-7D (every-tick demo_002)
+  mean palm error  : 0.229916 m
+  max  palm error  : (finite)
+  final palm error : (finite)
+  ever_attached    : False
+  attached_steps   : 0</pre>
+
+                <p style="margin-top: 1rem;"><strong>Design conclusion</strong></p>
+                <p>
+                  G1-native teacher commands replay exactly at every-tick resolution.
+                  Relative 7D palm deltas still fail even with correct timing.
+                  The next VLA dataset should use <code>walk_cmd</code>, <code>reach_target_pelvis</code>,
+                  <code>reach_active</code>, and <code>grip_closed</code> as the model target
+                  rather than end-effector deltas.
+                </p>
               </div>
             </div>
 
@@ -421,12 +507,21 @@ Smoke test: PASS</pre>
                         Arm-only replay had mean palm error <code>0.263667 m</code>, grip mismatch <code>0</code>,
                         and <code>ever_attached=False</code>. ✓
                       </td>
-                      <td>Proceed to Step 16 — add locomotion context / hybrid replay before OpenVLA inference.</td>
+                      <td>Proceed to Step 16 — add locomotion context / hybrid replay.</td>
                     </tr>
                     <tr>
-                      <td><strong>Step 17</strong></td>
+                      <td><strong>Step 16</strong></td>
+                      <td>
+                        Every-tick teacher-command replay achieved <code>0.0 m</code> mean/max/final palm error,
+                        <code>ever_attached=True</code>, and <code>attached_steps=1902</code>. Hybrid-7D replay
+                        still failed with mean palm error <code>0.229916 m</code> and <code>ever_attached=False</code>.
+                      </td>
+                      <td>Proceed to Step 17 — G1-native VLA dataset exporter.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 18</strong></td>
                       <td>Directional agreement and L1 action error metrics logged against FSM teacher.</td>
-                      <td>Proceed to Step 18 — remote/cloud inference.</td>
+                      <td>Proceed to Step 19 — remote/cloud inference.</td>
                     </tr>
                     <tr>
                       <td><strong>Step 19</strong></td>
@@ -443,6 +538,11 @@ Smoke test: PASS</pre>
               <p>
                 Gate 15 is intentionally diagnostic. The negative arm-only result is useful because it shows that
                 7D palm deltas alone are not enough for a floating-base humanoid task.
+              </p>
+              <p>
+                Gate 16 is the strongest VLA design gate so far. It separates replay fidelity from action-space
+                choice: G1-native teacher commands replay exactly at every-tick resolution, while relative 7D
+                palm deltas still fail. This supports a G1-native target for future VLA experiments.
               </p>
             </div>
           </div>
@@ -615,30 +715,30 @@ MuJoCo G1 task execution</pre>
                 </tr>
                 <tr>
                   <td><strong>16 — Hybrid replay / schema upgrade</strong></td>
-                  <td>Upgrade schema and replay path to include locomotion commands or teacher walker context</td>
-                  <td>Fix missing locomotion context identified by Step 15 arm-only diagnostic result</td>
-                  <td>Teacher-command replay or hybrid 7D replay achieves lower palm error and ever_attached=True</td>
+                  <td>Upgrade schema and replay path to include every-tick locomotion commands; compare teacher-command vs hybrid-7D replay</td>
+                  <td>Fix missing locomotion context identified by Step 15; determine correct VLA action target</td>
+                  <td>Every-tick teacher-command replay: 0.0 m palm error, ever_attached=True; hybrid-7D still failed.</td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>17 — G1-native VLA dataset exporter</strong></td>
+                  <td>Export a G1-native VLA dataset using walk_cmd, reach_target_pelvis, reach_active, and grip_closed as targets</td>
+                  <td>Build training data with the correct action space identified in Step 16</td>
+                  <td>Dataset exported with G1-native targets; schema verified</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
-                  <td><strong>17 — OpenVLA shadow mode</strong></td>
+                  <td><strong>18 — OpenVLA shadow mode</strong></td>
                   <td>Run OpenVLA on saved frames but do not control the robot</td>
                   <td>Compare predicted actions to FSM teacher actions</td>
                   <td>Directional agreement and L1 action error metrics</td>
                   <td><span class="status-badge status-future">Future</span></td>
                 </tr>
                 <tr>
-                  <td><strong>18 — Remote/cloud inference</strong></td>
-                  <td>Serve OpenVLA from Colab/cloud and query from local MuJoCo</td>
-                  <td>Avoid local GPU constraints</td>
-                  <td>End-to-end latency and stable API calls</td>
-                  <td><span class="status-badge status-future">Future</span></td>
-                </tr>
-                <tr>
-                  <td><strong>19 — Fine-tuning feasibility</strong></td>
-                  <td>Evaluate LoRA/OFT fine-tuning only after replay passes</td>
-                  <td>Adapt OpenVLA to G1 demonstrations</td>
-                  <td>Offline validation on held-out FSM demos</td>
+                  <td><strong>19 — Remote/cloud inference or fine-tuning feasibility</strong></td>
+                  <td>Serve OpenVLA from Colab/cloud and evaluate LoRA/OFT fine-tuning after replay passes</td>
+                  <td>Avoid local GPU constraints; adapt OpenVLA to G1 demonstrations</td>
+                  <td>Offline validation on held-out FSM demos passes defined accuracy threshold</td>
                   <td><span class="status-badge status-future">Future</span></td>
                 </tr>
               </tbody>
@@ -710,6 +810,23 @@ MuJoCo G1 task execution</pre>
                 cloud/model work.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 004 — Use G1-native commands as the VLA action target, not 7D palm deltas</h3>
+            <ul class="bullet-list">
+              <li><strong>Reason:</strong> Step 16 showed that every-tick teacher-command replay
+                reproduces the trajectory exactly (0.0 m palm error, ever_attached=True), while
+                hybrid-7D replay still failed (mean palm error 0.229916 m, ever_attached=False).
+                Relative 7D end-effector deltas are not a reliable action target for this
+                floating-base humanoid stack.</li>
+              <li><strong>Expected result:</strong> A G1-native VLA dataset using
+                <code>walk_cmd</code>, <code>reach_target_pelvis</code>, <code>reach_active</code>,
+                and <code>grip_closed</code> as targets is more likely to be learnable and
+                executable on the G1 stack.</li>
+              <li><strong>Rejected alternative:</strong> Continuing to try 7D palm-delta action
+                spaces before validating replay fidelity.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -750,46 +867,57 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 16</h2>
+          <h2>Current Implementation Target — Step 17</h2>
           <pre class="code-block">vla_bridge/
-  replay_demo.py        ← extend to include walker commands or pelvis pose context
+  export_vla_dataset.py   ← new: export G1-native VLA dataset
 
-demos/rollout_001/
-  observations.jsonl    ← add locomotion fields (walk_cmd, pelvis_pos) to each record
+demos/rollout_002/
+  observations.jsonl      ← every-tick schema with walk_cmd, reach_target_pelvis,
+                             reach_active, grip_closed fields
 
 tests/
-  test_hybrid_replay.py ← verify that teacher-command replay achieves ever_attached=True</pre>
+  test_vla_dataset.py     ← verify dataset schema and target fields</pre>
           <p>
-            Step 16 upgrades the demonstration schema and replay path to include locomotion context.
-            The Step 15 diagnostic result showed that arm-only 7D palm deltas accumulate error without
-            the walker's base position. Step 16 must record and replay walker commands (or pelvis pose)
-            alongside the arm actions so that the replay can drive the full floating-base humanoid.
+            Step 16 is complete. The next target is Step 17: export a G1-native VLA dataset using
+            <code>walk_cmd</code>, <code>reach_target_pelvis</code>, <code>reach_active</code>, and
+            <code>grip_closed</code> as the model target. Step 16 proved that relative 7D palm deltas
+            are not a reliable action target for this stack; G1-native commands are.
             <strong>Do not load OpenVLA yet.</strong> No GPU or cloud resources are required.
           </p>
           <div class="code-note" style="margin-top: 1rem;">
-            <strong>Prerequisite:</strong> Step 15 validated — replay harness confirmed working; arm-only
-            mean palm error 0.263667 m, grip mismatch 0, <code>ever_attached=False</code>. Root cause
-            is missing locomotion context.
+            <strong>Step 16 result:</strong> Every-tick teacher-command replay achieved
+            <code>0.0 m</code> mean/max/final palm error, <code>ever_attached=True</code>,
+            and <code>attached_steps=1902</code>. Hybrid-7D replay still failed
+            (<code>mean palm error 0.229916 m</code>, <code>ever_attached=False</code>).
           </div>
         </section>
 
-        <!-- ── 12. Expected Step 16 Test ──────────────────────────── -->
+        <!-- ── 12. Step 16 Result — Hybrid Replay / Schema Upgrade ──── -->
         <section>
-          <h2>Expected Step 16 Test — Hybrid Replay / Schema Upgrade</h2>
-          <pre class="code-block">1. Extend observations.jsonl schema to include walk_cmd and pelvis_pos_world fields.
-2. Re-run record_vla_demo.py to capture a new 554-step demonstration with locomotion context.
-3. Implement hybrid replay: drive walker from recorded walk_cmd while replaying 7D arm actions.
-4. Assert ever_attached=True during grasp phase.
-5. Assert mean palm error is lower than the Step 15 arm-only baseline (0.263667 m).
-6. Assert replay reaches DONE or PLACE phase without FSM target lookups.
-7. Test runs offline without any GPU, cloud, or OpenVLA dependency.</pre>
-          <p><strong>Pass criteria:</strong></p>
+          <h2>Step 16 Result — Hybrid Replay / Schema Upgrade</h2>
+          <pre class="code-block">Finding 1 (timing mismatch):
+  demo_001 used record-every-5 sparse sampling.
+  Even teacher-command replay failed on the sparse dataset due to tick-level timing mismatch.
+
+Finding 2 (every-tick teacher-command replay):
+  demo_002 was re-recorded at every control tick.
+  teacher-command replay mean palm error  : 0.000000 m
+  teacher-command replay max  palm error  : 0.000000 m
+  teacher-command replay final palm error : 0.000000 m
+  ever_attached                           : True
+  attached_steps                          : 1902
+
+Finding 3 (hybrid-7D replay):
+  hybrid-7D replay mean palm error        : 0.229916 m
+  hybrid-7D replay ever_attached          : False</pre>
+          <p><strong>Design conclusion:</strong></p>
           <ul class="bullet-list">
-            <li>Schema upgrade records locomotion fields alongside arm actions</li>
-            <li>Hybrid replay achieves <code>ever_attached=True</code></li>
-            <li>Mean palm error lower than 0.263667 m (Step 15 arm-only baseline)</li>
-            <li>No OpenVLA or GPU dependency required</li>
-            <li>Step 17 (OpenVLA shadow mode) does not begin until this test passes</li>
+            <li>G1-native teacher commands replay exactly at every-tick resolution.</li>
+            <li>Relative 7D palm deltas still fail even with correct tick timing.</li>
+            <li>The next VLA dataset must use <code>walk_cmd</code>, <code>reach_target_pelvis</code>,
+              <code>reach_active</code>, and <code>grip_closed</code> as model targets.</li>
+            <li>No OpenVLA or GPU dependency was required for Step 16.</li>
+            <li>Step 17 (G1-native VLA dataset exporter) is the current next step.</li>
           </ul>
         </section>
 
