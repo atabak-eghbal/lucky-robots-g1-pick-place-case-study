@@ -21,6 +21,8 @@ explicitly throughout.
 
 The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents Step 12, the research scaffold, and Step 13, the planned G1 VLA Action Adapter that maps OpenVLA-style 7D actions into the repo's existing `PolicyOutput` contract.
 
+The Step 13 action-adapter milestone has been validated: the adapter unit suite passed 9 tests, and the existing MuJoCo/FSM/ONNX smoke test still passes. This confirms that the VLA branch can translate 7D end-effector-style actions into the existing `PolicyOutput` interface without breaking the FSM baseline.
+
 ## Terminology used in this report
 
 | Term | Meaning |
@@ -28,7 +30,7 @@ The report includes a VLA Roadmap page that is updated as the research branch ev
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, currently covering the Step 12 scaffold and Step 13 action-adapter plan |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering the Step 12 scaffold, the validated Step 13 action adapter, and future steps |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status

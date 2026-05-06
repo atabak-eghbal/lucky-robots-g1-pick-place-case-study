@@ -75,7 +75,8 @@
                   <h3>Current position</h3>
                   <p>
                     <span class="status-badge status-verified">Done</span> Step 12 — research scaffold documented.<br />
-                    <span class="status-badge status-future">Next</span> Step 13 — G1 VLA action adapter.
+                    <span class="status-badge status-verified">Done</span> Step 13 — G1 VLA action adapter validated.<br />
+                    <span class="status-badge status-future">Next</span> Step 14 — FSM demonstration recorder.
                   </p>
                 </article>
                 <article class="card">
@@ -103,7 +104,7 @@
 
             <div class="file-tab-panel" data-tab-panel="tracker-step13">
               <div class="code-note">
-                <p><strong>Step 13 — G1 VLA Action Adapter</strong> &nbsp;<span class="status-badge status-future">Planned</span></p>
+                <p><strong>Step 13 — G1 VLA Action Adapter</strong> &nbsp;<span class="status-badge status-verified">Validated</span></p>
                 <p>This is the first real code milestone. It does not require a GPU or OpenVLA model inference.</p>
               </div>
               <div class="card-grid">
@@ -129,6 +130,59 @@ grip_closed   (bool)</pre>
                     <li>Unit test converts a known world palm position to the correct pelvis-frame target</li>
                     <li>Gripper threshold maps correctly to <code>grip_closed</code></li>
                     <li>No model loading, no CUDA dependency</li>
+                  </ul>
+                </article>
+              </div>
+
+              <!-- Step 13 Completion Evidence -->
+              <div class="code-note" style="margin-top: 1.5rem;">
+                <p><strong>Step 13 Completion Evidence</strong></p>
+                <p>
+                  The adapter unit suite was run against <code>tests/test_vla_action_adapter.py</code>
+                  and the existing MuJoCo/FSM/ONNX environment smoke test (<code>scripts/smoke_env.py</code>)
+                  was re-run to confirm no regressions.
+                </p>
+              </div>
+              <div class="card-grid" style="margin-top: 1rem;">
+                <article class="card">
+                  <h3>Unit-test run</h3>
+                  <pre class="code-block">$ python -m pytest tests/test_vla_action_adapter.py -v
+
+tests/test_vla_action_adapter.py::test_identity_pelvis_pose PASSED
+tests/test_vla_action_adapter.py::test_translation_offset PASSED
+tests/test_vla_action_adapter.py::test_yaw_rotation PASSED
+tests/test_vla_action_adapter.py::test_gripper_open PASSED
+tests/test_vla_action_adapter.py::test_gripper_closed PASSED
+tests/test_vla_action_adapter.py::test_reach_active_flag PASSED
+tests/test_vla_action_adapter.py::test_zero_action_passthrough PASSED
+tests/test_vla_action_adapter.py::test_output_schema_fields PASSED
+tests/test_vla_action_adapter.py::test_no_mujoco_import PASSED
+
+9 passed in 0.31s</pre>
+                </article>
+                <article class="card">
+                  <h3>Smoke-test result</h3>
+                  <pre class="code-block">$ python scripts/smoke_env.py
+
+[smoke] MuJoCo model loaded OK
+[smoke] FSM controller instantiated OK
+[smoke] ONNX walker policy loaded OK
+[smoke] ONNX reacher policy loaded OK
+[smoke] 50-step rollout completed without exception
+[smoke] All checks passed.</pre>
+                  <p style="margin-top: 0.75rem;">
+                    The existing MuJoCo/FSM/ONNX stack is unaffected by the adapter addition.
+                  </p>
+                </article>
+                <article class="card">
+                  <h3>What this confirms — and what it does not</h3>
+                  <ul class="bullet-list">
+                    <li>The <code>G1VLAActionAdapter</code> correctly translates 7D end-effector-style
+                      actions into the existing <code>PolicyOutput</code> interface.</li>
+                    <li>The FSM baseline continues to pass its smoke test without modification.</li>
+                    <li><strong>OpenVLA is not implemented.</strong> No model is loaded, no GPU is
+                      used, and no live VLA control has been attempted.</li>
+                    <li>Step 14 (FSM demonstration recorder) is now the current next step.</li>
                   </ul>
                 </article>
               </div>
@@ -166,14 +220,49 @@ grip_closed   (bool)</pre>
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
               </div>
-              <ul class="bullet-list">
-                <li><strong>Step 12 gate:</strong> This VLA Roadmap page exists and is linked in navigation. ✓</li>
-                <li><strong>Step 13 gate:</strong> Unit test converts world palm target to pelvis-frame reach target without errors.</li>
-                <li><strong>Step 14 gate:</strong> Saved JSONL/NPZ contains synchronized images and actions from at least one FSM run.</li>
-                <li><strong>Step 15 gate:</strong> Replay reaches source hover, descends, grips, lifts, and releases approximately.</li>
-                <li><strong>Step 17 gate:</strong> Directional agreement and L1 action error metrics logged against FSM teacher.</li>
-                <li><strong>Step 19 gate:</strong> Offline validation on held-out FSM demos passes a defined accuracy threshold.</li>
-              </ul>
+              <div style="overflow-x: auto;">
+                <table class="data-table" style="width:100%; border-collapse: collapse;">
+                  <thead>
+                    <tr>
+                      <th>Gate</th>
+                      <th>Evidence</th>
+                      <th>Allowed Next Step</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Step 12</strong></td>
+                      <td>This VLA Roadmap page exists and is linked in navigation. ✓</td>
+                      <td>Proceed to Step 13 — G1 VLA action adapter.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 13</strong></td>
+                      <td><code>tests/test_vla_action_adapter.py</code> passed 9 tests, and <code>scripts/smoke_env.py</code> still passed. ✓</td>
+                      <td>Proceed to Step 14 — FSM demonstration recording.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 14</strong></td>
+                      <td>Saved JSONL/NPZ contains synchronized images and actions from at least one FSM run.</td>
+                      <td>Proceed to Step 15 — 7D action replay.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 15</strong></td>
+                      <td>Replay reaches source hover, descends, grips, lifts, and releases approximately.</td>
+                      <td>Proceed to Step 16 — dataset cleanup.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 17</strong></td>
+                      <td>Directional agreement and L1 action error metrics logged against FSM teacher.</td>
+                      <td>Proceed to Step 18 — remote/cloud inference.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 19</strong></td>
+                      <td>Offline validation on held-out FSM demos passes a defined accuracy threshold.</td>
+                      <td>Fine-tuning milestone complete.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -327,14 +416,14 @@ MuJoCo G1 task execution</pre>
                   <td>Map [dx, dy, dz, droll, dpitch, dyaw, gripper] to reach_target/grip</td>
                   <td>Test action-space compatibility</td>
                   <td>Unit test converts world palm target to pelvis-frame reach target</td>
-                  <td><span class="status-badge status-future">Next</span></td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
                 </tr>
                 <tr>
                   <td><strong>14 — FSM demonstration recorder</strong></td>
                   <td>Record camera frames, FSM phase, palm pose, reach target, grip state, and 7D delta action</td>
                   <td>Generate teacher data from the working FSM</td>
                   <td>Saved JSONL/NPZ has synchronized images and actions</td>
-                  <td><span class="status-badge status-future">Proposed</span></td>
+                  <td><span class="status-badge status-future">Next</span></td>
                 </tr>
                 <tr>
                   <td><strong>15 — 7D action replay</strong></td>
