@@ -65,14 +65,16 @@
               <p>Collect data from the FSM baseline to train a residual RL policy for robust manipulation.</p>
             </article>
             <a class="card card-link" href="./vla-roadmap.html">
-              <h3>OpenVLA / VLA Research Branch</h3>
-              <p>The VLA Roadmap now tracks this as a staged branch. Step 14 confirmed that the FSM
-                can serve as a teacher policy: the recorder produced 554 synchronized JSONL records
-                and 554 image frames from a rollout that reached DONE. The next limitation to study
-                is replay fidelity — can those 7D palm-delta actions reproduce the task without FSM
-                target lookups? Step 15 addresses this.</p>
+              <h3>Hybrid Replay Before OpenVLA</h3>
+              <p>The Step 15 arm-only replay produced a useful negative result: the replay harness
+                worked, but 7D palm deltas alone could not reproduce the full task because locomotion
+                was missing. Mean palm error was 0.264 m and <code>ever_attached</code> remained
+                <code>False</code>.</p>
+              <p>The next step is Step 16: record and replay walker commands alongside arm actions,
+                and compare teacher-command replay against hybrid 7D replay before attempting
+                OpenVLA shadow inference.</p>
               <p style="margin-top: 0.75rem;">
-                <a href="./vla-roadmap.html">View the updated VLA Roadmap →</a>
+                <a href="./vla-roadmap.html">View updated VLA Roadmap →</a>
               </p>
             </a>
           </div>

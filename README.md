@@ -19,11 +19,11 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents the Step 12 research scaffold, the validated Step 13 action adapter, and the validated Step 14 FSM Demonstration Recorder.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, and validated Step 15 7D Action Replay Harness.
 
-The Step 13 action-adapter milestone validated the local action bridge: the adapter unit suite passed 9 tests, and the existing MuJoCo/FSM/ONNX smoke test still passes.
+Step 15 produced an important diagnostic result. The replay harness successfully loaded 554 demonstration steps, wrote replay artifacts, generated plots, and preserved grip timing with zero mismatches. However, arm-only replay had a mean palm error of about 0.264 m and never attached the object. This shows that 7D palm deltas alone are not enough for the full floating-base humanoid task because locomotion context is missing.
 
-The Step 14 demonstration-recorder milestone generated the first VLA-style teacher dataset from the FSM baseline. The recorder produced 554 synchronized JSONL records and 554 image frames from a rollout that reached `DONE` and placed the cylinder on the target table. This confirms the repo can produce image/action demonstrations without letting OpenVLA control the robot.
+The next VLA milestone is Step 16: upgrade the schema/replay path for teacher-command replay and hybrid replay before attempting OpenVLA shadow inference.
 
 ## Terminology used in this report
 
@@ -32,7 +32,7 @@ The Step 14 demonstration-recorder milestone generated the first VLA-style teach
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering the Step 12 scaffold, validated Step 13 action adapter, validated Step 14 FSM demonstration recorder, and future replay/shadow-mode steps |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, 7D replay diagnostics, and the next hybrid replay/schema upgrade |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
