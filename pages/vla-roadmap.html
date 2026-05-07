@@ -1824,9 +1824,9 @@ scenario_count: 5
 
                 <h4>Observed failure cases (must remain visible)</h4>
                 <ul class="bullet-list">
-                  <li><code>cyl_x_plus_02</code>: grasp did not attach (<code>attached=false</code>); object not on target table.</li>
-                  <li><code>cyl_x_minus_02</code>: grasp did not attach (<code>attached=false</code>); object not on target table.</li>
-                  <li><code>cyl_y_plus_02</code>: object released but not successfully on target table.</li>
+                  <li><code>cyl_x_plus_02</code>: grasp did not attach (<code>attached=false</code>); object not successfully placed on target table.</li>
+                  <li><code>cyl_x_minus_02</code>: grasp did not attach (<code>attached=false</code>); object not successfully placed on target table.</li>
+                  <li><code>cyl_y_plus_02</code>: object released early; object not successfully placed on target table.</li>
                   <li><code>cyl_y_minus_02</code>: never completed FSM sequence (<code>done_reached=false</code>, first_phase=<code>SETTLE</code>, last_phase=<code>APPROACH_SOURCE</code>).</li>
                 </ul>
 
@@ -1854,7 +1854,7 @@ diversity inspector:
                   <ul class="bullet-list">
                     <li><code>num_completed=5</code> means recorder completion, not guaranteed task success.</li>
                     <li><code>successful_done_demos=4</code> shows one rollout did not reach FSM <code>DONE</code>.</li>
-                    <li>The diversity inspector's <code>num_successful_demos=5</code> appears to count recorder-completed demos, not demos with successful object transfer. This metric definition needs a follow-up fix.</li>
+                    <li>The diversity inspector's <code>num_successful_demos=5</code> appears to count recorder-completed demos, not demos with successful object transfer. Step 23 should replace this ambiguity with explicit <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code> reporting.</li>
                   </ul>
                 </div>
 
