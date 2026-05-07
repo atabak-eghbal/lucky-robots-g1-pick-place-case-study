@@ -66,6 +66,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step17">Step 17 — Dataset Exporter</button>
               <button class="file-tab-button" data-tab-target="tracker-step18">Step 18 — Dataset Audit</button>
               <button class="file-tab-button" data-tab-target="tracker-step19">Step 19 — Training Views</button>
+              <button class="file-tab-button" data-tab-target="tracker-step20">Step 20 — Batch Demos</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -87,7 +88,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 17 — G1-native VLA dataset exporter.<br />
                     <span class="status-badge status-verified">Validated</span> Step 18 — dataset audit + train/validation split.<br />
                     <span class="status-badge status-verified">Validated</span> Step 19 — dataset filtering / sample weighting / training views.<br />
-                    <span class="status-badge status-future">Next</span> Step 20 — multi-demo collection plan + batch recorder.
+                    <span class="status-badge status-verified">Validated</span> Step 20 — multi-demo collection + batch manifest.<br />
+                    <span class="status-badge status-future">Next</span> Step 21 — combined batch dataset exporter.
                   </p>
                 </article>
                 <article class="card">
@@ -1293,8 +1295,263 @@ mean_weight               : 1.000000</pre>
                     preserve rare grip transitions, and provide bounded normalized sample weights.
                   </p>
                   <p>
-                    The next milestone should be Step 20: collect multiple demonstrations or add a batch recorder
-                    so the future dataset is not limited to a single rollout.
+                    Step 20 (multi-demo collection + batch manifest) has been validated.
+                  </p>
+                </div>
+              </section>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step20">
+              <div class="code-note">
+                <p>
+                  <strong>Step 20 — Multi-Demo Collection + Batch Manifest</strong>
+                  &nbsp;<span class="status-badge status-verified">Validated</span>
+                </p>
+                <p>
+                  Step 20 adds repeatable batch demonstration collection for the G1-native VLA branch.
+                  Instead of relying on one standalone <code>demo.jsonl</code>, the pipeline can now record
+                  multiple FSM teacher rollouts into a batch folder and summarize them with a machine-readable
+                  <code>batch_manifest.json</code>.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>Why Step 20 exists</h4>
+                <p>
+                  Step 18 and Step 19 showed that the dataset is structurally valid but still single-trajectory.
+                  A learned policy or OpenVLA-style experiment would be weak if it were based on only one rollout.
+                  Step 20 does not solve diversity yet, but it creates the collection infrastructure needed to
+                  scale beyond one demonstration.
+                </p>
+
+                <div class="code-note">
+                  <p><strong>Main conclusion:</strong></p>
+                  <p>
+                    Step 20 passed. The repository can now collect multiple FSM teacher demonstrations,
+                    record success/failure per rollout, and write a stable <code>batch_manifest.json</code>.
+                    The current two-demo batch is deterministic and identical, so this proves infrastructure,
+                    not generalization.
+                  </p>
+                </div>
+
+                <h4>Files added in Step 20</h4>
+
+                <pre class="code-block">vla_bridge/batch_manifest.py
+scripts/record_vla_demo_batch.py
+tests/test_vla_batch_manifest.py
+
+Modified:
+vla_bridge/__init__.py
+DEV_LOG.md</pre>
+
+                <h4>Validation commands</h4>
+
+                <pre class="code-block">python -m unittest tests/test_vla_batch_manifest.py
+python -m unittest tests/test_g1_native_training_views.py
+python -m unittest tests/test_g1_native_dataset_audit.py
+python -m unittest tests/test_g1_native_dataset.py
+python -m unittest tests/test_vla_demo_schema.py
+python -m unittest tests/test_vla_replay_metrics.py
+python -m unittest tests/test_vla_action_adapter.py
+python scripts/smoke_env.py</pre>
+
+                <pre class="code-block">VLA batch manifest tests       : 8 tests passed
+G1-native training-view tests  : 11 tests passed
+G1-native dataset audit tests  : 11 tests passed
+G1-native dataset tests        : 12 tests passed
+VLA demo schema tests          : 16 tests passed
+Replay metrics tests           : 14 tests passed
+Action adapter tests           : 9 tests passed
+Smoke environment              : PASS</pre>
+
+                <h4>Dry-run batch command</h4>
+
+                <pre class="code-block">python scripts/record_vla_demo_batch.py \
+  --output-root data/vla_demos/batch_000 \
+  --num-demos 2 \
+  --record-every 1 \
+  --camera head_cam \
+  --dry-run</pre>
+
+                <h4>Dry-run manifest result</h4>
+
+                <pre class="code-block">batch_id       : batch_000
+num_requested  : 2
+num_completed  : 0
+num_failed     : 0
+record_every   : 1
+camera         : head_cam
+no_images      : false
+max_ticks      : 4000
+demos          : []</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 1 — Dry-run mode works:</strong></p>
+                  <p>
+                    The dry run prints the exact commands that would be executed and writes a manifest without
+                    running MuJoCo. This provides a safe way to verify batch structure before launching expensive
+                    or GUI-sensitive simulation jobs.
+                  </p>
+                </div>
+
+                <h4>Real no-image batch command</h4>
+
+                <pre class="code-block">python scripts/record_vla_demo_batch.py \
+  --output-root data/vla_demos/batch_000_no_images \
+  --num-demos 2 \
+  --record-every 1 \
+  --no-images \
+  --continue-on-fail</pre>
+
+                <h4>Real no-image batch result</h4>
+
+                <pre class="code-block">batch_id              : batch_000_no_images
+num_requested         : 2
+num_completed         : 2
+num_failed            : 0
+successful_done_demos : 2
+total_steps           : 5532
+total_frames          : 0
+demo_ids              : ['demo_000', 'demo_001']</pre>
+
+                <h4>Generated batch structure</h4>
+
+                <pre class="code-block">data/vla_demos/batch_000_no_images/
+  batch_manifest.json
+  demo_000/
+    demo.jsonl
+    summary.json
+  demo_001/
+    demo.jsonl
+    summary.json</pre>
+
+                <h4>Per-demo validation</h4>
+
+                <div style="overflow-x: auto;">
+                  <table class="data-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                      <tr>
+                        <th>Demo</th>
+                        <th>Rows</th>
+                        <th>Done?</th>
+                        <th>Frames</th>
+                        <th>Key Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>demo_000</strong></td>
+                        <td>2766</td>
+                        <td>true</td>
+                        <td>0</td>
+                        <td>Reached DONE using no-image recording.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>demo_001</strong></td>
+                        <td>2766</td>
+                        <td>true</td>
+                        <td>0</td>
+                        <td>Reached DONE using no-image recording.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Shared per-demo summary</h4>
+
+                <pre class="code-block">num_steps          : 2766
+done_reached       : true
+first_phase        : SETTLE
+last_phase         : DONE
+max_action_xyz_m   : 0.01748103854992822
+mean_action_xyz_m  : 0.0016406439064965631
+grip_closed_steps  : 1902
+walk_nonzero_steps : 1276
+reach_active_steps : 2531</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 2 — Batch recording works:</strong></p>
+                  <p>
+                    The no-image batch created two independent demo folders and a manifest reporting
+                    <code>2/2</code> completed demonstrations with <code>0</code> failures. Each demo reached
+                    the <code>DONE</code> phase and produced <code>2766</code> records.
+                  </p>
+                </div>
+
+                <h4>Manifest contract</h4>
+
+                <pre class="code-block">{
+  "batch_id": "batch_000_no_images",
+  "output_root": "data/vla_demos/batch_000_no_images",
+  "num_requested": 2,
+  "num_completed": 2,
+  "num_failed": 0,
+  "record_every": 1,
+  "camera": "head_cam",
+  "no_images": true,
+  "max_ticks": 4000,
+  "demos": [
+    {
+      "demo_id": "demo_000",
+      "metadata_path": "data/vla_demos/batch_000_no_images/demo_000/demo.jsonl",
+      "summary_path": "data/vla_demos/batch_000_no_images/demo_000/summary.json",
+      "status": "success",
+      "done_reached": true,
+      "num_steps": 2766,
+      "num_frames": 0,
+      "error": ""
+    }
+  ]
+}</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 3 — Stable handoff for later steps:</strong></p>
+                  <p>
+                    The manifest now gives later tools a clean list of successful demonstrations. A future
+                    combined exporter can read only demos with <code>status="success"</code> and
+                    <code>done_reached=true</code>.
+                  </p>
+                </div>
+
+                <h4>What this proves vs. what it does not prove</h4>
+
+                <div class="card-grid">
+                  <article class="card">
+                    <h3>Proven</h3>
+                    <p>Multiple FSM teacher runs can be recorded under one batch folder.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Proven</h3>
+                    <p>A machine-readable manifest tracks success, failure, paths, and step counts.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Not yet proven</h3>
+                    <p>The demonstrations have meaningful variation. Current runs are deterministic.</p>
+                    <p><span class="status-badge status-future">Future</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Not yet proven</h3>
+                    <p>A learned or OpenVLA policy can control the robot.</p>
+                    <p><span class="status-badge status-future">Future</span></p>
+                  </article>
+                </div>
+
+                <h4>Step 20 conclusion</h4>
+
+                <div class="code-note">
+                  <p>
+                    Step 20 completes the first multi-demo collection layer. The project can now move from a
+                    single-demo workflow to a batch-recording workflow with explicit success/failure accounting.
+                  </p>
+                  <p>
+                    The recommended next milestone is Step 21: combine successful demos from
+                    <code>batch_manifest.json</code> into a single G1-native dataset and rerun the existing
+                    audit/training-view tools on that combined output.
                   </p>
                 </div>
               </section>
@@ -1388,8 +1645,20 @@ mean_weight               : 1.000000</pre>
                     </tr>
                     <tr>
                       <td><strong>Step 20</strong></td>
-                      <td>Multiple demo folders and batch manifest are written; successful demos can be exported/audited.</td>
-                      <td>Proceed to Step 21 — OpenVLA shadow mode.</td>
+                      <td>
+                        Batch recorder validated. Dry-run mode wrote a manifest with
+                        <code>num_requested=2</code>, <code>num_completed=0</code>, and no demo records.
+                        Real no-image batch recording completed <code>2/2</code> demos with
+                        <code>num_failed=0</code>. Each demo reached <code>DONE</code> and produced
+                        <code>2766</code> records. The batch manifest reported
+                        <code>total_steps=5532</code> and <code>successful_done_demos=2</code>.
+                      </td>
+                      <td>Proceed to Step 21 — combined batch dataset exporter.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 21</strong></td>
+                      <td>Combined dataset row count matches sum of successful demos; audit/training-view tools pass.</td>
+                      <td>Batch data engineering complete.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1413,6 +1682,11 @@ mean_weight               : 1.000000</pre>
                 Gate 19 improves the training view without changing the original evidence dataset. The remaining
                 blocker is rollout diversity: the current data is still one trajectory, so the next milestone should
                 collect multiple demonstrations before any serious learned-policy claims.
+              </p>
+              <p>
+                Gate 20 proves the collection and manifest infrastructure, not data diversity. The current demos
+                are deterministic teacher rollouts. The next step is to combine successful demos into a single
+                G1-native dataset, then add variation or perturbations in a later step.
               </p>
             </div>
           </div>
@@ -1615,7 +1889,14 @@ MuJoCo G1 task execution</pre>
                   <td><strong>20 — Multi-demo collection plan + batch recorder</strong></td>
                   <td>Record multiple demonstrations and write a batch manifest.</td>
                   <td>Reduce single-trajectory limitation before model work.</td>
-                  <td>Multiple demo folders and batch manifest are written; successful demos can be exported/audited.</td>
+                  <td>Batch recorder validated: dry run wrote manifest; no-image batch completed 2/2 demos; each demo reached DONE with 2766 records; manifest reported num_completed=2, num_failed=0.</td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>21 — Combined batch dataset exporter</strong></td>
+                  <td>Read batch_manifest.json and combine successful demo.jsonl files into one G1-native dataset.</td>
+                  <td>Convert batch collection into a trainable/auditable dataset artifact.</td>
+                  <td>Combined dataset row count equals the sum of selected demos; summary/source_manifest are written; existing audit/training-view tools run on the combined dataset.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
@@ -1738,6 +2019,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Next step:</strong> Collect multiple demonstrations or add a batch recorder to reduce the single-trajectory limitation.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 008 — Add batch collection before model work</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Add a batch recorder and manifest contract before attempting OpenVLA inference or fine-tuning.</li>
+              <li><strong>Reason:</strong> Step 18 and Step 19 showed that the dataset was single-trajectory. Batch collection is required before any credible learning experiment.</li>
+              <li><strong>Evidence:</strong> Step 20 completed <code>2/2</code> no-image teacher demos, each with <code>2766</code> records and <code>done_reached=true</code>. The manifest reported <code>num_completed=2</code>, <code>num_failed=0</code>, and <code>total_steps=5532</code>.</li>
+              <li><strong>Rejected alternative:</strong> Jump directly into OpenVLA shadow inference or fine-tuning on one rollout.</li>
+              <li><strong>Next step:</strong> Combine successful demos from the manifest into a single G1-native dataset.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -1778,45 +2070,43 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 20</h2>
+          <h2>Current Implementation Target — Step 21</h2>
           <p>
-            Step 19 created safer training views, but the core limitation remains: the dataset still comes
-            from one rollout. Step 20 should expand the data source by collecting multiple demonstrations
-            or adding a batch recorder with reproducible manifest output.
+            Step 20 validated batch demonstration collection, but the batch data is still stored as separate
+            demo folders. Step 21 should consume a <code>batch_manifest.json</code>, select successful
+            demonstrations, and export them into a single combined G1-native dataset.
           </p>
 
-          <pre class="code-block">next data-collection targets:
-  record multiple demonstrations
-  store one manifest per rollout
-  support deterministic seeds or scenario labels
-  optionally vary object/table/robot start conditions
-  export combined G1-native datasets
-  audit combined phase/action distributions
-  avoid claiming generalization from one rollout</pre>
+          <pre class="code-block">expected Step 21 inputs:
+  data/vla_demos/batch_000_no_images/batch_manifest.json
+
+expected Step 21 outputs:
+  data/vla_exports/batch_000_no_images_g1_native/dataset.jsonl
+  data/vla_exports/batch_000_no_images_g1_native/summary.json
+  data/vla_exports/batch_000_no_images_g1_native/source_manifest.json</pre>
 
           <p>
-            Multi-demo collection is the most meaningful next step before OpenVLA shadow inference,
-            fine-tuning, or learned-policy claims.
+            This keeps the roadmap in the data-engineering lane: collect, combine, audit, and only then
+            consider learned-policy baselines or OpenVLA shadow inference.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 20 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 21 Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 20 Test — Multi-Demo Collection / Batch Recorder</h2>
+          <h2>Expected Step 21 Test — Combined Batch Dataset Exporter</h2>
 
-          <pre class="code-block">python scripts/record_vla_demo_batch.py \
-  --output-root data/vla_demos/batch_000 \
-  --num-demos 5 \
-  --record-every 1 \
-  --camera head_cam</pre>
+          <pre class="code-block">python scripts/export_g1_native_vla_batch_dataset.py \
+  data/vla_demos/batch_000_no_images/batch_manifest.json \
+  --output-dir data/vla_exports/batch_000_no_images_g1_native</pre>
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Multiple demo folders are created with consistent naming.</li>
-            <li>Each demo writes <code>demo.jsonl</code> and <code>summary.json</code>.</li>
-            <li>A batch manifest records paths, settings, and success/failure status per demo.</li>
-            <li>Successful demos can be exported into a combined G1-native dataset.</li>
-            <li>The combined dataset can be audited and compared with the single-demo dataset.</li>
+            <li>The exporter reads <code>batch_manifest.json</code>.</li>
+            <li>Only successful demos with <code>done_reached=true</code> are included.</li>
+            <li>The combined <code>dataset.jsonl</code> is written.</li>
+            <li>The output summary reports total records and per-demo source counts.</li>
+            <li>A <code>source_manifest.json</code> preserves the input manifest and selected demo list.</li>
+            <li>The existing audit and training-view scripts can run on the combined dataset.</li>
             <li>No OpenVLA, Hugging Face, GPU, or cloud dependency is required.</li>
           </ul>
         </section>

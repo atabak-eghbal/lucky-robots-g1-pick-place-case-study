@@ -19,11 +19,13 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, and validated Step 19 Dataset Filtering / Sample Weighting / Training Views.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, and validated Step 20 Multi-Demo Collection + Batch Manifest.
 
 Step 19 created safer derived training views without modifying the original exported dataset. It produced a full view with 2665 records, a filtered no-idle view with 2516 records, and a sample-weight manifest with 2665 weights. The filtered view reduced idle-heavy records from 159 to 10 while preserving the rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. The sample weights are normalized to mean 1.0 and capped at 20.0.
 
-The next milestone is Step 20: collect multiple demonstrations or add a batch recorder before attempting OpenVLA shadow inference, fine-tuning, or learned-policy claims.
+Step 20 added a batch recording layer for FSM teacher demonstrations. A dry run produced a manifest without running simulation, and a real no-image batch collected two successful demonstrations. The batch manifest reported num_requested=2, num_completed=2, num_failed=0, successful_done_demos=2, and total_steps=5532. Each demo reached DONE and produced 2766 records. This validates the multi-demo collection infrastructure, but the current demos are still deterministic, so it does not prove rollout diversity or learned-policy generalization.
+
+The next milestone is Step 21: combine successful demos from batch_manifest.json into one G1-native dataset, then rerun the existing audit and training-view tools on the combined output before attempting OpenVLA shadow inference, fine-tuning, or learned-policy claims.
 
 ## Terminology used in this report
 
@@ -32,7 +34,7 @@ The next milestone is Step 20: collect multiple demonstrations or add a batch re
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, and the next multi-demo collection step |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, batch demonstration collection, and the next combined-dataset export step |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
