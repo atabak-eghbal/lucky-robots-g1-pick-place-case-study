@@ -69,6 +69,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step20">Step 20 — Batch Demos</button>
               <button class="file-tab-button" data-tab-target="tracker-step21">Step 21 — Batch Dataset Exporter</button>
               <button class="file-tab-button" data-tab-target="tracker-step22">Step 22 — Scenario Perturbations</button>
+              <button class="file-tab-button" data-tab-target="tracker-step23a">Step 23A — Scripted Teacher</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -93,7 +94,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 20 — multi-demo collection + batch manifest.<br />
                     <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
-                    <span class="status-badge status-future">Next</span> Step 23 — task-success metrics + perturbation robustness gate.
+                    <span class="status-badge status-future">Partially Validated</span> Step 23A — scripted keyboard teacher MVP.<br />
+                    <span class="status-badge status-future">Next</span> Step 23B — grasp assurance + task-success checks for scripted teacher.
                   </p>
                 </article>
                 <article class="card">
@@ -1872,6 +1874,111 @@ diversity inspector:
               </section>
             </div>
 
+            <div class="file-tab-panel" data-tab-panel="tracker-step23a">
+              <div class="code-note">
+                <p>
+                  <strong>Step 23A — Scripted Keyboard Teacher MVP</strong>
+                  &nbsp;<span class="status-badge status-future">Partially Validated</span>
+                </p>
+                <p>
+                  Step 23A successfully added a scripted keyboard teacher as a second teacher source.
+                  It automates the original manual-keyboard idea with a deterministic JSON macro and
+                  records it through the VLA demo pipeline. However, visual inspection of the rendered
+                  frames showed that the first open-loop macro did not pick up the cylinder.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>What Step 23A added</h4>
+                <pre class="code-block">New files:
+  configs/scripts/nominal_scripted_keyboard_v1.json
+  vla_bridge/scripted_keyboard.py
+  scripts/inspect_scripted_keyboard_plan.py
+  scripts/record_scripted_keyboard_demo.py
+  tests/test_scripted_keyboard.py
+
+Modified:
+  vla_bridge/__init__.py
+  DEV_LOG.md</pre>
+
+                <h4>Validation summary</h4>
+                <pre class="code-block">Scripted keyboard unit tests  : PASS
+Previous regression tests     : PASS
+MuJoCo/ONNX smoke test        : PASS
+Plan inspector                : PASS — scripted phases shown
+Scripted recorder             : PASS — demo.jsonl, summary.json, frames produced</pre>
+
+                <h4>Image recording command</h4>
+                <pre class="code-block">python scripts/record_scripted_keyboard_demo.py \
+  --script-config configs/scripts/nominal_scripted_keyboard_v1.json \
+  --output-dir data/vla_demos/scripted_keyboard_000_images \
+  --record-every 5 \
+  --camera head_cam</pre>
+
+                <h4>What the recorder produced</h4>
+                <ul class="bullet-list">
+                  <li><code>demo.jsonl</code> — VLA-style demo log with phase and action records</li>
+                  <li><code>summary.json</code> — run metadata</li>
+                  <li>Rendered camera frames in <code>data/vla_demos/scripted_keyboard_000_images</code></li>
+                </ul>
+
+                <h4>Visual inspection finding</h4>
+                <div class="code-note">
+                  <p><strong>Important: the first scripted macro did not pick up the cylinder.</strong></p>
+                  <p>
+                    The current scripted keyboard plan is open-loop. It sends predetermined walking,
+                    reaching, gripping, lifting, and placement commands, but it does not verify that
+                    the palm reached the cylinder, that the grasp attached, that the cylinder lifted,
+                    or that the object ended on the target table.
+                  </p>
+                  <p>
+                    Visual inspection of the rendered frames from
+                    <code>data/vla_demos/scripted_keyboard_000_images</code> confirmed that the G1 did
+                    not pick up the cylinder.
+                  </p>
+                </div>
+
+                <div class="card-grid" style="margin-top: 1rem;">
+                  <article class="card">
+                    <h3>What Step 23A proves</h3>
+                    <ul class="bullet-list">
+                      <li>The original manual-keyboard idea can be automated through code.</li>
+                      <li>A JSON scripted plan can drive the G1 controller through phases.</li>
+                      <li>The recorder pipeline accepts a second teacher source (<code>teacher_type = scripted_keyboard</code>).</li>
+                      <li>VLA-style demo logs and rendered camera frames are produced correctly.</li>
+                    </ul>
+                    <p><span class="status-badge status-verified">Infrastructure validated</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>What Step 23A does not prove</h3>
+                    <ul class="bullet-list">
+                      <li>The scripted macro does not reliably grasp the cylinder.</li>
+                      <li>The scripted teacher is not a successful pick-and-place teacher.</li>
+                      <li>No OpenVLA, learned-policy control, or fine-tuning is claimed.</li>
+                    </ul>
+                    <p><span class="status-badge status-future">First macro is open-loop only</span></p>
+                  </article>
+                </div>
+
+                <h4>Step 23A conclusion</h4>
+                <div class="code-note">
+                  <p>
+                    Step 23A is partially validated. It created the scripted-keyboard teacher infrastructure
+                    and proved that the original manual-keyboard idea can be automated, recorded through the
+                    VLA data pipeline, and rendered as camera frames. However, the first open-loop macro
+                    should not be used as training-quality teacher data.
+                  </p>
+                  <p>
+                    The next milestone is <strong>Step 23B — Scripted Keyboard Grasp Assurance +
+                    Task-Success Checks</strong>. Step 23B should track attachment, lift, object-on-target
+                    status, task success, and failure reasons, and it should not proceed to transport unless
+                    the grasp attaches.
+                  </p>
+                </div>
+              </section>
+            </div>
+
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
@@ -1998,7 +2105,18 @@ diversity inspector:
                         demos reached FSM <code>DONE</code>, and several <code>DONE</code> rollouts did not
                         successfully place the object on the target table.
                       </td>
-                      <td>Proceed to Step 23 — task-success metrics + perturbation robustness gate.</td>
+                      <td>Proceed to Step 23A — scripted keyboard teacher MVP.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 23A</strong></td>
+                      <td>
+                        Scripted keyboard teacher infrastructure partially validated. The repository now has
+                        a JSON scripted keyboard plan, plan loader/validator, plan inspector, and scripted
+                        demo recorder. The recorder produced <code>demo.jsonl</code>,
+                        <code>summary.json</code>, and rendered camera frames. Visual inspection of the
+                        rendered frames showed that the first open-loop macro did not pick up the cylinder.
+                      </td>
+                      <td>Proceed to Step 23B — grasp assurance + task-success checks.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2007,6 +2125,11 @@ diversity inspector:
                 Gate 22 proves that scenario diversity can be represented and recorded, but it also exposes a
                 critical quality issue: FSM <code>DONE</code> is not equivalent to task success. The next gate
                 must add explicit outcome metrics before perturbed rollouts are treated as training data.
+              </p>
+              <p>
+                Gate 23A proves scripted-teacher infrastructure, not task success. The first macro is open-loop
+                and should not be used as training-quality teacher data until grasp attachment and task-success
+                checks are added.
               </p>
               <p>
                 Gate 16 is the strongest VLA design gate so far. It separates replay fidelity from action-space
@@ -2258,10 +2381,17 @@ MuJoCo G1 task execution</pre>
                   <td><span class="status-badge status-future">Partially Validated</span></td>
                 </tr>
                 <tr>
-                  <td><strong>23 — Task-success metrics + perturbation robustness gate</strong></td>
-                  <td>Separate recorder_success, fsm_done_reached, and task_success; require object-on-target validation before treating a demo as training-quality.</td>
-                  <td>Prevent failed perturbed rollouts from being mislabeled as successful training data.</td>
-                  <td>Manifest and inspectors report task_success, failure_reason, final object position, object_on_target_table, and object_attached_ever.</td>
+                  <td><strong>23A — Scripted keyboard teacher MVP</strong></td>
+                  <td>Automate the original keyboard-control idea with a timed JSON macro and record it through the VLA demo pipeline.</td>
+                  <td>Create a second teacher source that is deterministic and easier to tune than the FSM.</td>
+                  <td>Plan loads; scripted phases expand; recorder creates demo.jsonl/summary.json; rendered frames are produced; visual inspection shows first macro does not yet pick up cylinder.</td>
+                  <td><span class="status-badge status-future">Partially Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>23B — Grasp assurance + task-success checks</strong></td>
+                  <td>Track attachment/object-lift/object-placement and stop/retry when grasp fails.</td>
+                  <td>Prevent scripted teacher demos from being treated as successful when no grasp occurred.</td>
+                  <td>summary.json includes ever_attached, task_success, failure_reason; script does not proceed to transport unless attached.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
@@ -2414,7 +2544,18 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
               <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
               <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
-              <li><strong>Next step:</strong> Implement Step 23 robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
+              <li><strong>Next step:</strong> Implement Step 23A scripted keyboard teacher MVP, then Step 23B grasp assurance and robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
+            </ul>
+          </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 011 — Add scripted keyboard as a second teacher source before grasp assurance</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Add a scripted keyboard teacher MVP (Step 23A) to automate the original manual-keyboard idea before adding grasp-assurance checks (Step 23B).</li>
+              <li><strong>Reason:</strong> The original manual keyboard-control demo was the starting point for this project. Automating it through code creates a deterministic, tunable second teacher source that does not require the FSM state machine.</li>
+              <li><strong>Evidence:</strong> Step 23A added <code>vla_bridge/scripted_keyboard.py</code>, a JSON scripted plan, a plan inspector, and a scripted demo recorder. Unit tests passed. The recorder produced <code>demo.jsonl</code>, <code>summary.json</code>, and rendered camera frames. However, visual inspection showed the first open-loop macro did not pick up the cylinder.</li>
+              <li><strong>Rejected alternative:</strong> Skip straight to grasp assurance without proving the scripted-keyboard infrastructure first.</li>
+              <li><strong>Next step:</strong> Step 23B — add <code>ever_attached</code>, <code>object_lifted</code>, <code>object_on_target_table</code>, <code>task_success</code>, <code>failure_reason</code>, and stop/retry logic before treating scripted demos as training-quality data.</li>
             </ul>
           </article>
         </section>
@@ -2457,53 +2598,58 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 23</h2>
+          <h2>Current Implementation Target — Step 23B</h2>
           <p>
-            Step 22 partially validated scenario perturbation infrastructure, but exposed
-            a data-quality gap: recorder completion and FSM <code>DONE</code> are not
-            sufficient proxies for true object-transfer success.
+            Step 23A partially validated scripted-keyboard teacher infrastructure. It added a
+            JSON scripted plan, plan validator, plan inspector, and scripted demo recorder, and
+            proved that the original manual-keyboard idea can be automated and recorded through
+            the VLA pipeline. However, visual inspection showed that the first open-loop macro
+            did not pick up the cylinder.
           </p>
 
-          <pre class="code-block">Step 23 target:
-  Add explicit task-success metrics and a perturbation robustness gate.
+          <pre class="code-block">Step 23A status: partially validated — infrastructure works, first macro does not grasp.
 
-Required fields:
-  - recorder_success
-  - fsm_done_reached
-  - task_success
-  - object_attached_ever
+Step 23B target:
+  Add grasp assurance and task-success checks to the scripted keyboard teacher.
+
+Required fields to add:
+  - ever_attached
+  - attached_now
+  - attach_tick
+  - attach_phase
+  - object_lifted
   - object_on_target_table
-  - final_object_clearance
-  - final_object_world_position
-  - failure_reason</pre>
+  - task_success
+  - failure_reason
+
+Required behaviour:
+  - stop or retry if grasp never attaches
+  - optional small reach-search pattern during close_grip
+  - do not proceed to transport unless attached</pre>
 
           <p>
-            Step 23 should stay in the teacher-data quality lane. It should not claim
+            Step 23B should stay in the teacher-data quality lane. It should not claim
             OpenVLA loading, learned-policy control, fine-tuning, live VLA control, or
             demonstrated generalization.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 23 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 23B Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 23 Test — Task-success metrics + perturbation robustness gate</h2>
+          <h2>Expected Step 23B Test — Scripted Keyboard Grasp Assurance + Task-Success Checks</h2>
 
-          <pre class="code-block">python scripts/record_vla_demo_batch.py \
-  --output-root data/vla_demos/batch_001_perturbed_with_metrics \
-  --num-demos 5 \
-  --record-every 1 \
-  --no-images \
-  --scenario-config configs/scenarios/small_perturbations.json \
-  --continue-on-fail</pre>
+          <pre class="code-block">python scripts/record_scripted_keyboard_demo.py \
+  --script-config configs/scripts/nominal_scripted_keyboard_v1.json \
+  --output-dir data/vla_demos/scripted_keyboard_001_grasp_assured \
+  --record-every 1</pre>
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Manifest and per-demo summaries separate <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code>.</li>
-            <li>Each demo reports <code>object_attached_ever</code> and <code>object_on_target_table</code>.</li>
-            <li>Each demo reports <code>final_object_world_position</code> and <code>final_object_clearance</code>.</li>
-            <li>Failed outcomes include a machine-readable <code>failure_reason</code>.</li>
-            <li>Diversity inspector distinguishes recorder success from true task success.</li>
-            <li>Perturbed demos are only marked training-quality when task-success criteria pass.</li>
+            <li>Per-demo summary reports <code>ever_attached</code>, <code>object_lifted</code>, <code>object_on_target_table</code>, and <code>task_success</code>.</li>
+            <li>Per-demo summary reports a machine-readable <code>failure_reason</code> when grasp does not attach.</li>
+            <li>Script does not proceed to transport phase unless <code>attached_now</code> is confirmed.</li>
+            <li>Optional: a small reach-search pattern is attempted during <code>close_grip</code> if attachment does not occur.</li>
+            <li>Stop or retry logic is triggered if the grasp never attaches within the configured tick budget.</li>
             <li>No OpenVLA, Hugging Face, GPU, cloud, or learned-policy claims are introduced.</li>
           </ul>
         </section>

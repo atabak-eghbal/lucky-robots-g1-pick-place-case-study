@@ -19,7 +19,7 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, validated Step 20 Multi-Demo Collection + Batch Manifest, validated Step 21 Combined Batch Dataset Exporter, and partially validated Step 22 Scenario Perturbations / Multi-Seed Demo Diversity.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, validated Step 20 Multi-Demo Collection + Batch Manifest, validated Step 21 Combined Batch Dataset Exporter, partially validated Step 22 Scenario Perturbations / Multi-Seed Demo Diversity, and partially validated Step 23A Scripted Keyboard Teacher MVP.
 
 Step 19 created safer derived training views without modifying the original exported dataset. It produced a full view with 2665 records, a filtered no-idle view with 2516 records, and a sample-weight manifest with 2665 weights. The filtered view reduced idle-heavy records from 159 to 10 while preserving the rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. The sample weights are normalized to mean 1.0 and capped at 20.0.
 
@@ -31,7 +31,9 @@ Step 22 introduced controlled scenario perturbations and multi-seed metadata. Th
 
 However, Step 22 also exposed FSM teacher fragility. Only four of five perturbed demos reached FSM `DONE`, and several demos that reached `DONE` did not actually place the object on the target table. Therefore Step 22 should be treated as partially validated: the metadata and diversity pipeline works, but the system needs stricter task-success metrics before perturbed demos are treated as training-quality data.
 
-The next milestone is Step 23: add task-success metrics and a perturbation robustness gate. Step 23 should separate recorder success, FSM `DONE`, and true task success by tracking object attachment, final object position, object-on-target status, final clearance, and failure reasons. This should happen before OpenVLA shadow inference, fine-tuning, or learned-policy claims.
+Step 23A added a scripted keyboard teacher as a second teacher source. The goal was to automate the original manual keyboard-control idea with a deterministic JSON macro that drives the G1 controller through walking, reaching, gripping, lifting, and release commands. The implementation added a scripted plan, plan validator, plan inspector, and scripted demo recorder. The recorder successfully produced VLA-style demo logs and rendered camera frames. However, visual inspection showed that the first open-loop macro did not pick up the cylinder, so Step 23A should be treated as partially validated infrastructure, not a successful teacher demonstration.
+
+The next milestone is Step 23B: add grasp assurance and task-success checks to the scripted keyboard teacher. Step 23B should track attachment, lift, object-on-target status, task success, and failure reasons. The scripted teacher should not continue to transport or label a demo as successful if the cylinder never attaches.
 
 ## Terminology used in this report
 
@@ -40,7 +42,7 @@ The next milestone is Step 23: add task-success metrics and a perturbation robus
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, batch demonstration collection, combined batch dataset export, partially validated scenario perturbations, and the next task-success metric gate |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, batch demonstration collection, combined batch dataset export, partially validated scenario perturbations, partially validated scripted-keyboard teacher infrastructure, and the next grasp-assurance gate |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
