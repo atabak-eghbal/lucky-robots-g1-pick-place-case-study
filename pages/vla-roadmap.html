@@ -65,6 +65,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step16">Step 16 — Hybrid Replay</button>
               <button class="file-tab-button" data-tab-target="tracker-step17">Step 17 — Dataset Exporter</button>
               <button class="file-tab-button" data-tab-target="tracker-step18">Step 18 — Dataset Audit</button>
+              <button class="file-tab-button" data-tab-target="tracker-step19">Step 19 — Training Views</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -85,7 +86,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 16 — hybrid replay / schema upgrade.<br />
                     <span class="status-badge status-verified">Validated</span> Step 17 — G1-native VLA dataset exporter.<br />
                     <span class="status-badge status-verified">Validated</span> Step 18 — dataset audit + train/validation split.<br />
-                    <span class="status-badge status-future">Next</span> Step 19 — dataset filtering / sample weighting / multi-demo plan.
+                    <span class="status-badge status-verified">Validated</span> Step 19 — dataset filtering / sample weighting / training views.<br />
+                    <span class="status-badge status-future">Next</span> Step 20 — multi-demo collection plan + batch recorder.
                   </p>
                 </article>
                 <article class="card">
@@ -1041,8 +1043,258 @@ validation phase examples:
                     contains rare grip transition states, includes an idle-heavy run, and comes from a single trajectory.
                   </p>
                   <p>
-                    The next milestone should be Step 19: dataset filtering, sample weighting, and/or a multi-demo
-                    collection plan before any OpenVLA shadow inference or fine-tuning.
+                    Step 19 (dataset filtering / sample weighting / training views) has been validated.
+                  </p>
+                </div>
+              </section>
+            </div>
+
+            <div class="file-tab-panel" data-tab-panel="tracker-step19">
+              <div class="code-note">
+                <p>
+                  <strong>Step 19 — Dataset Filtering / Sample Weighting / Training Views</strong>
+                  &nbsp;<span class="status-badge status-verified">Validated</span>
+                </p>
+                <p>
+                  Step 19 builds safer derived training views from the G1-native dataset. It keeps the
+                  original dataset unchanged, reduces idle-heavy records in a filtered view, preserves rare
+                  grip-transition phases, and writes normalized per-sample weights.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>Why Step 19 exists</h4>
+                <p>
+                  Step 18 showed that the exported dataset is structurally valid, but still imbalanced:
+                  <code>APPROACH_TARGET</code> dominates, <code>CLOSE_GRIP</code> and <code>OPEN_GRIP</code>
+                  are extremely rare, and the beginning of the rollout contains idle-heavy records. Step 19
+                  creates safer dataset views before any model inference or fine-tuning.
+                </p>
+
+                <div class="code-note">
+                  <p><strong>Main conclusion:</strong></p>
+                  <p>
+                    Step 19 passed. The pipeline can now create full, filtered, and weighted views while preserving
+                    rare transition records. The data is better prepared for debugging baselines, but it is still
+                    a single-trajectory dataset and should not be used for robust generalization claims.
+                  </p>
+                </div>
+
+                <h4>Validation commands</h4>
+
+                <pre class="code-block">python -m unittest tests/test_g1_native_training_views.py
+python -m unittest tests/test_g1_native_dataset_audit.py
+python -m unittest tests/test_g1_native_dataset.py
+python -m unittest tests/test_vla_demo_schema.py
+python -m unittest tests/test_vla_replay_metrics.py
+python -m unittest tests/test_vla_action_adapter.py
+python scripts/smoke_env.py</pre>
+
+                <pre class="code-block">G1-native training-view tests : 11 tests passed
+G1-native dataset audit tests : 11 tests passed
+G1-native dataset tests       : 12 tests passed
+VLA demo schema tests         : 16 tests passed
+Replay metrics tests          : 14 tests passed
+Action adapter tests          : 9 tests passed
+Smoke environment             : PASS</pre>
+
+                <h4>Training-view command</h4>
+
+                <pre class="code-block">python scripts/build_g1_native_training_views.py \
+  data/vla_exports/g1_native_demo_002/dataset.jsonl \
+  --output-dir data/vla_exports/g1_native_demo_002/training_views</pre>
+
+                <h4>Generated training-view artifacts</h4>
+
+                <pre class="code-block">data/vla_exports/g1_native_demo_002/training_views/
+  full.jsonl
+  filtered_no_idle.jsonl
+  sample_weights.jsonl
+  training_view_summary.json</pre>
+
+                <h4>Training-view summary</h4>
+
+                <pre class="code-block">source_records           : 2665
+filtered_records         : 2516
+removed_records          : 149
+idle_records_source      : 159
+idle_records_filtered    : 10
+weight_count             : 2665
+min_weight               : 0.238026
+max_weight               : 20.000000
+mean_weight              : 1.000000</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 1 — Idle-heavy records reduced:</strong></p>
+                  <p>
+                    The filtered view reduces idle-heavy records from <code>159</code> to <code>10</code>.
+                    This keeps a small number of “do nothing” examples while preventing the initial idle window
+                    from dominating a small dataset.
+                  </p>
+                </div>
+
+                <h4>Rare transition preservation</h4>
+
+                <pre class="code-block">CLOSE_GRIP : 2 source records → 2 filtered records
+OPEN_GRIP  : 2 source records → 2 filtered records</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 2 — Rare transitions protected:</strong></p>
+                  <p>
+                    The filtering logic preserved the rare grip transition states. This is critical because
+                    <code>CLOSE_GRIP</code> and <code>OPEN_GRIP</code> are the most important discrete task
+                    transitions but each appears only twice in the current rollout.
+                  </p>
+                </div>
+
+                <h4>Filtered phase counts</h4>
+
+                <div style="overflow-x: auto;">
+                  <table class="data-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                      <tr>
+                        <th>Phase</th>
+                        <th>Source Records</th>
+                        <th>Filtered Records</th>
+                        <th>Interpretation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>SETTLE</strong></td>
+                        <td>150</td>
+                        <td>10</td>
+                        <td>Initial idle-heavy window reduced aggressively.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>APPROACH_SOURCE</strong></td>
+                        <td>84</td>
+                        <td>76</td>
+                        <td>Some idle-like early approach records removed.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>HOVER_SOURCE</strong></td>
+                        <td>27</td>
+                        <td>26</td>
+                        <td>Almost fully preserved.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>DESCEND_SOURCE</strong></td>
+                        <td>300</td>
+                        <td>300</td>
+                        <td>Fully preserved.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>CLOSE_GRIP</strong></td>
+                        <td>2</td>
+                        <td>2</td>
+                        <td>Rare transition protected.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>LIFT_SOURCE</strong></td>
+                        <td>200</td>
+                        <td>200</td>
+                        <td>Fully preserved.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>APPROACH_TARGET</strong></td>
+                        <td>1200</td>
+                        <td>1200</td>
+                        <td>Dominant transport phase remains dominant.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>HOVER_TARGET</strong></td>
+                        <td>200</td>
+                        <td>200</td>
+                        <td>Fully preserved.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>LOWER_TARGET</strong></td>
+                        <td>300</td>
+                        <td>300</td>
+                        <td>Fully preserved.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>OPEN_GRIP</strong></td>
+                        <td>2</td>
+                        <td>2</td>
+                        <td>Rare transition protected.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>RETRACT</strong></td>
+                        <td>200</td>
+                        <td>200</td>
+                        <td>Fully preserved.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Sample weighting</h4>
+
+                <pre class="code-block">sample_weights.jsonl rows : 2665
+min_weight                : 0.238026
+max_weight                : 20.000000
+mean_weight               : 1.000000</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 3 — Normalized bounded weights:</strong></p>
+                  <p>
+                    The weighting view keeps all records but gives larger weights to underrepresented phases.
+                    Weights are normalized to mean <code>1.0</code> and capped at <code>20.0</code> to prevent
+                    tiny phases from exploding numerically.
+                  </p>
+                </div>
+
+                <h4>Example weight record</h4>
+
+                <pre class="code-block">{
+  "sample_index": 0,
+  "source_step_index": 0,
+  "phase": "SETTLE",
+  "weight": 1.9042093974126955,
+  "image_path": "frames/frame_000000.png"
+}</pre>
+
+                <h4>Generated views</h4>
+
+                <div class="card-grid">
+                  <article class="card">
+                    <h3>Full view</h3>
+                    <p><code>full.jsonl</code> preserves all <code>2665</code> exported records.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Filtered view</h3>
+                    <p><code>filtered_no_idle.jsonl</code> reduces idle-heavy records and keeps <code>2516</code> records.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Weighted view</h3>
+                    <p><code>sample_weights.jsonl</code> provides normalized per-sample weights for all records.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Data limitation</h3>
+                    <p>The dataset is still single-trajectory and only suitable for debugging baselines.</p>
+                    <p><span class="status-badge status-future">Needs more demos</span></p>
+                  </article>
+                </div>
+
+                <h4>Step 19 conclusion</h4>
+
+                <div class="code-note">
+                  <p>
+                    Step 19 completes the first data-quality layer on top of the G1-native VLA dataset.
+                    The original dataset remains unchanged, while derived views reduce idle-heavy records,
+                    preserve rare grip transitions, and provide bounded normalized sample weights.
+                  </p>
+                  <p>
+                    The next milestone should be Step 20: collect multiple demonstrations or add a batch recorder
+                    so the future dataset is not limited to a single rollout.
                   </p>
                 </div>
               </section>
@@ -1124,8 +1376,20 @@ validation phase examples:
                     </tr>
                     <tr>
                       <td><strong>Step 19</strong></td>
-                      <td>Offline validation on held-out FSM demos passes a defined accuracy threshold.</td>
-                      <td>Fine-tuning milestone complete.</td>
+                      <td>
+                        Training views created from the G1-native dataset:
+                        <code>full=2665</code>, <code>filtered_no_idle=2516</code>,
+                        <code>sample_weights=2665</code>. Idle-heavy records reduced from
+                        <code>159</code> to <code>10</code>, rare transition phases preserved
+                        (<code>CLOSE_GRIP=2</code>, <code>OPEN_GRIP=2</code>), and weights normalized
+                        to mean <code>1.0</code>.
+                      </td>
+                      <td>Proceed to Step 20 — multi-demo collection / batch recorder.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 20</strong></td>
+                      <td>Multiple demo folders and batch manifest are written; successful demos can be exported/audited.</td>
+                      <td>Proceed to Step 21 — OpenVLA shadow mode.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1144,6 +1408,11 @@ validation phase examples:
                 Gate 18 shifts the main risk from control/replay correctness to data quality. The dataset is now
                 auditable and splittable, but the audit shows phase imbalance, rare grip transitions, and
                 single-trajectory limitations.
+              </p>
+              <p>
+                Gate 19 improves the training view without changing the original evidence dataset. The remaining
+                blocker is rollout diversity: the current data is still one trajectory, so the next milestone should
+                collect multiple demonstrations before any serious learned-policy claims.
               </p>
             </div>
           </div>
@@ -1336,10 +1605,17 @@ MuJoCo G1 task execution</pre>
                   <td><span class="status-badge status-verified">Validated</span></td>
                 </tr>
                 <tr>
-                  <td><strong>19 — Dataset filtering / sample weighting / multi-demo plan</strong></td>
+                  <td><strong>19 — Dataset filtering / sample weighting / training views</strong></td>
                   <td>Create filtered/weighted training views and plan multi-demo collection.</td>
                   <td>Improve data quality before any OpenVLA shadow inference or fine-tuning.</td>
-                  <td>Weighted/filtered manifests are written and rare transition phases are preserved.</td>
+                  <td>Training views created: full=2665, filtered_no_idle=2516, sample_weights=2665, idle records reduced 159→10, rare transitions preserved, mean weight≈1.0.</td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>20 — Multi-demo collection plan + batch recorder</strong></td>
+                  <td>Record multiple demonstrations and write a batch manifest.</td>
+                  <td>Reduce single-trajectory limitation before model work.</td>
+                  <td>Multiple demo folders and batch manifest are written; successful demos can be exported/audited.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
@@ -1451,6 +1727,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Next step:</strong> Build filtered/weighted training views and plan multi-demo collection.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 007 — Preserve the raw dataset and create derived training views</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Keep the Step 17 exported dataset unchanged and generate derived full, filtered, and weighted views.</li>
+              <li><strong>Reason:</strong> Preserving the raw dataset keeps the evidence trail intact while allowing safer training/debugging manifests.</li>
+              <li><strong>Evidence:</strong> Step 19 reduced idle-heavy records from <code>159</code> to <code>10</code>, preserved <code>CLOSE_GRIP=2</code> and <code>OPEN_GRIP=2</code>, and produced normalized sample weights with mean <code>1.0</code>.</li>
+              <li><strong>Rejected alternative:</strong> Mutate or overwrite the original dataset directly.</li>
+              <li><strong>Next step:</strong> Collect multiple demonstrations or add a batch recorder to reduce the single-trajectory limitation.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -1491,43 +1778,45 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 19</h2>
+          <h2>Current Implementation Target — Step 20</h2>
           <p>
-            Step 18 validated the audit and split-generation tooling, but it also showed that the current
-            dataset is still a single-trajectory debugging dataset with phase imbalance and rare grip
-            transition states.
+            Step 19 created safer training views, but the core limitation remains: the dataset still comes
+            from one rollout. Step 20 should expand the data source by collecting multiple demonstrations
+            or adding a batch recorder with reproducible manifest output.
           </p>
 
-          <pre class="code-block">next data-quality targets:
-  filter or downweight idle-heavy records
-  compute per-phase sample weights
-  protect rare grip transitions
-  create balanced debug manifests
-  plan multi-demo collection
+          <pre class="code-block">next data-collection targets:
+  record multiple demonstrations
+  store one manifest per rollout
+  support deterministic seeds or scenario labels
+  optionally vary object/table/robot start conditions
+  export combined G1-native datasets
+  audit combined phase/action distributions
   avoid claiming generalization from one rollout</pre>
 
           <p>
-            Step 19 should improve the dataset view before any OpenVLA shadow inference, fine-tuning, or
-            learned-policy claims.
+            Multi-demo collection is the most meaningful next step before OpenVLA shadow inference,
+            fine-tuning, or learned-policy claims.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 19 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 20 Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 19 Test — Filtering / Weighting / Multi-Demo Plan</h2>
+          <h2>Expected Step 20 Test — Multi-Demo Collection / Batch Recorder</h2>
 
-          <pre class="code-block">python scripts/build_g1_native_training_views.py \
-  data/vla_exports/g1_native_demo_002/dataset.jsonl \
-  --audit data/vla_exports/g1_native_demo_002/audit/audit_report.json \
-  --output-dir data/vla_exports/g1_native_demo_002/training_views</pre>
+          <pre class="code-block">python scripts/record_vla_demo_batch.py \
+  --output-root data/vla_demos/batch_000 \
+  --num-demos 5 \
+  --record-every 1 \
+  --camera head_cam</pre>
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Idle-heavy records are flagged or filtered into a separate view.</li>
-            <li>Per-phase sample weights are computed.</li>
-            <li>Rare transition phases like <code>CLOSE_GRIP</code> and <code>OPEN_GRIP</code> are protected from being dropped.</li>
-            <li>Weighted or balanced train/validation manifests are created.</li>
-            <li>The script explicitly reports that the current dataset is still single-trajectory and debugging-only.</li>
+            <li>Multiple demo folders are created with consistent naming.</li>
+            <li>Each demo writes <code>demo.jsonl</code> and <code>summary.json</code>.</li>
+            <li>A batch manifest records paths, settings, and success/failure status per demo.</li>
+            <li>Successful demos can be exported into a combined G1-native dataset.</li>
+            <li>The combined dataset can be audited and compared with the single-demo dataset.</li>
             <li>No OpenVLA, Hugging Face, GPU, or cloud dependency is required.</li>
           </ul>
         </section>

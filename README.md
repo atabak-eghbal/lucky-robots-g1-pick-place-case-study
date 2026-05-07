@@ -19,11 +19,11 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, and validated Step 18 Dataset Audit + Train/Validation Split.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, and validated Step 19 Dataset Filtering / Sample Weighting / Training Views.
 
-Step 18 audited the exported G1-native dataset and generated a phase-temporal train/validation split. The audit confirmed 2665 records with an 8D action vector, then created 2130 train records and 535 validation records. It also surfaced the next data-quality risks: the dataset is single-trajectory, contains one idle-heavy run, and is phase-imbalanced. In particular, `APPROACH_TARGET` dominates with 1200 records, while the critical `CLOSE_GRIP` and `OPEN_GRIP` transitions each have only 2 records.
+Step 19 created safer derived training views without modifying the original exported dataset. It produced a full view with 2665 records, a filtered no-idle view with 2516 records, and a sample-weight manifest with 2665 weights. The filtered view reduced idle-heavy records from 159 to 10 while preserving the rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. The sample weights are normalized to mean 1.0 and capped at 20.0.
 
-The next milestone is Step 19: create filtered or weighted training views and plan multi-demo collection before attempting OpenVLA shadow inference or fine-tuning.
+The next milestone is Step 20: collect multiple demonstrations or add a batch recorder before attempting OpenVLA shadow inference, fine-tuning, or learned-policy claims.
 
 ## Terminology used in this report
 
@@ -32,7 +32,7 @@ The next milestone is Step 19: create filtered or weighted training views and pl
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, and the next filtering/weighting step |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, and the next multi-demo collection step |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
