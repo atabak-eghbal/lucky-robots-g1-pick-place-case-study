@@ -92,7 +92,7 @@
                     <span class="status-badge status-verified">Validated</span> Step 19 — dataset filtering / sample weighting / training views.<br />
                     <span class="status-badge status-verified">Validated</span> Step 20 — multi-demo collection + batch manifest.<br />
                     <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
-                    <span class="status-badge status-future">Partial</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
+                    <span class="status-badge status-future">Partially Validated</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
                     <span class="status-badge status-future">Next</span> Step 23 — task-success metrics + perturbation robustness gate.
                   </p>
                 </article>
@@ -1855,7 +1855,7 @@ diversity inspector:
                     <li><code>num_completed=5</code> means recorder completion, not guaranteed task success.</li>
                     <li><code>successful_done_demos=4</code> shows one rollout did not reach FSM <code>DONE</code>.</li>
                     <li>The diversity inspector's <code>num_successful_demos=5</code> appears to count recorder-completed demos, not demos with successful object transfer. Step 23 should replace this ambiguity.</li>
-                    <li>Step 23 should explicitly report <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code>.</li>
+                    <li>Step 23 should explicitly report <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code>, and replace/rename ambiguous inspector fields like <code>num_successful_demos</code>.</li>
                   </ul>
                 </div>
 
