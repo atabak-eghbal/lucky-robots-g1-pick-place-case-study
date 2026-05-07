@@ -2544,7 +2544,7 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
               <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
               <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
-              <li><strong>Next step:</strong> Implement Step 23 robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
+              <li><strong>Next step:</strong> Implement Step 23A scripted keyboard teacher MVP, then Step 23B grasp assurance and robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
             </ul>
           </article>
 
