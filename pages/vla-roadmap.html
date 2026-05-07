@@ -67,6 +67,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step18">Step 18 — Dataset Audit</button>
               <button class="file-tab-button" data-tab-target="tracker-step19">Step 19 — Training Views</button>
               <button class="file-tab-button" data-tab-target="tracker-step20">Step 20 — Batch Demos</button>
+              <button class="file-tab-button" data-tab-target="tracker-step21">Step 21 — Batch Dataset Exporter</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -89,7 +90,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 18 — dataset audit + train/validation split.<br />
                     <span class="status-badge status-verified">Validated</span> Step 19 — dataset filtering / sample weighting / training views.<br />
                     <span class="status-badge status-verified">Validated</span> Step 20 — multi-demo collection + batch manifest.<br />
-                    <span class="status-badge status-future">Next</span> Step 21 — combined batch dataset exporter.
+                    <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
+                    <span class="status-badge status-future">Next</span> Step 22 — scenario perturbations / multi-seed demo diversity.
                   </p>
                 </article>
                 <article class="card">
@@ -1557,6 +1559,223 @@ reach_active_steps : 2531</pre>
               </section>
             </div>
 
+            <div class="file-tab-panel" data-tab-panel="tracker-step21">
+              <div class="code-note">
+                <p>
+                  <strong>Step 21 — Combined Batch Dataset Exporter</strong>
+                  &nbsp;<span class="status-badge status-verified">Validated</span>
+                </p>
+                <p>
+                  Step 21 converts the Step 20 batch-recording output into one combined
+                  G1-native supervised dataset. Instead of keeping each teacher rollout as a
+                  separate <code>demo.jsonl</code>, the exporter reads a
+                  <code>batch_manifest.json</code>, selects successful demonstrations, and
+                  writes a single auditable <code>dataset.jsonl</code>.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>Why Step 21 exists</h4>
+                <p>
+                  Step 20 proved that multiple FSM teacher demonstrations can be collected and
+                  tracked with a machine-readable manifest. However, Step 17–19 tools operate
+                  on a single G1-native dataset file. Step 21 bridges that gap by converting a
+                  batch folder into one combined dataset artifact that can be audited, split,
+                  filtered, weighted, and later used for model experiments.
+                </p>
+
+                <div class="code-note">
+                  <p><strong>Main conclusion:</strong></p>
+                  <p>
+                    Step 21 passed. The pipeline can now move from batch collection to a
+                    combined, provenance-aware supervised dataset. The current combined dataset
+                    is larger, but because the source demos are deterministic repeats, it is
+                    not meaningfully more diverse yet.
+                  </p>
+                </div>
+
+                <h4>Files added in Step 21</h4>
+
+                <pre class="code-block">vla_bridge/batch_dataset_export.py
+scripts/export_g1_native_vla_batch_dataset.py
+tests/test_g1_native_batch_dataset_export.py
+
+Modified:
+vla_bridge/__init__.py
+DEV_LOG.md</pre>
+
+                <h4>Input and output contract</h4>
+
+                <pre class="code-block">Input:
+  data/vla_demos/batch_000_no_images/batch_manifest.json
+
+Outputs:
+  data/vla_exports/batch_000_no_images_g1_native/dataset.jsonl
+  data/vla_exports/batch_000_no_images_g1_native/summary.json
+  data/vla_exports/batch_000_no_images_g1_native/source_manifest.json</pre>
+
+                <h4>Combined row schema</h4>
+
+                <p>
+                  Step 21 preserves the Step 17 G1-native action schema and adds provenance fields.
+                  This lets every training row be traced back to the exact source rollout.
+                </p>
+
+                <pre class="code-block">{
+  "sample_index": 0,
+  "batch_id": "batch_000_no_images",
+  "demo_id": "demo_000",
+  "demo_sample_index": 0,
+  "source_step_index": 0,
+  "image_path": "",
+  "instruction": "Pick up the red cylinder and place it on the blue table.",
+  "phase": "SETTLE",
+  "walk_cmd": [0.0, 0.0, 0.0],
+  "reach_target_pelvis": [0.3, -0.2, 0.2],
+  "reach_active": false,
+  "grip_closed": false,
+  "action_vector": [0.0, 0.0, 0.0, 0.3, -0.2, 0.2, 0.0, 0.0]
+}</pre>
+
+                <h4>Validation command</h4>
+
+                <pre class="code-block">python scripts/export_g1_native_vla_batch_dataset.py \
+  data/vla_demos/batch_000_no_images/batch_manifest.json \
+  --output-dir data/vla_exports/batch_000_no_images_g1_native</pre>
+
+                <h4>Validation summary</h4>
+
+                <pre class="code-block">Unit tests             : 87 total passed
+Environment smoke test : PASS
+Selected demos         : 2
+Skipped demos          : 0
+Combined records       : 5,330
+Provenance fields      : batch_id, demo_id, demo_sample_index
+Audit pipeline         : PASS
+Training-view pipeline : PASS</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 1 — Combined export works:</strong></p>
+                  <p>
+                    The exporter successfully selected the two successful demonstrations from
+                    the Step 20 batch manifest and wrote a single <code>dataset.jsonl</code>
+                    containing <code>5,330</code> G1-native records.
+                  </p>
+                </div>
+
+                <h4>Dataset scale comparison</h4>
+
+                <div style="overflow-x: auto;">
+                  <table class="data-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                      <tr>
+                        <th>Artifact</th>
+                        <th>Records</th>
+                        <th>Meaning</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Single-demo export</strong></td>
+                        <td>2,665</td>
+                        <td>One teacher rollout after dropping DONE rows.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>Step 21 combined export</strong></td>
+                        <td>5,330</td>
+                        <td>Two successful demos combined into one dataset.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4>Audit result</h4>
+
+                <pre class="code-block">Audit phases        : 11
+Idle-heavy runs     : 2
+Train records       : 4,263
+Validation records  : 1,067</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 2 — Audit works on the combined dataset:</strong></p>
+                  <p>
+                    The existing dataset audit pipeline ran successfully on the combined export.
+                    It detected <code>2</code> idle-heavy runs, which is expected because the
+                    batch contains two deterministic teacher rollouts, each with an initial
+                    idle/settle segment.
+                  </p>
+                </div>
+
+                <h4>Training-view result</h4>
+
+                <pre class="code-block">Combined dataset records       : 5,330
+Filtered training-view records : 5,022
+Removed idle-heavy records     : 308
+Rare CLOSE_GRIP preserved      : yes
+Rare OPEN_GRIP preserved       : yes
+Sample weights normalized      : yes</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 3 — Training views work after combination:</strong></p>
+                  <p>
+                    The existing Step 19 training-view pipeline also runs on the combined dataset.
+                    It removed idle-heavy records while preserving rare grip transition phases,
+                    which means the data-cleaning logic still works after multi-demo combination.
+                  </p>
+                </div>
+
+                <h4>What this proves vs. what it does not prove</h4>
+
+                <div class="card-grid">
+                  <article class="card">
+                    <h3>Proven</h3>
+                    <p>Successful batch demos can be combined into one G1-native dataset.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Proven</h3>
+                    <p>Every combined row carries source provenance through <code>batch_id</code>, <code>demo_id</code>, and <code>demo_sample_index</code>.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Proven</h3>
+                    <p>Audit and training-view tools work on the combined dataset.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Not yet proven</h3>
+                    <p>The dataset contains meaningful scenario diversity. Current demos are deterministic repeats.</p>
+                    <p><span class="status-badge status-future">Future</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Not yet proven</h3>
+                    <p>OpenVLA or any learned policy can control the G1 robot.</p>
+                    <p><span class="status-badge status-future">Future</span></p>
+                  </article>
+                </div>
+
+                <h4>Step 21 conclusion</h4>
+
+                <div class="code-note">
+                  <p>
+                    Step 21 completes the batch-aware dataset handoff. The VLA branch now has a
+                    clean path from teacher rollout collection to a combined, auditable,
+                    training-view-ready dataset.
+                  </p>
+                  <p>
+                    The main remaining blocker is not format or tooling — it is data diversity.
+                    The next milestone should add controlled scenario perturbations so that the
+                    batch contains genuinely different demonstrations rather than repeated
+                    deterministic runs.
+                  </p>
+                </div>
+              </section>
+            </div>
+
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
@@ -1657,8 +1876,19 @@ reach_active_steps : 2531</pre>
                     </tr>
                     <tr>
                       <td><strong>Step 21</strong></td>
-                      <td>Combined dataset row count matches sum of successful demos; audit/training-view tools pass.</td>
-                      <td>Batch data engineering complete.</td>
+                      <td>
+                        Combined batch dataset exporter validated. The exporter selected
+                        <code>2</code> successful demonstrations from the Step 20 manifest and wrote
+                        one <code>5,330</code>-record G1-native dataset. Every row includes
+                        <code>batch_id</code>, <code>demo_id</code>, and
+                        <code>demo_sample_index</code>. The combined audit produced a
+                        <code>4,263 / 1,067</code> train/validation split and flagged
+                        <code>2</code> idle-heavy runs. The training-view builder produced
+                        <code>5,022</code> filtered records while preserving rare
+                        <code>CLOSE_GRIP</code> and <code>OPEN_GRIP</code> transitions. All
+                        <code>87</code> unit tests passed and the smoke test passed.
+                      </td>
+                      <td>Proceed to Step 22 — scenario perturbations / multi-seed demo diversity.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1687,6 +1917,12 @@ reach_active_steps : 2531</pre>
                 Gate 20 proves the collection and manifest infrastructure, not data diversity. The current demos
                 are deterministic teacher rollouts. The next step is to combine successful demos into a single
                 G1-native dataset, then add variation or perturbations in a later step.
+              </p>
+              <p>
+                Gate 21 proves the batch-to-dataset handoff, not generalization. The current
+                combined dataset is larger but still based on deterministic repeated teacher
+                rollouts. The next gate should introduce controlled perturbations and audit
+                whether those perturbations create real data diversity.
               </p>
             </div>
           </div>
@@ -1896,7 +2132,14 @@ MuJoCo G1 task execution</pre>
                   <td><strong>21 — Combined batch dataset exporter</strong></td>
                   <td>Read batch_manifest.json and combine successful demo.jsonl files into one G1-native dataset.</td>
                   <td>Convert batch collection into a trainable/auditable dataset artifact.</td>
-                  <td>Combined dataset row count equals the sum of selected demos; summary/source_manifest are written; existing audit/training-view tools run on the combined dataset.</td>
+                  <td>Combined 2 successful batch demos into one 5,330-record G1-native dataset; provenance fields batch_id, demo_id, and demo_sample_index verified; audit and training-view pipelines passed; all 87 tests and smoke test passed.</td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>22 — Scenario perturbations / multi-seed demo diversity</strong></td>
+                  <td>Record multiple demos with controlled variation in object pose, robot start pose, or target/drop point.</td>
+                  <td>Move from larger duplicated data to larger and more diverse data.</td>
+                  <td>Manifest records scenario_id/seed per demo; successful demos remain replay/export compatible; diversity audit reports different initial conditions; combined export/audit/training-view pipeline still passes.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
@@ -2030,6 +2273,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Next step:</strong> Combine successful demos from the manifest into a single G1-native dataset.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 009 — Combine batch demos before perturbing scenarios</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Add a combined batch dataset exporter before adding scenario randomization.</li>
+              <li><strong>Reason:</strong> Step 20 created multiple demo folders, but downstream audit and training-view tools operate on a single dataset artifact. The system needed a clean handoff from batch collection to model-ready data.</li>
+              <li><strong>Evidence:</strong> Step 21 combined two successful demos into a <code>5,330</code>-record dataset, verified row-level provenance, produced a <code>4,263 / 1,067</code> train/validation split, and generated <code>5,022</code> filtered training-view records.</li>
+              <li><strong>Rejected alternative:</strong> Add perturbations immediately while the batch-to-dataset handoff was still manual or undefined.</li>
+              <li><strong>Next step:</strong> Add controlled perturbations and record <code>scenario_id</code> / <code>seed</code> metadata so future combined datasets are not deterministic duplicates.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -2070,43 +2324,51 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 21</h2>
+          <h2>Current Implementation Target — Step 22</h2>
           <p>
-            Step 20 validated batch demonstration collection, but the batch data is still stored as separate
-            demo folders. Step 21 should consume a <code>batch_manifest.json</code>, select successful
-            demonstrations, and export them into a single combined G1-native dataset.
+            Step 21 validated the combined batch dataset exporter. The pipeline can now
+            collect multiple demos, combine them into one G1-native dataset, audit the
+            result, and build filtered/weighted training views. The next blocker is that
+            the current demonstrations are deterministic repeats.
           </p>
 
-          <pre class="code-block">expected Step 21 inputs:
-  data/vla_demos/batch_000_no_images/batch_manifest.json
+          <pre class="code-block">Step 22 target:
+  Add controlled scenario perturbations so demos are actually different.
 
-expected Step 21 outputs:
-  data/vla_exports/batch_000_no_images_g1_native/dataset.jsonl
-  data/vla_exports/batch_000_no_images_g1_native/summary.json
-  data/vla_exports/batch_000_no_images_g1_native/source_manifest.json</pre>
+Candidate perturbations:
+  - red cylinder initial x/y offset
+  - robot initial base pose offset
+  - target/drop point offset
+  - random seed / scenario_id recorded in manifest
+  - diversity audit across demos</pre>
 
           <p>
-            This keeps the roadmap in the data-engineering lane: collect, combine, audit, and only then
-            consider learned-policy baselines or OpenVLA shadow inference.
+            Step 22 should keep the system in the data-engineering lane. It should not
+            introduce OpenVLA inference or fine-tuning yet. The goal is to make the
+            teacher dataset diverse enough for future learning experiments.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 21 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 22 Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 21 Test — Combined Batch Dataset Exporter</h2>
+          <h2>Expected Step 22 Test — Scenario Perturbations / Multi-Seed Demo Diversity</h2>
 
-          <pre class="code-block">python scripts/export_g1_native_vla_batch_dataset.py \
-  data/vla_demos/batch_000_no_images/batch_manifest.json \
-  --output-dir data/vla_exports/batch_000_no_images_g1_native</pre>
+          <pre class="code-block">python scripts/record_vla_demo_batch.py \
+  --output-root data/vla_demos/batch_001_perturbed \
+  --num-demos 5 \
+  --record-every 1 \
+  --no-images \
+  --scenario-config configs/scenarios/small_perturbations.json \
+  --continue-on-fail</pre>
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>The exporter reads <code>batch_manifest.json</code>.</li>
-            <li>Only successful demos with <code>done_reached=true</code> are included.</li>
-            <li>The combined <code>dataset.jsonl</code> is written.</li>
-            <li>The output summary reports total records and per-demo source counts.</li>
-            <li>A <code>source_manifest.json</code> preserves the input manifest and selected demo list.</li>
-            <li>The existing audit and training-view scripts can run on the combined dataset.</li>
+            <li>Each demo records a <code>scenario_id</code> and <code>seed</code>.</li>
+            <li>The red cylinder initial pose differs across demos.</li>
+            <li>The manifest records perturbation parameters per demo.</li>
+            <li>At least several demos still reach <code>DONE</code>.</li>
+            <li>The combined batch exporter can consume the perturbed batch.</li>
+            <li>The audit can report diversity statistics across demos.</li>
             <li>No OpenVLA, Hugging Face, GPU, or cloud dependency is required.</li>
           </ul>
         </section>
