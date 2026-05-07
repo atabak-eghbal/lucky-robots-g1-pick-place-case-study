@@ -19,7 +19,7 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, validated Step 20 Multi-Demo Collection + Batch Manifest, and validated Step 21 Combined Batch Dataset Exporter.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, validated Step 20 Multi-Demo Collection + Batch Manifest, validated Step 21 Combined Batch Dataset Exporter, and partially validated Step 22 Scenario Perturbations / Multi-Seed Demo Diversity.
 
 Step 19 created safer derived training views without modifying the original exported dataset. It produced a full view with 2665 records, a filtered no-idle view with 2516 records, and a sample-weight manifest with 2665 weights. The filtered view reduced idle-heavy records from 159 to 10 while preserving the rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. The sample weights are normalized to mean 1.0 and capped at 20.0.
 
@@ -27,7 +27,11 @@ Step 20 added a batch recording layer for FSM teacher demonstrations. A dry run 
 
 Step 21 converted the Step 20 batch output into one combined G1-native dataset. It selected two successful demonstrations and produced a 5,330-record `dataset.jsonl`, plus `summary.json` and `source_manifest.json`. Every row preserves provenance through `batch_id`, `demo_id`, and `demo_sample_index`. The existing audit pipeline succeeded, producing a 4,263 / 1,067 train/validation split and identifying two idle-heavy runs. The training-view pipeline also succeeded, producing 5,022 filtered records while preserving rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. All 87 unit tests passed and the smoke test passed. This validates the batch-to-dataset infrastructure, but because the two source demos are deterministic repeats, it does not prove data diversity or generalization.
 
-The next milestone is Step 22: add controlled scenario perturbations and multi-seed demo diversity before attempting OpenVLA shadow inference, fine-tuning, or learned-policy claims. Step 22 should make the teacher data genuinely different by varying initial object pose, robot start pose, target/drop point, or seed metadata while preserving the same batch/export/audit/training-view pipeline.
+Step 22 introduced controlled scenario perturbations and multi-seed metadata. The new scenario config produced five source-cylinder offset scenarios: nominal, +2 cm x, -2 cm x, +2 cm y, and -2 cm y. The batch manifest now records `scenario_id`, `seed`, and `red_block_xy_offset_m`, and the diversity inspector confirmed five unique scenarios with x/y offset ranges of `[-0.02, 0.02]` and `all_offsets_identical=false`. This validates the scenario-diversity infrastructure.
+
+However, Step 22 also exposed FSM teacher fragility. Only four of five perturbed demos reached FSM `DONE`, and several demos that reached `DONE` did not actually place the object on the target table. Therefore Step 22 should be treated as partially validated: the metadata and diversity pipeline works, but the system needs stricter task-success metrics before perturbed demos are treated as training-quality data.
+
+The next milestone is Step 23: add task-success metrics and a perturbation robustness gate. Step 23 should separate recorder success, FSM `DONE`, and true task success by tracking object attachment, final object position, object-on-target status, final clearance, and failure reasons. This should happen before OpenVLA shadow inference, fine-tuning, or learned-policy claims.
 
 ## Terminology used in this report
 
@@ -36,7 +40,7 @@ The next milestone is Step 22: add controlled scenario perturbations and multi-s
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, batch demonstration collection, combined batch dataset export, and the next scenario-diversity step |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, dataset audit/split, training-view generation, batch demonstration collection, combined batch dataset export, partially validated scenario perturbations, and the next task-success metric gate |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
