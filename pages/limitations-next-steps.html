@@ -65,14 +65,8 @@
               <p>Collect data from the FSM baseline to train a residual RL policy for robust manipulation.</p>
             </article>
             <a class="card card-link" href="./vla-roadmap.html">
-              <h3>Hybrid Replay Before OpenVLA</h3>
-              <p>The Step 15 arm-only replay produced a useful negative result: the replay harness
-                worked, but 7D palm deltas alone could not reproduce the full task because locomotion
-                was missing. Mean palm error was 0.264 m and <code>ever_attached</code> remained
-                <code>False</code>.</p>
-              <p>The next step is Step 16: record and replay walker commands alongside arm actions,
-                and compare teacher-command replay against hybrid 7D replay before attempting
-                OpenVLA shadow inference.</p>
+              <h3>Dataset Audit Before OpenVLA</h3>
+              <p>Step 17 exported a clean G1-native supervised dataset from the FSM teacher. The next limitation is data quality: phase balance, repeated/idle-heavy segments, action ranges, and train/validation split design. This should be audited before OpenVLA shadow inference or fine-tuning.</p>
               <p style="margin-top: 0.75rem;">
                 <a href="./vla-roadmap.html">View updated VLA Roadmap →</a>
               </p>

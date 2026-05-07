@@ -19,11 +19,13 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It currently documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, and validated Step 15 7D Action Replay Harness.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, and validated Step 17 G1-Native VLA Dataset Exporter.
 
-Step 15 produced an important diagnostic result. The replay harness successfully loaded 554 demonstration steps, wrote replay artifacts, generated plots, and preserved grip timing with zero mismatches. However, arm-only replay had a mean palm error of about 0.264 m and never attached the object. This shows that 7D palm deltas alone are not enough for the full floating-base humanoid task because locomotion context is missing.
+Step 16 produced the most important VLA design finding so far. A sparse `record-every 5` command stream could not reproduce the teacher rollout, even in teacher-command mode, which exposed a timing mismatch. Re-recording at every control tick fixed the replay fidelity issue: `teacher-command` replay achieved 0.0 m mean/max/final palm error, attached the object, and reported 1902 attached steps. However, `hybrid-7d` replay still failed with mean palm error about 0.230 m and no attachment. This shows that relative 7D palm deltas are not yet a reliable action target for the G1 stack.
 
-The next VLA milestone is Step 16: upgrade the schema/replay path for teacher-command replay and hybrid replay before attempting OpenVLA shadow inference.
+Step 17 exported the replay-faithful FSM teacher data into a model-ready supervised dataset. The exporter produced 2665 records from the every-tick demonstration, with an 8D action vector: `[walk_x, walk_y, walk_yaw, reach_x, reach_y, reach_z, reach_active, grip_closed]`. The copied-image export also succeeded with 2665 images. This creates the clean bridge from the FSM teacher to future learned-policy experiments.
+
+The next milestone is Step 18: audit the exported dataset, summarize phase/action distributions, and create train/validation splits before attempting OpenVLA shadow inference or fine-tuning.
 
 ## Terminology used in this report
 
@@ -32,7 +34,7 @@ The next VLA milestone is Step 16: upgrade the schema/replay path for teacher-co
 | Manual baseline | The original keyboard-controlled MuJoCo demo shipped with the challenge |
 | GT FSM baseline | The autonomous controller implemented in this submission |
 | Visual Oracle | The architectural perception extension; not implemented in this submission |
-| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, 7D replay diagnostics, and the next hybrid replay/schema upgrade |
+| VLA Roadmap | Living research roadmap for OpenVLA-style extensions, covering validated scaffold, adapter, demonstration recording, replay diagnostics, hybrid replay/schema upgrade, G1-native dataset export, and the next dataset audit/split step |
 | Future roadmap | Work identified as next steps; not included in this submission |
 
 ## Evidence status
