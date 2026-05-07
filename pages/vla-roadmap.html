@@ -68,6 +68,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step19">Step 19 — Training Views</button>
               <button class="file-tab-button" data-tab-target="tracker-step20">Step 20 — Batch Demos</button>
               <button class="file-tab-button" data-tab-target="tracker-step21">Step 21 — Batch Dataset Exporter</button>
+              <button class="file-tab-button" data-tab-target="tracker-step22">Step 22 — Scenario Perturbations</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -91,7 +92,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 19 — dataset filtering / sample weighting / training views.<br />
                     <span class="status-badge status-verified">Validated</span> Step 20 — multi-demo collection + batch manifest.<br />
                     <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
-                    <span class="status-badge status-future">Next</span> Step 22 — scenario perturbations / multi-seed demo diversity.
+                    <span class="status-badge status-future">Partially Validated</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
+                    <span class="status-badge status-future">Next</span> Step 23 — task-success metrics + perturbation robustness gate.
                   </p>
                 </article>
                 <article class="card">
@@ -101,6 +103,7 @@
                     <li>No learned VLA policy controlling the robot</li>
                     <li>No fine-tuning</li>
                     <li>No live VLA control attempted</li>
+                    <li>No demonstrated generalization yet</li>
                   </ul>
                 </article>
               </div>
@@ -1776,6 +1779,99 @@ Sample weights normalized      : yes</pre>
               </section>
             </div>
 
+            <div class="file-tab-panel" data-tab-panel="tracker-step22">
+              <div class="code-note">
+                <p>
+                  <strong>Step 22 — Scenario Perturbations / Multi-Seed Demo Diversity</strong>
+                  &nbsp;<span class="status-badge status-future">Partially Validated</span>
+                </p>
+                <p>
+                  Step 22 successfully added scenario metadata and diversity infrastructure:
+                  deterministic scenario configs, per-demo seeds, red-cylinder offset metadata,
+                  and manifest-level perturbation recording.
+                </p>
+                <p>
+                  Step 22 is not fully successful as robust teacher data collection. Several
+                  perturbed rollouts failed the real object-transfer outcome even when FSM
+                  <code>DONE</code> was reached.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>Validation summary</h4>
+                <pre class="code-block">Unit tests: PASS
+- tests/test_scenario_config.py: 5 passed
+- tests/test_batch_diversity_manifest.py: 3 passed
+- tests/test_g1_native_batch_dataset_export.py: 6 passed
+- tests/test_vla_batch_manifest.py: 8 passed
+- tests/test_g1_native_training_views.py: 11 passed
+- tests/test_g1_native_dataset_audit.py: 11 passed
+- tests/test_g1_native_dataset.py: 12 passed
+- tests/test_vla_demo_schema.py: 16 passed
+- tests/test_vla_replay_metrics.py: 14 passed
+- tests/test_vla_action_adapter.py: 9 passed
+Environment smoke test: PASS</pre>
+
+                <h4>Scenario config and perturbations</h4>
+                <pre class="code-block">scenario_config_name: small_perturbations_v1
+scenario_count: 5
+
+1) nominal            seed=0   offset=[ 0.00,  0.00] done_reached=true  steps=2766
+2) cyl_x_plus_02      seed=101 offset=[ 0.02,  0.00] done_reached=true  steps=3048
+3) cyl_x_minus_02     seed=102 offset=[-0.02,  0.00] done_reached=true  steps=3064
+4) cyl_y_plus_02      seed=103 offset=[ 0.00,  0.02] done_reached=true  steps=2645
+5) cyl_y_minus_02     seed=104 offset=[ 0.00, -0.02] done_reached=false steps=4000</pre>
+
+                <h4>Observed failure cases (must remain visible)</h4>
+                <ul class="bullet-list">
+                  <li><code>cyl_x_plus_02</code>: grasp did not attach (<code>attached=false</code>); object not successfully placed on target table.</li>
+                  <li><code>cyl_x_minus_02</code>: grasp did not attach (<code>attached=false</code>); object not successfully placed on target table.</li>
+                  <li><code>cyl_y_plus_02</code>: object released early; object not successfully placed on target table.</li>
+                  <li><code>cyl_y_minus_02</code>: never completed FSM sequence (<code>done_reached=false</code>, first_phase=<code>SETTLE</code>, last_phase=<code>APPROACH_SOURCE</code>).</li>
+                </ul>
+
+                <h4>Manifest and diversity interpretation</h4>
+                <pre class="code-block">batch_id: batch_001_perturbed_no_images
+output_root: data/vla_demos/batch_001_perturbed_no_images
+num_requested: 5
+num_completed: 5
+num_failed: 0
+successful_done_demos: 4
+total_steps: 15523
+total_frames: 0
+
+diversity inspector:
+  num_demos: 5
+  num_successful_demos: 5
+  num_unique_scenarios: 5
+  scenario_ids: cyl_x_minus_02, cyl_x_plus_02, cyl_y_minus_02, cyl_y_plus_02, nominal
+  dx_range_m: [-0.02, 0.02]
+  dy_range_m: [-0.02, 0.02]
+  all_offsets_identical: false</pre>
+
+                <div class="code-note">
+                  <p><strong>Important interpretation:</strong></p>
+                  <ul class="bullet-list">
+                    <li><code>num_completed=5</code> means recorder completion, not guaranteed task success.</li>
+                    <li><code>successful_done_demos=4</code> shows one rollout did not reach FSM <code>DONE</code>.</li>
+                    <li>The diversity inspector's <code>num_successful_demos=5</code> appears to count recorder-completed demos, not demos with successful object transfer. Step 23 should replace this ambiguity.</li>
+                    <li>Step 23 should explicitly report <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code>, and replace/rename ambiguous inspector fields like <code>num_successful_demos</code>.</li>
+                  </ul>
+                </div>
+
+                <div class="code-note">
+                  <p><strong>Step 22 conclusion:</strong> Partial pass.</p>
+                  <p>
+                    Scenario metadata flow, deterministic perturbation configs, and
+                    non-identical scenario detection are validated. Robust perturbed
+                    teacher-task success is not yet validated. The next gate must add
+                    explicit task-success metrics before perturbed demos are treated as
+                    training-quality data.
+                  </p>
+                </div>
+              </section>
+            </div>
+
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
@@ -1890,9 +1986,28 @@ Sample weights normalized      : yes</pre>
                       </td>
                       <td>Proceed to Step 22 — scenario perturbations / multi-seed demo diversity.</td>
                     </tr>
+                    <tr>
+                      <td><strong>Step 22</strong></td>
+                      <td>
+                        Scenario perturbation infrastructure partially validated. Unit tests and smoke test passed.
+                        The perturbed batch recorded <code>5</code> scenarios with unique
+                        <code>scenario_id</code>, <code>seed</code>, and <code>red_block_xy_offset_m</code>.
+                        The diversity inspector reported <code>num_unique_scenarios=5</code>,
+                        <code>dx_range_m=[-0.02, 0.02]</code>, <code>dy_range_m=[-0.02, 0.02]</code>,
+                        and <code>all_offsets_identical=false</code>. However, only <code>4/5</code>
+                        demos reached FSM <code>DONE</code>, and several <code>DONE</code> rollouts did not
+                        successfully place the object on the target table.
+                      </td>
+                      <td>Proceed to Step 23 — task-success metrics + perturbation robustness gate.</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
+              <p>
+                Gate 22 proves that scenario diversity can be represented and recorded, but it also exposes a
+                critical quality issue: FSM <code>DONE</code> is not equivalent to task success. The next gate
+                must add explicit outcome metrics before perturbed rollouts are treated as training data.
+              </p>
               <p>
                 Gate 16 is the strongest VLA design gate so far. It separates replay fidelity from action-space
                 choice: G1-native teacher commands replay exactly at every-tick resolution, while relative 7D
@@ -2137,9 +2252,16 @@ MuJoCo G1 task execution</pre>
                 </tr>
                 <tr>
                   <td><strong>22 — Scenario perturbations / multi-seed demo diversity</strong></td>
-                  <td>Record multiple demos with controlled variation in object pose, robot start pose, or target/drop point.</td>
-                  <td>Move from larger duplicated data to larger and more diverse data.</td>
-                  <td>Manifest records scenario_id/seed per demo; successful demos remain replay/export compatible; diversity audit reports different initial conditions; combined export/audit/training-view pipeline still passes.</td>
+                  <td>Record multiple demos with controlled scenario offsets and per-demo seeds; carry perturbation metadata through the manifest and diversity inspector.</td>
+                  <td>Validate scenario-diversity infrastructure before model work.</td>
+                  <td>Scenario metadata and diversity inspector passed: 5 unique scenarios, dx/dy ranges [-0.02, 0.02], all_offsets_identical=false. However, only 4/5 reached FSM DONE and several DONE rollouts did not successfully place the object. Step 22 reveals FSM teacher fragility under ±2 cm perturbations.</td>
+                  <td><span class="status-badge status-future">Partially Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>23 — Task-success metrics + perturbation robustness gate</strong></td>
+                  <td>Separate recorder_success, fsm_done_reached, and task_success; require object-on-target validation before treating a demo as training-quality.</td>
+                  <td>Prevent failed perturbed rollouts from being mislabeled as successful training data.</td>
+                  <td>Manifest and inspectors report task_success, failure_reason, final object position, object_on_target_table, and object_attached_ever.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
@@ -2284,6 +2406,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Next step:</strong> Add controlled perturbations and record <code>scenario_id</code> / <code>seed</code> metadata so future combined datasets are not deterministic duplicates.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 010 — Separate FSM DONE from true task success before model claims</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Treat Step 22 as partially validated and require explicit task-success metrics before using perturbed demos as training-quality evidence.</li>
+              <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
+              <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
+              <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
+              <li><strong>Next step:</strong> Implement Step 23 robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -2324,37 +2457,39 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 22</h2>
+          <h2>Current Implementation Target — Step 23</h2>
           <p>
-            Step 21 validated the combined batch dataset exporter. The pipeline can now
-            collect multiple demos, combine them into one G1-native dataset, audit the
-            result, and build filtered/weighted training views. The next blocker is that
-            the current demonstrations are deterministic repeats.
+            Step 22 partially validated scenario perturbation infrastructure, but exposed
+            a data-quality gap: recorder completion and FSM <code>DONE</code> are not
+            sufficient proxies for true object-transfer success.
           </p>
 
-          <pre class="code-block">Step 22 target:
-  Add controlled scenario perturbations so demos are actually different.
+          <pre class="code-block">Step 23 target:
+  Add explicit task-success metrics and a perturbation robustness gate.
 
-Candidate perturbations:
-  - red cylinder initial x/y offset
-  - robot initial base pose offset
-  - target/drop point offset
-  - random seed / scenario_id recorded in manifest
-  - diversity audit across demos</pre>
+Required fields:
+  - recorder_success
+  - fsm_done_reached
+  - task_success
+  - object_attached_ever
+  - object_on_target_table
+  - final_object_clearance
+  - final_object_world_position
+  - failure_reason</pre>
 
           <p>
-            Step 22 should keep the system in the data-engineering lane. It should not
-            introduce OpenVLA inference or fine-tuning yet. The goal is to make the
-            teacher dataset diverse enough for future learning experiments.
+            Step 23 should stay in the teacher-data quality lane. It should not claim
+            OpenVLA loading, learned-policy control, fine-tuning, live VLA control, or
+            demonstrated generalization.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 22 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 23 Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 22 Test — Scenario Perturbations / Multi-Seed Demo Diversity</h2>
+          <h2>Expected Step 23 Test — Task-success metrics + perturbation robustness gate</h2>
 
           <pre class="code-block">python scripts/record_vla_demo_batch.py \
-  --output-root data/vla_demos/batch_001_perturbed \
+  --output-root data/vla_demos/batch_001_perturbed_with_metrics \
   --num-demos 5 \
   --record-every 1 \
   --no-images \
@@ -2363,13 +2498,13 @@ Candidate perturbations:
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Each demo records a <code>scenario_id</code> and <code>seed</code>.</li>
-            <li>The red cylinder initial pose differs across demos.</li>
-            <li>The manifest records perturbation parameters per demo.</li>
-            <li>At least several demos still reach <code>DONE</code>.</li>
-            <li>The combined batch exporter can consume the perturbed batch.</li>
-            <li>The audit can report diversity statistics across demos.</li>
-            <li>No OpenVLA, Hugging Face, GPU, or cloud dependency is required.</li>
+            <li>Manifest and per-demo summaries separate <code>recorder_success</code>, <code>fsm_done_reached</code>, and <code>task_success</code>.</li>
+            <li>Each demo reports <code>object_attached_ever</code> and <code>object_on_target_table</code>.</li>
+            <li>Each demo reports <code>final_object_world_position</code> and <code>final_object_clearance</code>.</li>
+            <li>Failed outcomes include a machine-readable <code>failure_reason</code>.</li>
+            <li>Diversity inspector distinguishes recorder success from true task success.</li>
+            <li>Perturbed demos are only marked training-quality when task-success criteria pass.</li>
+            <li>No OpenVLA, Hugging Face, GPU, cloud, or learned-policy claims are introduced.</li>
           </ul>
         </section>
 
