@@ -64,6 +64,7 @@
               <button class="file-tab-button" data-tab-target="tracker-step15">Step 15 — 7D Replay Harness</button>
               <button class="file-tab-button" data-tab-target="tracker-step16">Step 16 — Hybrid Replay</button>
               <button class="file-tab-button" data-tab-target="tracker-step17">Step 17 — Dataset Exporter</button>
+              <button class="file-tab-button" data-tab-target="tracker-step18">Step 18 — Dataset Audit</button>
               <button class="file-tab-button" data-tab-target="tracker-evidence">Evidence Gates</button>
             </div>
 
@@ -83,7 +84,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 15 — 7D action replay harness.<br />
                     <span class="status-badge status-verified">Validated</span> Step 16 — hybrid replay / schema upgrade.<br />
                     <span class="status-badge status-verified">Validated</span> Step 17 — G1-native VLA dataset exporter.<br />
-                    <span class="status-badge status-future">Next</span> Step 18 — dataset audit and train/validation split.
+                    <span class="status-badge status-verified">Validated</span> Step 18 — dataset audit + train/validation split.<br />
+                    <span class="status-badge status-future">Next</span> Step 19 — dataset filtering / sample weighting / multi-demo plan.
                   </p>
                 </article>
                 <article class="card">
@@ -785,6 +787,267 @@ last_image    : images/frame_002664.png</pre>
               </section>
             </div>
 
+            <div class="file-tab-panel" data-tab-panel="tracker-step18">
+              <div class="code-note">
+                <p>
+                  <strong>Step 18 — Dataset Audit + Train/Validation Split</strong>
+                  &nbsp;<span class="status-badge status-verified">Validated</span>
+                </p>
+                <p>
+                  Step 18 audits the G1-native supervised dataset exported in Step 17. It checks phase balance,
+                  action ranges, reach/grip class balance, idle-heavy runs, and creates a debugging
+                  train/validation split.
+                </p>
+              </div>
+
+              <section class="code-section">
+                <h4>Why Step 18 exists</h4>
+                <p>
+                  Step 17 created a clean supervised dataset, but a dataset can be syntactically valid and still
+                  poor for learning. Step 18 checks whether the dataset is balanced enough to support future
+                  shadow-mode or imitation-learning experiments.
+                </p>
+
+                <div class="code-note">
+                  <p><strong>Main conclusion:</strong></p>
+                  <p>
+                    Step 18 passed as an audit and split-generation milestone. However, the current dataset should
+                    only be treated as a debugging dataset, not a robust generalization dataset, because it comes
+                    from a single trajectory and contains strong phase imbalance.
+                  </p>
+                </div>
+
+                <h4>Validation commands</h4>
+
+                <pre class="code-block">python -m unittest tests/test_g1_native_dataset_audit.py
+python -m unittest tests/test_g1_native_dataset.py
+python -m unittest tests/test_vla_demo_schema.py
+python -m unittest tests/test_vla_replay_metrics.py
+python -m unittest tests/test_vla_action_adapter.py
+python scripts/smoke_env.py</pre>
+
+                <pre class="code-block">G1-native dataset audit tests : 11 tests passed
+G1-native dataset tests       : 12 tests passed
+VLA demo schema tests         : 16 tests passed
+Replay metrics tests          : 14 tests passed
+Action adapter tests          : 9 tests passed
+Smoke environment             : PASS</pre>
+
+                <h4>Audit command</h4>
+
+                <pre class="code-block">python scripts/audit_g1_native_vla_dataset.py \
+  data/vla_exports/g1_native_demo_002/dataset.jsonl \
+  --output-dir data/vla_exports/g1_native_demo_002/audit</pre>
+
+                <h4>Generated audit artifacts</h4>
+
+                <pre class="code-block">data/vla_exports/g1_native_demo_002/audit/
+  audit_report.json
+  train.jsonl
+  val.jsonl
+  split_summary.json</pre>
+
+                <h4>Audit summary</h4>
+
+                <pre class="code-block">num_records          : 2665
+action_vector_shape  : [2665, 8]
+train_records        : 2130
+val_records          : 535
+val_fraction_actual  : 0.2008
+split_strategy       : phase_temporal_tail
+idle_runs            : 1
+warnings             : 2</pre>
+
+                <h4>Phase counts</h4>
+
+                <div style="overflow-x: auto;">
+                  <table class="data-table" style="width:100%; border-collapse: collapse;">
+                    <thead>
+                      <tr>
+                        <th>Phase</th>
+                        <th>Records</th>
+                        <th>Interpretation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>APPROACH_TARGET</strong></td>
+                        <td>1200</td>
+                        <td>Dominant phase; model may overfit to transport behavior.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>DESCEND_SOURCE</strong></td>
+                        <td>300</td>
+                        <td>Long manipulation phase.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>LOWER_TARGET</strong></td>
+                        <td>300</td>
+                        <td>Long placement phase.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>LIFT_SOURCE</strong></td>
+                        <td>200</td>
+                        <td>Carry/lift transition after grasp.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>HOVER_TARGET</strong></td>
+                        <td>200</td>
+                        <td>Target-side hover.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>RETRACT</strong></td>
+                        <td>200</td>
+                        <td>Final arm recovery phase.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>SETTLE</strong></td>
+                        <td>150</td>
+                        <td>Initial idle-heavy stabilization.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>APPROACH_SOURCE</strong></td>
+                        <td>84</td>
+                        <td>Short source approach phase.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>HOVER_SOURCE</strong></td>
+                        <td>27</td>
+                        <td>Very short source hover phase.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>CLOSE_GRIP</strong></td>
+                        <td>2</td>
+                        <td>Extremely rare transition state.</td>
+                      </tr>
+                      <tr>
+                        <td><strong>OPEN_GRIP</strong></td>
+                        <td>2</td>
+                        <td>Extremely rare transition state.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="code-note">
+                  <p><strong>Finding 1 — Phase imbalance:</strong></p>
+                  <p>
+                    The dataset is dominated by <code>APPROACH_TARGET</code>, while <code>CLOSE_GRIP</code> and
+                    <code>OPEN_GRIP</code> each appear only twice. A naive model could learn the long transport
+                    phase while barely learning the critical grip transitions.
+                  </p>
+                </div>
+
+                <h4>Boolean balance</h4>
+
+                <pre class="code-block">reach_active_true_fraction : 0.9118
+grip_closed_true_fraction  : 0.7137</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 2 — Reach/grip imbalance:</strong></p>
+                  <p>
+                    Reach is active for about 91% of records, and grip is closed for about 71% of records.
+                    This is expected for the teacher rollout, but it means future supervised baselines may need
+                    weighting, filtering, or more diverse rollouts.
+                  </p>
+                </div>
+
+                <h4>Action statistics</h4>
+
+                <pre class="code-block">mean_walk_cmd_magnitude : 0.264704
+max_walk_cmd_magnitude  : 1.007174
+zero_walk_records       : 1389
+nonzero_walk_records    : 1276
+mean_reach_target_norm  : 0.378342
+max_reach_target_norm   : 0.412311</pre>
+
+                <h4>Idle-heavy run</h4>
+
+                <pre class="code-block">idle_runs:
+  start_sample_index : 0
+  end_sample_index   : 150
+  length             : 151
+  phase              : MIXED</pre>
+
+                <div class="code-note">
+                  <p><strong>Finding 3 — Idle-heavy segment:</strong></p>
+                  <p>
+                    The audit found one idle-heavy run at the start of the trajectory. This is mostly the initial
+                    settle window and the first transition into source approach. It should be flagged for potential
+                    filtering or reduced weighting in future training views.
+                  </p>
+                </div>
+
+                <h4>Train/validation split</h4>
+
+                <pre class="code-block">train_records        : 2130
+val_records          : 535
+total_records        : 2665
+val_fraction_actual  : 0.20075
+split_strategy       : phase_temporal_tail</pre>
+
+                <p>
+                  The split keeps every phase represented in validation while preserving temporal order within
+                  each phase. This is better than random row-level shuffling, but it is still only a debugging
+                  split because the dataset currently comes from one rollout.
+                </p>
+
+                <pre class="code-block">train phase examples:
+  APPROACH_TARGET : 960
+  DESCEND_SOURCE  : 240
+  LOWER_TARGET    : 240
+  CLOSE_GRIP      : 1
+  OPEN_GRIP       : 1
+
+validation phase examples:
+  APPROACH_TARGET : 240
+  DESCEND_SOURCE  : 60
+  LOWER_TARGET    : 60
+  CLOSE_GRIP      : 1
+  OPEN_GRIP       : 1</pre>
+
+                <div class="card-grid">
+                  <article class="card">
+                    <h3>Audit tooling</h3>
+                    <p>The audit script generated phase counts, action statistics, boolean balance, idle runs, and warnings.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Split generation</h3>
+                    <p>The phase-temporal split produced <code>2130</code> train records and <code>535</code> validation records.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>Data quality</h3>
+                    <p>The dataset is useful for debugging, but phase imbalance and single-trajectory limitations remain.</p>
+                    <p><span class="status-badge status-future">Needs improvement</span></p>
+                  </article>
+
+                  <article class="card">
+                    <h3>No model dependency</h3>
+                    <p>No OpenVLA, Hugging Face, PyTorch, GPU, or cloud dependency is required.</p>
+                    <p><span class="status-badge status-verified">PASS</span></p>
+                  </article>
+                </div>
+
+                <h4>Step 18 conclusion</h4>
+
+                <div class="code-note">
+                  <p>
+                    Step 18 confirms that the exported G1-native dataset is structurally valid and can be split
+                    for debugging experiments. It also exposes the next research risk: the dataset is phase-imbalanced,
+                    contains rare grip transition states, includes an idle-heavy run, and comes from a single trajectory.
+                  </p>
+                  <p>
+                    The next milestone should be Step 19: dataset filtering, sample weighting, and/or a multi-demo
+                    collection plan before any OpenVLA shadow inference or fine-tuning.
+                  </p>
+                </div>
+              </section>
+            </div>
+
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
@@ -849,6 +1112,17 @@ last_image    : images/frame_002664.png</pre>
                       <td>Proceed to Step 18 — dataset audit and train/validation split.</td>
                     </tr>
                     <tr>
+                      <td><strong>Step 18</strong></td>
+                      <td>
+                        Dataset audit and phase-temporal split completed:
+                        <code>2665</code> records, <code>action_vector_shape=[2665, 8]</code>,
+                        <code>2130</code> train records, <code>535</code> validation records,
+                        <code>val_fraction_actual=0.2008</code>. Audit found <code>1</code>
+                        idle-heavy run and warned that the dataset is single-trajectory/debugging-only.
+                      </td>
+                      <td>Proceed to Step 19 — filtering, weighting, and multi-demo planning.</td>
+                    </tr>
+                    <tr>
                       <td><strong>Step 19</strong></td>
                       <td>Offline validation on held-out FSM demos passes a defined accuracy threshold.</td>
                       <td>Fine-tuning milestone complete.</td>
@@ -865,6 +1139,11 @@ last_image    : images/frame_002664.png</pre>
                 Gate 17 turns the replay-faithful command interface into a model-ready dataset. The next risk is
                 not control fidelity but data quality: phase balance, repeated frames, action distribution, and
                 split design.
+              </p>
+              <p>
+                Gate 18 shifts the main risk from control/replay correctness to data quality. The dataset is now
+                auditable and splittable, but the audit shows phase imbalance, rare grip transitions, and
+                single-trajectory limitations.
               </p>
             </div>
           </div>
@@ -1053,11 +1332,18 @@ MuJoCo G1 task execution</pre>
                   <td><strong>18 — Dataset audit + train/validation split</strong></td>
                   <td>Audit phase/action distributions and create train/validation manifests.</td>
                   <td>Prepare the G1-native dataset for future shadow-mode or imitation-learning experiments.</td>
-                  <td>Audit summary and split manifests are written.</td>
+                  <td>Audit report and phase-temporal split created: 2665 records, 2130 train, 535 val, action_vector_shape=[2665, 8], warnings for idle run and single-trajectory limitation.</td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
+                </tr>
+                <tr>
+                  <td><strong>19 — Dataset filtering / sample weighting / multi-demo plan</strong></td>
+                  <td>Create filtered/weighted training views and plan multi-demo collection.</td>
+                  <td>Improve data quality before any OpenVLA shadow inference or fine-tuning.</td>
+                  <td>Weighted/filtered manifests are written and rare transition phases are preserved.</td>
                   <td><span class="status-badge status-future">Current next step</span></td>
                 </tr>
                 <tr>
-                  <td><strong>19 — OpenVLA shadow mode / model baseline</strong></td>
+                  <td><strong>Future — OpenVLA shadow mode / lightweight imitation baseline</strong></td>
                   <td>Run OpenVLA on saved frames but do not control the robot</td>
                   <td>Compare predicted actions to FSM teacher actions</td>
                   <td>Directional agreement and L1 action error metrics</td>
@@ -1154,6 +1440,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Next step:</strong> Audit the dataset and create train/validation splits.</li>
             </ul>
           </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 006 — Treat the current dataset as debugging-only until more data or weighting exists</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Do not use the current single-rollout dataset for strong generalization claims.</li>
+              <li><strong>Reason:</strong> Step 18 found strong phase imbalance, rare grip transition phases, an idle-heavy run, and a single-trajectory split limitation.</li>
+              <li><strong>Evidence:</strong> <code>APPROACH_TARGET=1200</code> records, but <code>CLOSE_GRIP=2</code> and <code>OPEN_GRIP=2</code>; audit warnings explicitly mark the split as debugging-only.</li>
+              <li><strong>Rejected alternative:</strong> Move directly to OpenVLA shadow inference or fine-tuning using the current dataset as if it were representative.</li>
+              <li><strong>Next step:</strong> Build filtered/weighted training views and plan multi-demo collection.</li>
+            </ul>
+          </article>
         </section>
 
         <!-- ── 10b. Step 14 Data Summary ────────────────────────────── -->
@@ -1194,43 +1491,43 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 18</h2>
+          <h2>Current Implementation Target — Step 19</h2>
           <p>
-            Step 17 produced a clean G1-native supervised dataset. Step 18 should audit the exported
-            dataset before any model inference or fine-tuning is attempted.
+            Step 18 validated the audit and split-generation tooling, but it also showed that the current
+            dataset is still a single-trajectory debugging dataset with phase imbalance and rare grip
+            transition states.
           </p>
 
-          <pre class="code-block">audit targets:
-  phase balance
-  action-vector ranges
-  walk-command distribution
-  reach-target distribution
-  grip class balance
-  repeated/idle-heavy segments
-  train/validation split</pre>
+          <pre class="code-block">next data-quality targets:
+  filter or downweight idle-heavy records
+  compute per-phase sample weights
+  protect rare grip transitions
+  create balanced debug manifests
+  plan multi-demo collection
+  avoid claiming generalization from one rollout</pre>
 
           <p>
-            This prevents the next learned-policy experiment from training on an imbalanced or poorly
-            characterized dataset.
+            Step 19 should improve the dataset view before any OpenVLA shadow inference, fine-tuning, or
+            learned-policy claims.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 18 Test ──────────────────────────── -->
+        <!-- ── 12. Expected Step 19 Test ──────────────────────────── -->
         <section>
-          <h2>Expected Step 18 Test — Dataset Audit + Split</h2>
+          <h2>Expected Step 19 Test — Filtering / Weighting / Multi-Demo Plan</h2>
 
-          <pre class="code-block">python scripts/audit_g1_native_vla_dataset.py \
+          <pre class="code-block">python scripts/build_g1_native_training_views.py \
   data/vla_exports/g1_native_demo_002/dataset.jsonl \
-  --output-dir data/vla_exports/g1_native_demo_002/audit</pre>
+  --audit data/vla_exports/g1_native_demo_002/audit/audit_report.json \
+  --output-dir data/vla_exports/g1_native_demo_002/training_views</pre>
 
           <p><strong>Pass criteria:</strong></p>
           <ul class="bullet-list">
-            <li>Phase counts are reported.</li>
-            <li>Walk command and reach target distributions are summarized.</li>
-            <li>Grip-open vs grip-closed balance is reported.</li>
-            <li>Action-vector min/max/mean/std are exported.</li>
-            <li>Potential idle-heavy segments are flagged.</li>
-            <li>Train/validation manifests are created without leaking order-sensitive data.</li>
+            <li>Idle-heavy records are flagged or filtered into a separate view.</li>
+            <li>Per-phase sample weights are computed.</li>
+            <li>Rare transition phases like <code>CLOSE_GRIP</code> and <code>OPEN_GRIP</code> are protected from being dropped.</li>
+            <li>Weighted or balanced train/validation manifests are created.</li>
+            <li>The script explicitly reports that the current dataset is still single-trajectory and debugging-only.</li>
             <li>No OpenVLA, Hugging Face, GPU, or cloud dependency is required.</li>
           </ul>
         </section>
