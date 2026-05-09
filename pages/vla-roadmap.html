@@ -95,10 +95,10 @@
                     <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 23A — scripted keyboard teacher MVP.<br />
-                    <span class="status-badge status-verified">Validated infrastructure</span> Step 24 — contact-aware physical grasp backend.<br />
-                    <span class="status-badge status-future">Partial physical success</span> Step 25 — contact-guided grasp policy.<br />
-                    <span class="status-badge status-future">Implemented / near pickup</span> Step 26 — table-assisted caging + continuous grip-fraction control.<br />
-                    <span class="status-badge status-future">Next tuning target</span> Reduce slip during lift for the physical branch while keeping the FSM/kinematic teacher as baseline.
+                    <span class="status-badge status-verified">Validated</span> Step 24 — contact-aware physical grasp backend.<br />
+                    <span class="status-badge status-future">Partially Validated</span> Step 25 — contact-guided grasp policy.<br />
+                    <span class="status-badge status-future">Implemented</span> Step 26 — table-assisted caging + continuous grip-fraction control.<br />
+                    <span class="status-badge status-future">Next</span> Reduce slip during lift for the physical branch while keeping the FSM/kinematic teacher as baseline.
                   </p>
                 </article>
                 <article class="card">
@@ -2491,21 +2491,21 @@ MuJoCo G1 task execution</pre>
                   <td>Add a physical/contact-aware grasp backend with real MuJoCo contact observation.</td>
                   <td>Measure honest grasp progress without teleporting object physics.</td>
                   <td><code>ContactAwarePhysicalGrasp</code> implemented; keeps kinematic backend as default while enabling <code>--grasp-backend contact-aware-physical</code> experiments.</td>
-                  <td><span class="status-badge status-verified">Validated infrastructure</span></td>
+                  <td><span class="status-badge status-verified">Validated</span></td>
                 </tr>
                 <tr>
                   <td><strong>25 — Contact-guided grasp policy</strong></td>
                   <td>Add contact/proximity-guided closure policy and backend CLI selection in <code>run.py</code>.</td>
                   <td>Move from open-loop closure to contact-aware timing.</td>
                   <td>Policy and CLI added; binary closure found unstable, so closure ramping was introduced to reduce pushes/knock-away events.</td>
-                  <td><span class="status-badge status-future">Partial physical success</span></td>
+                  <td><span class="status-badge status-future">Partially Validated</span></td>
                 </tr>
                 <tr>
                   <td><strong>26 — Table-assisted caging grasp</strong></td>
                   <td>Add continuous grip fraction, caging plan, object-motion metrics, and run-comparison tooling.</td>
                   <td>Use the environment for caging support and instrument slip/failure modes.</td>
                   <td>Implemented with <code>table_assisted_caging_v1.json</code>, recorder metrics, <code>compare_grasp_runs.py</code>, and new tests; reported <code>97/97</code> tests passing. Robot reaches near pickup, but object can still slip during lift.</td>
-                  <td><span class="status-badge status-future">Implemented / near pickup</span></td>
+                  <td><span class="status-badge status-future">Implemented</span></td>
                 </tr>
                 <tr>
                   <td><strong>Future — OpenVLA shadow mode / lightweight imitation baseline</strong></td>
@@ -2657,7 +2657,7 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
               <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
               <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
-              <li><strong>Next step:</strong> Continue physical-branch tuning after Step 26 with tighter contact alignment, grip schedule control, and slip-prevention metrics.</li>
+              <li><strong>Next step:</strong> Hand off to the Step 26 tuning track (as documented in Decision 013 below) focused on contact alignment and lift-phase slip prevention.</li>
             </ul>
           </article>
 
@@ -2767,7 +2767,10 @@ Next tuning targets:
         <section>
           <h2>Expected Post-Step-26 Evaluation — Contact-Guided vs Caging vs Kinematic</h2>
 
-          <pre class="code-block">python scripts/compare_grasp_runs.py   --kinematic data/vla_demos/kinematic_baseline/summary.json   --contact-guided data/vla_demos/contact_guided/summary.json   --caging data/vla_demos/table_assisted_caging/summary.json</pre>
+          <pre class="code-block">python scripts/compare_grasp_runs.py \
+  --kinematic data/vla_demos/kinematic_baseline/summary.json \
+  --contact-guided data/vla_demos/contact_guided/summary.json \
+  --caging data/vla_demos/table_assisted_caging/summary.json</pre>
 
           <p><strong>Pass criteria for the next tuning loop:</strong></p>
           <ul class="bullet-list">
