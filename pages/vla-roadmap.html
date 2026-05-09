@@ -43,7 +43,7 @@
           <div class="code-note">
             <ul class="bullet-list">
               <li><strong>Status:</strong> Active research branch with validated infrastructure milestones</li>
-              <li><strong>Current implementation status:</strong> Steps 24–26 implemented and test-validated; physical grasp still not a solved simulation result</li>
+              <li><strong>Current implementation status:</strong> Steps 24–27 implemented; Step 27 is a working hybrid contact-gated grasp with contact-verified kinematic transport</li>
               <li><strong>Purpose:</strong> Research branch for evaluating whether OpenVLA-style policies
                 can augment or replace parts of the FSM pipeline while keeping physical-grasp reporting honest</li>
               <li><strong>Safety principle:</strong> The existing FSM remains the teacher, fallback,
@@ -104,7 +104,8 @@
                     <span class="status-badge status-verified">Validated</span> Step 24 — contact-aware physical grasp backend.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 25 — contact-guided grasp policy.<br />
                     <span class="status-badge status-future">Implemented</span> Step 26 — table-assisted caging + continuous grip-fraction control.<br />
-                    <span class="status-badge status-future">Next</span> Reduce slip during lift for the physical branch while keeping the FSM/kinematic teacher as baseline.
+                    <span class="status-badge status-verified">Working hybrid</span> Step 27 — hybrid contact-gated grasp (probe/cage then kinematic transport).<br />
+                    <span class="status-badge status-future">Next</span> Audit hybrid demos against FSM/kinematic and physical-only branches for teacher-data decisions.
                   </p>
                 </article>
                 <article class="card">
@@ -115,7 +116,7 @@
                     <li>No fine-tuning</li>
                     <li>No live VLA control attempted</li>
                     <li>No demonstrated generalization yet</li>
-                    <li>Physical grasp branch is near pickup but still slips during lift</li>
+                    <li>Pure physical dexterous grasp is still unsolved; current best result is hybrid contact-gated transport</li>
                   </ul>
                 </article>
               </div>
@@ -2054,6 +2055,82 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
           </div>
         </section>
 
+        <section>
+          <h2>Step 27 — Hybrid Contact-Gated Grasp</h2>
+          <p><span class="status-badge status-verified">Working hybrid grasp / contact-gated kinematic transport</span></p>
+
+          <h3>1. Problem</h3>
+          <p>
+            Earlier physical-only attempts exposed the hard part of dexterous grasping: binary closure knocked the cylinder,
+            slower closure reduced violence but could still slip, table-assisted caging improved safety but did not reliably lift,
+            and pure physical grasp was becoming expensive to tune.
+          </p>
+
+          <h3>2. Decision</h3>
+          <p>
+            Instead of pretending physical grasp was solved, we adopted a hybrid method: use physical contact/cage probing to verify the hand reached the cylinder,
+            then use kinematic attachment for transport, and release back into physics at the target table.
+          </p>
+
+          <h3>3. Phase 1 — Contact-Guided Probe</h3>
+          <ul class="bullet-list">
+            <li>Runs a staged cage probe with continuous grip fractions.</li>
+            <li>Uses small lateral/downward increments to approach safely.</li>
+            <li>Checks MuJoCo contact/proximity evidence and sustained cage completion.</li>
+            <li>No blind snap at grasp start.</li>
+          </ul>
+
+          <h3>4. Phase 2 — Kinematic Transport</h3>
+          <ul class="bullet-list">
+            <li>Triggers a confirmation hook (for example <code>confirm_contact()</code>) when cage evidence is complete.</li>
+            <li>Attaches cylinder to palm with fixed offset.</li>
+            <li>Transport remains stable because the object cannot slip out of hand.</li>
+            <li>Release drops attachment, restores collision/geoms, and returns object to physics.</li>
+          </ul>
+
+          <h3>5. Why this is better than the original kinematic baseline</h3>
+          <table class="data-table" style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th>Trigger</th>
+                <th>Transport</th>
+                <th>Failure mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Blind kinematic attachment</td>
+                <td>Palm close enough</td>
+                <td>Rigid attachment</td>
+                <td>Can attach without real contact</td>
+              </tr>
+              <tr>
+                <td>Pure physical/contact grasp</td>
+                <td>Finger-object contact only</td>
+                <td>Fully physical</td>
+                <td>Slipping/knockover during lift</td>
+              </tr>
+              <tr>
+                <td>Hybrid contact-gated grasp</td>
+                <td>Contact/cage evidence first</td>
+                <td>Kinematic attachment</td>
+                <td>Simulation shortcut remains, but is now contact-gated</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>6. Current conclusion</h3>
+          <p>
+            This is the strongest practical grasp result so far. It is not a full dexterous physical grasp, but it is a credible engineering solution for this challenge because it combines contact verification with reliable transport.
+          </p>
+
+          <h3>7. Next step</h3>
+          <p>
+            Next: record and audit hybrid-grasp demonstrations, compare them against FSM/kinematic and physical-only runs, and decide whether hybrid-grasp data should become the new preferred teacher source for the VLA dataset.
+          </p>
+        </section>
+
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
                 <p><strong>Evidence gates</strong> — each step requires a concrete verification artifact before the next step begins.</p>
@@ -2221,7 +2298,12 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
                         and related tests. Reported validation state: <code>97/97</code> tests passing;
                         near pickup achieved but cylinder can still slip during lift.
                       </td>
-                      <td>Proceed to physical-branch tuning: contact alignment, grip schedule, lift timing, and slip prevention.</td>
+                      <td>Proceed to Step 27 — hybrid contact-gated grasp integration.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 27</strong></td>
+                      <td>Hybrid contact-gated grasp enabled: staged contact/cage probe confirms hand-object interaction before kinematic transport is activated; release restores collisions/geoms and returns object to physics at placement.</td>
+                      <td>Proceed to hybrid demo audits, comparative metrics, and teacher-data source decision.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2237,9 +2319,7 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
                 checks are added.
               </p>
               <p>
-                Steps 24–26 added validated physical-grasp infrastructure and stronger metrics. The robot now
-                reaches near pickup with contact-aware/caging logic, but slip during lift remains the dominant
-                unresolved failure mode.
+                Steps 24–27 added validated physical/hybrid grasp infrastructure and stronger metrics. Step 27 now gates kinematic transport on contact/cage evidence, which resolves the main practical slip bottleneck while keeping an explicit simulation-shortcut caveat.
               </p>
               <p>
                 Gate 16 is the strongest VLA design gate so far. It separates replay fidelity from action-space
@@ -2519,6 +2599,13 @@ MuJoCo G1 task execution</pre>
                   <td><span class="status-badge status-future">Implemented</span></td>
                 </tr>
                 <tr>
+                  <td><strong>27 — Hybrid contact-gated grasp</strong></td>
+                  <td>Use staged contact/cage probing as a gate, then switch to kinematic attachment for transport and release back to physics.</td>
+                  <td>Resolve blind-attachment and lift-slip bottlenecks with an honest hybrid compromise.</td>
+                  <td>Working hybrid result: contact/probe confirmation occurs before attachment; transport is reliable enough for complete pick-and-place demos; caveat remains that transport is kinematic.</td>
+                  <td><span class="status-badge status-verified">Working hybrid</span></td>
+                </tr>
+                <tr>
                   <td><strong>Future — OpenVLA shadow mode / lightweight imitation baseline</strong></td>
                   <td>Run OpenVLA on saved frames but do not control the robot</td>
                   <td>Compare predicted actions to FSM teacher actions</td>
@@ -2668,7 +2755,7 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
               <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
               <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
-              <li><strong>Next step:</strong> Hand off to the Step 26 tuning track (as documented in Decision 013 below) focused on contact alignment and lift-phase slip prevention.</li>
+              <li><strong>Next step:</strong> Hand off to the Step 27 hybridization track (as documented in Decision 014 below) that gates transport on contact/cage evidence.</li>
             </ul>
           </article>
 
@@ -2702,6 +2789,17 @@ MuJoCo G1 task execution</pre>
               <li><strong>Evidence:</strong> Step 26 added continuous grip fraction, caging script, object-motion metrics, comparison tooling, and tests with a reported <code>97/97</code> pass state.</li>
               <li><strong>Rejected alternative:</strong> Label physical grasp as solved and replace teacher generation with unstable physical runs.</li>
               <li><strong>Next step:</strong> Tune contact alignment, grip fraction schedule, lift timing, and slip prevention while continuing kinematic teacher use.</li>
+            </ul>
+          </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 014 — Adopt hybrid contact-gated grasp for practical task completion</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Add Step 27 hybrid contact-gated grasp: probe/cage first, then kinematic transport, then release back to physics.</li>
+              <li><strong>Reason:</strong> Pure physical contact-only lift remained fragile; blind kinematic snap was reliable but not contact-verified.</li>
+              <li><strong>Evidence:</strong> Step 27 confirms contact/cage evidence before attachment, avoids blind proximity-triggered lock, and restores collision/geoms on release for physical drop on the target table.</li>
+              <li><strong>Rejected alternative:</strong> Claim fully physical dexterous grasp solved or keep blind attachment as the only transport path.</li>
+              <li><strong>Next step:</strong> Audit hybrid demonstrations against FSM/kinematic and physical-only runs to decide teacher-data preference.</li>
             </ul>
           </article>
         </section>
@@ -2744,28 +2842,28 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Post-Step-26 Physical Grasp Tuning</h2>
+          <h2>Current Implementation Target — Post-Step-27 Hybrid Contact-Gated Grasp</h2>
           <p>
-            Steps 24–26 established a physically honest grasp branch: contact-aware observation,
-            contact-guided closure, and table-assisted caging with continuous grip fraction.
-            This branch now gets close to pickup and can almost lift the cylinder, but slip during
-            lift is still the key unresolved failure mode.
+            Steps 24–27 established a physically honest-to-practical progression: contact-aware observation,
+            contact-guided closure, table-assisted caging, and now hybrid contact-gated transport.
+            Step 27 resolves the practical lift-slip bottleneck by requiring probe/cage evidence
+            before transport attachment while still reporting the transport phase as kinematic.
           </p>
 
           <pre class="code-block">Current validated state:
   - Contact-aware physical backend implemented
   - Contact-guided closure policy implemented
   - Continuous grip fraction + caging script implemented
-  - Object-motion metrics + compare_grasp_runs.py implemented
-  - Reported test state: 97/97 passing
-  - Physical result: near pickup, slips during lift
+  - Hybrid contact-gated transport implemented (Step 27)
+  - Attachment now gated by contact/cage evidence
+  - Release restores collisions/geoms and returns object to physics
 
 Next tuning targets:
-  - contact alignment at close-grip onset
-  - grip fraction schedule and grip-close speed
-  - contact confirmation before lift
-  - lift timing and wrist-drift reduction
-  - slip prevention during carry</pre>
+  - formalize hybrid success metrics vs blind kinematic
+  - record and audit more hybrid demonstrations
+  - compare hybrid outcomes against physical-only branches
+  - export hybrid runs into the shared VLA dataset schema
+  - decide teacher-source preference (FSM-only vs hybrid-augmented)</pre>
 
           <p>
             Decision: keep the kinematic/FSM teacher as the reliable dataset-generation path for
@@ -2774,9 +2872,9 @@ Next tuning targets:
           </p>
         </section>
 
-        <!-- ── 12. Expected Post-Step-26 Evaluation ──────────────────── -->
+        <!-- ── 12. Expected Post-Step-27 Evaluation ──────────────────── -->
         <section>
-          <h2>Expected Post-Step-26 Evaluation — Contact-Guided vs Caging vs Kinematic</h2>
+          <h2>Expected Post-Step-27 Evaluation — Hybrid vs Contact-Only vs Blind Kinematic</h2>
 
           <pre class="code-block">python scripts/compare_grasp_runs.py \
   --kinematic data/vla_demos/kinematic_baseline/summary.json \
@@ -2788,7 +2886,7 @@ Next tuning targets:
             <li>Stable multi-finger contact is confirmed before lift attempts.</li>
             <li>Lift height improves without increased XY push/knockover events.</li>
             <li>Object-palm relative drift during lift is measured and reduced.</li>
-            <li>Physical branch reports near pickup honestly and does not claim solved grasp until stable lift is repeatable.</li>
+            <li>Hybrid branch reports contact-verified transport honestly and does not claim fully physical grasp solved.</li>
             <li>Kinematic teacher remains available as the reliable baseline for data generation.</li>
           </ul>
         </section>
@@ -2808,7 +2906,7 @@ Next tuning targets:
         <section>
           <h2>Closing Summary</h2>
           <p>
-            The practical engineering strategy is to make OpenVLA earn control authority gradually.
+            The practical engineering strategy is to make OpenVLA earn control authority gradually while using Step 27 hybrid contact-gated grasp as the current practical manipulation path.
             The FSM remains the baseline. The adapter is the translation layer. The replay test is
             the gate. Only after that should OpenVLA be placed in shadow mode or fine-tuned.
           </p>

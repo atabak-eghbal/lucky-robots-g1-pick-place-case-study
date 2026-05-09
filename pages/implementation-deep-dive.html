@@ -56,18 +56,23 @@
           </thead>
           <tbody>
             <tr>
+              <td><strong>Runtime Orchestration</strong></td>
+              <td>Includes <code>ContactGuidedGraspPolicy</code>, which intercepts the grasp phase and runs a staged contact/cage probe before handing off to kinematic transport.</td>
+              <td><a href="./code/run.html">run.py</a></td>
+            </tr>
+            <tr>
               <td><strong>Locomotion Control</strong></td>
               <td>Raw walker observations + Always-on Reacher.</td>
               <td><a href="./code/common-controller.html">common/controller.py</a></td>
             </tr>
             <tr>
               <td><strong>Grasp Logic</strong></td>
-              <td><strong>Step 24 Update:</strong> kinematic attachment plus contact-aware physical grasp backend factory.</td>
+              <td>Contains both contact-aware physical observation and kinematic attachment machinery. The latest hybrid path uses contact/cage confirmation as a gate before transport attachment.</td>
               <td><a href="./code/common-grasp.html">common/grasp.py</a></td>
             </tr>
             <tr>
               <td><strong>Controller Grip Path</strong></td>
-              <td><strong>Step 26 Update:</strong> continuous grip fraction and grip-speed ramping support.</td>
+              <td>Supports continuous grip fraction control, allowing the staged cage to pre-shape and close the hand gradually instead of binary snapping.</td>
               <td><a href="./code/common-controller.html">common/controller.py</a></td>
             </tr>
             <tr>
@@ -100,6 +105,11 @@
               <td>Headless integration testing through full pick-and-place loop.</td>
               <td><a href="./code/scripts-test-fsm-approach.html">scripts/test_fsm_approach.py</a></td>
             </tr>
+            <tr>
+              <td><strong>Contact-Guided Grasp Diagnostics</strong></td>
+              <td>Validation / diagnostic entry point for the contact-guided grasp behavior.</td>
+              <td><code>scripts/test_contact_guided_grasp.py</code> (listed for code-audit coverage in this report)</td>
+            </tr>
           </tbody>
         </table>
       </section>
@@ -119,9 +129,10 @@
               tune the physical restoration delay without re-verifying the high-level FSM transitions.
             </p>
             <p>
-              Step 24–26 continues this pattern: physical-grasp infrastructure is implemented and test-validated,
-              but the physically successful lift remains an active tuning target. The kinematic/FSM path remains
-              the reliable teacher baseline while contact-aware caging is iterated as a research branch.
+              Step 24–27 continues this pattern: the branch moved from physical contact instrumentation to a
+              hybrid contact-gated grasp that confirms contact/cage evidence before enabling kinematic transport.
+              The kinematic/FSM path remains the reliable teacher baseline, and the hybrid branch is reported as
+              a practical compromise rather than a solved pure physical grasp.
             </p>
           </div>
         </section>

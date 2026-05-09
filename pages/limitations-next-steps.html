@@ -40,12 +40,8 @@
             <li><strong>Kinematic Grasping:</strong> The cylinder is teleported to the palm 
             rather than grasped via physical finger contact. Moving to contact-rich grasping is 
             the most significant next step for physical realism.</li>
-            <li><strong>Physical dexterous grasp remains unsolved:</strong> The kinematic backend
-            completes the task as a simulation shortcut, while the contact-aware/table-assisted
-            caging branch is more physically honest but can still slip during lift. The object is
-            small and easy to push, the fingers are position-controlled, and there is no learned
-            tactile grasp policy yet. Current experiment video evidence:
-            <a href="https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ" target="_blank" rel="noopener noreferrer">Work 3 — physical grasp experiment (near pickup / slipping during lift)</a>.</li>
+            <li><strong>Pure physical dexterous grasp remains unsolved, but the project now has a working hybrid grasp:</strong> the hybrid method avoids blind attachment by requiring contact/cage evidence before kinematic transport. It is still not a real force-closed, friction-stable grasp and should not be marketed as sim-to-real-ready dexterous manipulation. For this MuJoCo challenge, where pre-programmed, learned, force-based, or other grasp strategies are allowed, this is a reasonable engineering compromise. Current experiment video evidence:
+            <a href="https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ" target="_blank" rel="noopener noreferrer">Work 3 — physical grasp experiment (research branch that led to hybrid contact-gated transport)</a>.</li>
             <li><strong>Ground-Truth Dependency:</strong> While navigation and transport are 
             autonomous, they rely on knowing the object's simulated pose. Implementing the 
             Visual Oracle design is required for full camera-only autonomy.</li>
@@ -81,11 +77,11 @@
           <div class="code-note" style="margin-top: 1rem;">
             <h3 style="margin-top: 0;">Immediate physical-grasp next steps</h3>
             <ol class="bullet-list">
-              <li>Tune caging alignment with visual/contact overlays.</li>
-              <li>Require stable multi-finger contact before lift.</li>
-              <li>Add slip metrics for object-palm relative drift during lift.</li>
-              <li>Compare kinematic vs contact-guided vs caging runs using <code>scripts/compare_grasp_runs.py</code>.</li>
-              <li>Use physically successful runs for future teacher data; otherwise keep the kinematic teacher with caveat.</li>
+              <li>Add metrics to distinguish contact-gated hybrid success from blind kinematic success.</li>
+              <li>Record hybrid-grasp demos with images.</li>
+              <li>Compare FSM + blind kinematic, scripted keyboard, physical-only contact/caging, and hybrid contact-gated grasp runs.</li>
+              <li>Export hybrid demos into the same VLA dataset schema.</li>
+              <li>Decide whether hybrid demos should replace or augment the FSM teacher dataset.</li>
             </ol>
           </div>
         </section>
