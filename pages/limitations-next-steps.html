@@ -40,6 +40,11 @@
             <li><strong>Kinematic Grasping:</strong> The cylinder is teleported to the palm 
             rather than grasped via physical finger contact. Moving to contact-rich grasping is 
             the most significant next step for physical realism.</li>
+            <li><strong>Physical dexterous grasp remains unsolved:</strong> The kinematic backend
+            completes the task as a simulation shortcut, while the contact-aware/table-assisted
+            caging branch is more physically honest but can still slip during lift. The object is
+            small and easy to push, the fingers are position-controlled, and there is no learned
+            tactile grasp policy yet.</li>
             <li><strong>Ground-Truth Dependency:</strong> While navigation and transport are 
             autonomous, they rely on knowing the object's simulated pose. Implementing the 
             Visual Oracle design is required for full camera-only autonomy.</li>
@@ -58,7 +63,7 @@
             </article>
             <article class="card">
               <h3>2. Physical Grasping</h3>
-              <p>Replace kinematic attachment with a force-control finger backend.</p>
+              <p>Continue tuning contact-aware caging with better wrist alignment, slower grip schedules, contact confirmation before lift, friction tuning, and slip prevention.</p>
             </article>
             <article class="card">
               <h3>3. End-to-End Learning</h3>
@@ -71,6 +76,16 @@
                 <a href="./vla-roadmap.html">View the updated VLA Roadmap →</a>
               </p>
             </a>
+          </div>
+          <div class="code-note" style="margin-top: 1rem;">
+            <h3 style="margin-top: 0;">Immediate physical-grasp next steps</h3>
+            <ol class="bullet-list">
+              <li>Tune caging alignment with visual/contact overlays.</li>
+              <li>Require stable multi-finger contact before lift.</li>
+              <li>Add slip metrics for object-palm relative drift during lift.</li>
+              <li>Compare kinematic vs contact-guided vs caging runs using <code>scripts/compare_grasp_runs.py</code>.</li>
+              <li>Use physically successful runs for future teacher data; otherwise keep the kinematic teacher with caveat.</li>
+            </ol>
           </div>
         </section>
       </main>

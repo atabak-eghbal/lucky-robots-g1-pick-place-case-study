@@ -106,8 +106,37 @@
           <td>Architecture for perception-driven localization documented.</td>
           <td>Not implemented in this baseline.</td>
         </tr>
+        <tr>
+          <td>Step 24 — Contact-aware physical grasp backend</td>
+          <td><span class="status-badge status-verified">Verified</span></td>
+          <td>Contact-aware physical observer backend added without teleporting object physics.</td>
+          <td>Validated infrastructure; not yet a solved physical grasp.</td>
+        </tr>
+        <tr>
+          <td>Step 25 — Contact-guided grasp policy</td>
+          <td><span class="status-badge status-future">Partial</span></td>
+          <td>Contact-guided closure sequence added with slower ramping instead of binary snap-closure.</td>
+          <td>Fast closure can still destabilize/push the cylinder.</td>
+        </tr>
+        <tr>
+          <td>Step 26 — Table-assisted caging grasp</td>
+          <td><span class="status-badge status-future">Implemented</span></td>
+          <td>Continuous grip fraction, caging plan, metrics, and grasp-run comparison tooling added; 97/97 tests reported passing.</td>
+          <td>Near pickup is repeatable, but cylinder can still slip during lift.</td>
+        </tr>
       </tbody>
     </table>
+    <p style="margin-top: 1rem;">
+      The most recent physical-grasp experiments should not be reported as solved task completion.
+      The correct result is that the robot now approaches the object and nearly lifts it using more
+      physically honest contact/caging logic, but slip during lift remains unresolved. This is a
+      useful engineering result because it isolates the remaining failure mode.
+    </p>
+    <p>
+      We also keep the evidence labels strict: "implemented," "validated by tests," and
+      "physically successful in simulation" are reported separately, especially because prior
+      grasp/release experiments exposed MuJoCo instability/NaN risks when contact transitions were mishandled.
+    </p>
   </section>
 
   <section>

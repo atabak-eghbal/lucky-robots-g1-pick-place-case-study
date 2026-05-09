@@ -42,10 +42,10 @@
         <section>
           <div class="code-note">
             <ul class="bullet-list">
-              <li><strong>Status:</strong> Future / proposed</li>
-              <li><strong>Current implementation status:</strong> Not implemented in this submission</li>
+              <li><strong>Status:</strong> Active research branch with validated infrastructure milestones</li>
+              <li><strong>Current implementation status:</strong> Steps 24–26 implemented and test-validated; physical grasp still not a solved simulation result</li>
               <li><strong>Purpose:</strong> Research branch for evaluating whether OpenVLA-style policies
-                can augment or replace parts of the FSM pipeline</li>
+                can augment or replace parts of the FSM pipeline while keeping physical-grasp reporting honest</li>
               <li><strong>Safety principle:</strong> The existing FSM remains the teacher, fallback,
                 and evaluation baseline</li>
             </ul>
@@ -95,7 +95,10 @@
                     <span class="status-badge status-verified">Validated</span> Step 21 — combined batch dataset exporter.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 22 — scenario perturbations / multi-seed demo diversity.<br />
                     <span class="status-badge status-future">Partially Validated</span> Step 23A — scripted keyboard teacher MVP.<br />
-                    <span class="status-badge status-future">Next</span> Step 23B — grasp assurance + task-success checks for scripted teacher.
+                    <span class="status-badge status-verified">Validated infrastructure</span> Step 24 — contact-aware physical grasp backend.<br />
+                    <span class="status-badge status-future">Partial physical success</span> Step 25 — contact-guided grasp policy.<br />
+                    <span class="status-badge status-future">Implemented / near pickup</span> Step 26 — table-assisted caging + continuous grip-fraction control.<br />
+                    <span class="status-badge status-future">Next tuning target</span> Reduce slip during lift for the physical branch while keeping the FSM/kinematic teacher as baseline.
                   </p>
                 </article>
                 <article class="card">
@@ -106,6 +109,7 @@
                     <li>No fine-tuning</li>
                     <li>No live VLA control attempted</li>
                     <li>No demonstrated generalization yet</li>
+                    <li>Physical grasp branch is near pickup but still slips during lift</li>
                   </ul>
                 </article>
               </div>
@@ -1970,14 +1974,74 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
                     should not be used as training-quality teacher data.
                   </p>
                   <p>
-                    The next milestone is <strong>Step 23B — Scripted Keyboard Grasp Assurance +
-                    Task-Success Checks</strong>. Step 23B should track attachment, lift, object-on-target
-                    status, task success, and failure reasons, and it should not proceed to transport unless
-                    the grasp attaches.
+                    That gap motivated the next implemented milestones (Steps 24–26): contact-aware
+                    physical grasp instrumentation, contact-guided closure policy, and table-assisted
+                    caging with continuous grip control. These milestones materially improved physical
+                    grasp behavior to near pickup, but the branch still requires slip-prevention tuning
+                    before it can be considered a reliable physical teacher.
                   </p>
                 </div>
               </section>
             </div>
+
+        <section>
+          <h2>Steps 24–26 — Physical Grasp Branch: From Contact Detection to Table-Assisted Caging</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Step 24 — Contact-Aware Physical Grasp MVP</h3>
+              <p><span class="status-badge status-verified">Validated infrastructure / physical observer</span></p>
+              <ul class="bullet-list">
+                <li>Added <code>ContactAwarePhysicalGrasp</code>.</li>
+                <li>Detects finger-object contacts without moving the object.</li>
+                <li>Provides honest contact/lift metrics.</li>
+                <li>Preserves <code>KinematicAttachment</code> as reliable default backend.</li>
+                <li>Why this matters: it enables measurable physical progress instead of visual guesswork.</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Step 25 — Contact-Guided Grasp Policy</h3>
+              <p><span class="status-badge status-future">Partial physical success / unstable closure</span></p>
+              <ul class="bullet-list">
+                <li>Added <code>ContactGuidedGraspPolicy</code>.</li>
+                <li>Policy approaches laterally, waits for contact/proximity, then enters pinch.</li>
+                <li>Key finding: binary or too-fast closure pushes the cylinder sideways.</li>
+                <li>Controller changed to slower grip ramping instead of instant snap-closure.</li>
+                <li>Current result: contacts can be produced, but reliable lift is not solved.</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Step 26 — Table-Assisted Caging Grasp</h3>
+              <p><span class="status-badge status-future">Implemented / near pickup / slipping during lift</span></p>
+              <ul class="bullet-list">
+                <li>Added continuous <code>grip_fraction</code> control.</li>
+                <li>Added scripted caging plan (<code>configs/scripts/table_assisted_caging_v1.json</code>).</li>
+                <li>Added object-motion metrics and comparison tooling.</li>
+                <li>Caging uses table support and gradual closure before lift.</li>
+                <li>Current result: robot gets close to pickup, but cylinder can still slip during lift.</li>
+                <li>Next tuning targets: grip schedule, hand alignment, lift timing, contact confirmation, and wrist-drift reduction.</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="callout-grid" style="margin-top: 1rem;">
+            <article class="callout callout--decision">
+              <span class="callout-label">Decision</span>
+              <p>
+                Keep the kinematic/FSM teacher as the reliable dataset-generation path for now.
+                Continue the physical grasp branch as an experimental improvement path. Do not
+                block VLA/data-pipeline progress on perfect dexterous grasping.
+              </p>
+            </article>
+            <article class="callout callout--insight">
+              <span class="callout-label">Why this is still valuable</span>
+              <ul class="bullet-list">
+                <li>We now have metrics for contact, lift, XY displacement, and slip/failure.</li>
+                <li>We can compare grasp strategies instead of relying only on visual inspection.</li>
+                <li>The project now shows both a reliable engineering baseline and a physically honest research branch.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
 
             <div class="file-tab-panel" data-tab-panel="tracker-evidence">
               <div class="code-note">
@@ -2116,7 +2180,37 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
                         <code>summary.json</code>, and rendered camera frames. Visual inspection of the
                         rendered frames showed that the first open-loop macro did not pick up the cylinder.
                       </td>
-                      <td>Proceed to Step 23B — grasp assurance + task-success checks.</td>
+                      <td>Proceed to Step 24 — contact-aware physical grasp MVP.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 24</strong></td>
+                      <td>
+                        Added <code>ContactAwarePhysicalGrasp</code> as a physical/contact-aware backend that
+                        observes real MuJoCo finger-object contacts without teleporting or disabling object
+                        physics. It preserves <code>KinematicAttachment</code> as the default backend and adds
+                        <code>--grasp-backend contact-aware-physical</code> for experiments.
+                      </td>
+                      <td>Proceed to Step 25 — contact-guided grasp policy.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 25</strong></td>
+                      <td>
+                        Added <code>ContactGuidedGraspPolicy</code> and grasp-backend CLI selection in
+                        <code>run.py</code>. Validation found binary/fast closure can push the cylinder,
+                        so grip closure was changed to ramp instead of snapping instantly.
+                      </td>
+                      <td>Proceed to Step 26 — table-assisted caging + continuous grip fraction.</td>
+                    </tr>
+                    <tr>
+                      <td><strong>Step 26</strong></td>
+                      <td>
+                        Added continuous grip fraction support (<code>set_grip_fraction()</code>,
+                        <code>clear_grip_fraction_override()</code>, <code>grip_target_fraction</code>,
+                        ramp speed), table-assisted caging script, object-motion metrics, run comparison tool,
+                        and related tests. Reported validation state: <code>97/97</code> tests passing;
+                        near pickup achieved but cylinder can still slip during lift.
+                      </td>
+                      <td>Proceed to physical-branch tuning: contact alignment, grip schedule, lift timing, and slip prevention.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2130,6 +2224,11 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
                 Gate 23A proves scripted-teacher infrastructure, not task success. The first macro is open-loop
                 and should not be used as training-quality teacher data until grasp attachment and task-success
                 checks are added.
+              </p>
+              <p>
+                Steps 24–26 added validated physical-grasp infrastructure and stronger metrics. The robot now
+                reaches near pickup with contact-aware/caging logic, but slip during lift remains the dominant
+                unresolved failure mode.
               </p>
               <p>
                 Gate 16 is the strongest VLA design gate so far. It separates replay fidelity from action-space
@@ -2388,11 +2487,25 @@ MuJoCo G1 task execution</pre>
                   <td><span class="status-badge status-future">Partially Validated</span></td>
                 </tr>
                 <tr>
-                  <td><strong>23B — Grasp assurance + task-success checks</strong></td>
-                  <td>Track attachment/object-lift/object-placement and stop/retry when grasp fails.</td>
-                  <td>Prevent scripted teacher demos from being treated as successful when no grasp occurred.</td>
-                  <td>summary.json includes ever_attached, task_success, failure_reason; script does not proceed to transport unless attached.</td>
-                  <td><span class="status-badge status-future">Current next step</span></td>
+                  <td><strong>24 — Contact-aware physical grasp MVP</strong></td>
+                  <td>Add a physical/contact-aware grasp backend with real MuJoCo contact observation.</td>
+                  <td>Measure honest grasp progress without teleporting object physics.</td>
+                  <td><code>ContactAwarePhysicalGrasp</code> implemented; keeps kinematic backend as default while enabling <code>--grasp-backend contact-aware-physical</code> experiments.</td>
+                  <td><span class="status-badge status-verified">Validated infrastructure</span></td>
+                </tr>
+                <tr>
+                  <td><strong>25 — Contact-guided grasp policy</strong></td>
+                  <td>Add contact/proximity-guided closure policy and backend CLI selection in <code>run.py</code>.</td>
+                  <td>Move from open-loop closure to contact-aware timing.</td>
+                  <td>Policy and CLI added; binary closure found unstable, so closure ramping was introduced to reduce pushes/knock-away events.</td>
+                  <td><span class="status-badge status-future">Partial physical success</span></td>
+                </tr>
+                <tr>
+                  <td><strong>26 — Table-assisted caging grasp</strong></td>
+                  <td>Add continuous grip fraction, caging plan, object-motion metrics, and run-comparison tooling.</td>
+                  <td>Use the environment for caging support and instrument slip/failure modes.</td>
+                  <td>Implemented with <code>table_assisted_caging_v1.json</code>, recorder metrics, <code>compare_grasp_runs.py</code>, and new tests; reported <code>97/97</code> tests passing. Robot reaches near pickup, but object can still slip during lift.</td>
+                  <td><span class="status-badge status-future">Implemented / near pickup</span></td>
                 </tr>
                 <tr>
                   <td><strong>Future — OpenVLA shadow mode / lightweight imitation baseline</strong></td>
@@ -2544,7 +2657,7 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> Perturbation metadata and diversity checks passed, but several perturbed rollouts failed real object transfer and one rollout never reached FSM <code>DONE</code>.</li>
               <li><strong>Evidence:</strong> Step 22 recorded <code>5</code> unique scenarios with <code>dx/dy</code> ranges <code>[-0.02, 0.02]</code>, yet only <code>4/5</code> demos reached <code>DONE</code>, and multiple <code>DONE</code> runs still failed object placement.</li>
               <li><strong>Rejected alternative:</strong> Count recorder completion or FSM <code>DONE</code> alone as task success for perturbed data.</li>
-              <li><strong>Next step:</strong> Implement Step 23A scripted keyboard teacher MVP, then Step 23B grasp assurance and robustness gate with <code>task_success</code>, placement checks, final object metrics, and <code>failure_reason</code>.</li>
+              <li><strong>Next step:</strong> Continue physical-branch tuning after Step 26 with tighter contact alignment, grip schedule control, and slip-prevention metrics.</li>
             </ul>
           </article>
 
@@ -2555,7 +2668,29 @@ MuJoCo G1 task execution</pre>
               <li><strong>Reason:</strong> The original manual keyboard-control demo was the starting point for this project. Automating it through code creates a deterministic, tunable second teacher source that does not require the FSM state machine.</li>
               <li><strong>Evidence:</strong> Step 23A added <code>vla_bridge/scripted_keyboard.py</code>, a JSON scripted plan, a plan inspector, and a scripted demo recorder. Unit tests passed. The recorder produced <code>demo.jsonl</code>, <code>summary.json</code>, and rendered camera frames. However, visual inspection showed the first open-loop macro did not pick up the cylinder.</li>
               <li><strong>Rejected alternative:</strong> Skip straight to grasp assurance without proving the scripted-keyboard infrastructure first.</li>
-              <li><strong>Next step:</strong> Step 23B — add <code>ever_attached</code>, <code>object_lifted</code>, <code>object_on_target_table</code>, <code>task_success</code>, <code>failure_reason</code>, and stop/retry logic before treating scripted demos as training-quality data.</li>
+              <li><strong>Next step:</strong> Keep the kinematic/FSM teacher as the reliable dataset baseline while tuning the physical caging branch for stable lift without slip.</li>
+            </ul>
+          </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 012 — Add an honest physical observer before claiming physical grasp progress</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Implement Step 24 <code>ContactAwarePhysicalGrasp</code> without replacing the default kinematic backend.</li>
+              <li><strong>Reason:</strong> Physical progress needs contact/lift evidence, but data collection still needs a reliable teacher baseline.</li>
+              <li><strong>Evidence:</strong> Step 24 added a physical observer backend and <code>--grasp-backend contact-aware-physical</code> while preserving <code>KinematicAttachment</code> as default.</li>
+              <li><strong>Rejected alternative:</strong> Switch the entire pipeline to physical-only grasping before observer metrics were stable.</li>
+              <li><strong>Next step:</strong> Use contact-aware signals to guide closure timing and reduce object knock-away.</li>
+            </ul>
+          </article>
+
+          <article class="card" style="margin-top: 1rem;">
+            <h3>Decision 013 — Keep physical branch experimental; do not block dataset generation</h3>
+            <ul class="bullet-list">
+              <li><strong>Decision:</strong> Treat Step 26 caging as major progress but not solved physical grasp.</li>
+              <li><strong>Reason:</strong> Reported runs show near pickup with reduced violent knock-away, but slip during lift remains unresolved.</li>
+              <li><strong>Evidence:</strong> Step 26 added continuous grip fraction, caging script, object-motion metrics, comparison tooling, and tests with a reported <code>97/97</code> pass state.</li>
+              <li><strong>Rejected alternative:</strong> Label physical grasp as solved and replace teacher generation with unstable physical runs.</li>
+              <li><strong>Next step:</strong> Tune contact alignment, grip fraction schedule, lift timing, and slip prevention while continuing kinematic teacher use.</li>
             </ul>
           </article>
         </section>
@@ -2598,59 +2733,49 @@ MuJoCo G1 task execution</pre>
 
         <!-- ── 11. Current Implementation Target ──────────────────── -->
         <section>
-          <h2>Current Implementation Target — Step 23B</h2>
+          <h2>Current Implementation Target — Post-Step-26 Physical Grasp Tuning</h2>
           <p>
-            Step 23A partially validated scripted-keyboard teacher infrastructure. It added a
-            JSON scripted plan, plan validator, plan inspector, and scripted demo recorder, and
-            proved that the original manual-keyboard idea can be automated and recorded through
-            the VLA pipeline. However, visual inspection showed that the first open-loop macro
-            did not pick up the cylinder.
+            Steps 24–26 established a physically honest grasp branch: contact-aware observation,
+            contact-guided closure, and table-assisted caging with continuous grip fraction.
+            This branch now gets close to pickup and can almost lift the cylinder, but slip during
+            lift is still the key unresolved failure mode.
           </p>
 
-          <pre class="code-block">Step 23A status: partially validated — infrastructure works, first macro does not grasp.
+          <pre class="code-block">Current validated state:
+  - Contact-aware physical backend implemented
+  - Contact-guided closure policy implemented
+  - Continuous grip fraction + caging script implemented
+  - Object-motion metrics + compare_grasp_runs.py implemented
+  - Reported test state: 97/97 passing
+  - Physical result: near pickup, slips during lift
 
-Step 23B target:
-  Add grasp assurance and task-success checks to the scripted keyboard teacher.
-
-Required fields to add:
-  - ever_attached
-  - attached_now
-  - attach_tick
-  - attach_phase
-  - object_lifted
-  - object_on_target_table
-  - task_success
-  - failure_reason
-
-Required behaviour:
-  - stop or retry if grasp never attaches
-  - optional small reach-search pattern during close_grip
-  - do not proceed to transport unless attached</pre>
+Next tuning targets:
+  - contact alignment at close-grip onset
+  - grip fraction schedule and grip-close speed
+  - contact confirmation before lift
+  - lift timing and wrist-drift reduction
+  - slip prevention during carry</pre>
 
           <p>
-            Step 23B should stay in the teacher-data quality lane. It should not claim
-            OpenVLA loading, learned-policy control, fine-tuning, live VLA control, or
-            demonstrated generalization.
+            Decision: keep the kinematic/FSM teacher as the reliable dataset-generation path for
+            now. Continue the physical grasp branch as an active experimental improvement path.
+            Do not block VLA/data-pipeline progress on perfect dexterous grasping.
           </p>
         </section>
 
-        <!-- ── 12. Expected Step 23B Test ──────────────────────────── -->
+        <!-- ── 12. Expected Post-Step-26 Evaluation ──────────────────── -->
         <section>
-          <h2>Expected Step 23B Test — Scripted Keyboard Grasp Assurance + Task-Success Checks</h2>
+          <h2>Expected Post-Step-26 Evaluation — Contact-Guided vs Caging vs Kinematic</h2>
 
-          <pre class="code-block">python scripts/record_scripted_keyboard_demo.py \
-  --script-config configs/scripts/nominal_scripted_keyboard_v1.json \
-  --output-dir data/vla_demos/scripted_keyboard_001_grasp_assured \
-  --record-every 1</pre>
+          <pre class="code-block">python scripts/compare_grasp_runs.py   --kinematic data/vla_demos/kinematic_baseline/summary.json   --contact-guided data/vla_demos/contact_guided/summary.json   --caging data/vla_demos/table_assisted_caging/summary.json</pre>
 
-          <p><strong>Pass criteria:</strong></p>
+          <p><strong>Pass criteria for the next tuning loop:</strong></p>
           <ul class="bullet-list">
-            <li>Per-demo summary reports <code>ever_attached</code>, <code>object_lifted</code>, <code>object_on_target_table</code>, and <code>task_success</code>.</li>
-            <li>Per-demo summary reports a machine-readable <code>failure_reason</code> when grasp does not attach.</li>
-            <li>Script does not proceed to transport phase unless <code>attached_now</code> is confirmed.</li>
-            <li>Optional: a small reach-search pattern is attempted during <code>close_grip</code> if attachment does not occur.</li>
-            <li>Stop or retry logic is triggered if the grasp never attaches within the configured tick budget.</li>
-            <li>No OpenVLA, Hugging Face, GPU, cloud, or learned-policy claims are introduced.</li>
+            <li>Stable multi-finger contact is confirmed before lift attempts.</li>
+            <li>Lift height improves without increased XY push/knockover events.</li>
+            <li>Object-palm relative drift during lift is measured and reduced.</li>
+            <li>Physical branch reports near pickup honestly and does not claim solved grasp until stable lift is repeatable.</li>
+            <li>Kinematic teacher remains available as the reliable baseline for data generation.</li>
           </ul>
         </section>
 

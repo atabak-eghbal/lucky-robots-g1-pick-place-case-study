@@ -62,13 +62,38 @@
             </tr>
             <tr>
               <td><strong>Grasp Logic</strong></td>
-              <td><strong>Step 11 Update:</strong> 15-tick collision delay for release stability.</td>
+              <td><strong>Step 24 Update:</strong> kinematic attachment plus contact-aware physical grasp backend factory.</td>
               <td><a href="./code/common-grasp.html">common/grasp.py</a></td>
+            </tr>
+            <tr>
+              <td><strong>Controller Grip Path</strong></td>
+              <td><strong>Step 26 Update:</strong> continuous grip fraction and grip-speed ramping support.</td>
+              <td><a href="./code/common-controller.html">common/controller.py</a></td>
             </tr>
             <tr>
               <td><strong>State Sequencing</strong></td>
               <td>World-proximity gating and Sweet-Spot waypoint navigation.</td>
               <td><a href="./code/policies-fsm-core.html">policies/fsm_core.py</a></td>
+            </tr>
+            <tr>
+              <td><strong>Scripted Teacher Engine</strong></td>
+              <td><strong>Step 26 Update:</strong> scripted plans now support optional <code>grip_fraction</code> and <code>grip_close_speed</code>.</td>
+              <td><a href="./code/run.html">vla_bridge/scripted_keyboard.py (documented in run path)</a></td>
+            </tr>
+            <tr>
+              <td><strong>Scripted Demo Metrics</strong></td>
+              <td>Recorder now reports lift height, XY displacement, and push/knockover heuristics.</td>
+              <td><a href="./code/run.html">scripts/record_scripted_keyboard_demo.py (workflow notes)</a></td>
+            </tr>
+            <tr>
+              <td><strong>Run Comparison Tool</strong></td>
+              <td>Compares kinematic, contact-guided, and caging grasp summaries.</td>
+              <td><a href="./code/run.html">scripts/compare_grasp_runs.py (workflow notes)</a></td>
+            </tr>
+            <tr>
+              <td><strong>Caging Plan Config</strong></td>
+              <td>Staged table-assisted caging macro for physical grasp experiments.</td>
+              <td><a href="./code/run.html">configs/scripts/table_assisted_caging_v1.json (workflow notes)</a></td>
             </tr>
             <tr>
               <td><strong>Validation Harness</strong></td>
@@ -86,15 +111,20 @@
           <code>fsm_core.py</code> corresponds to a measurement in the 
           <a href="./code/dev-log.html">Development Log</a>.
         </p>
-        <div class="code-note">
-          <strong>Staff Engineer Note</strong>
-          <p>
-            The modularity of <code>grasp.py</code> and <code>fsm_core.py</code> was critical for 
-            resolving the "Release NaN" bug. Because the collision logic was isolated, we could 
-            tune the physical restoration delay without re-verifying the high-level FSM transitions.
-          </p>
-        </div>
-      </section>
+          <div class="code-note">
+            <strong>Staff Engineer Note</strong>
+            <p>
+              The modularity of <code>grasp.py</code> and <code>fsm_core.py</code> was critical for 
+              resolving the "Release NaN" bug. Because the collision logic was isolated, we could 
+              tune the physical restoration delay without re-verifying the high-level FSM transitions.
+            </p>
+            <p>
+              Step 24–26 continues this pattern: physical-grasp infrastructure is implemented and test-validated,
+              but the physically successful lift remains an active tuning target. The kinematic/FSM path remains
+              the reliable teacher baseline while contact-aware caging is iterated as a research branch.
+            </p>
+          </div>
+        </section>
     </main>
 
       <footer class="site-footer">
