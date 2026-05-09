@@ -55,6 +55,7 @@
               <p><strong>Path:</strong> common/grasp.py</p>
               <p><strong>Lines:</strong> ~137</p>
               <p>The grasp backend isolates "is the object held?" from the FSM. <code>GraspBackend</code> is an ABC; <code>KinematicAttachment</code> implements it as a physics shortcut — no contact forces, just position teleportation every step.</p>
+              <p><strong>Step 24 note:</strong> the grasp module now documents two backend roles: the reliable kinematic attachment baseline and a contact-aware physical observer backend used for honest contact/lift experiments.</p>
             </div>
             <nav class="code-section">
               <h2>Contents</h2>
