@@ -584,6 +584,7 @@ def _get_palm_orientation_in_pelvis(self):
                 <h4>Why it matters</h4>
                 <p>Finger control exists entirely outside the ONNX policies. The grip is a binary open/closed commanded by the FSM; it does not servo or feel contact forces. This is the fundamental limitation of the kinematic attachment grasp strategy.</p>
                 <p><strong>Step 26 note:</strong> this binary path was later extended with continuous grip fractions (<code>grip_target_fraction</code>, <code>set_grip_fraction()</code>, and ramp speed control) to support caging-style physical grasp experiments.</p>
+                <p><strong>Step 27 note:</strong> continuous grip fraction became important for the contact-guided probe: instead of binary open/close, the hand can pre-shape and cage the cylinder gradually before transport attachment.</p>
               </div>
               <div class="code-block"><pre><code>def _cache_actuator_ids(self):
   """Cache actuator IDs once at init instead of looking up every step."""

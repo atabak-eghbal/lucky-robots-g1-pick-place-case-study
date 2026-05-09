@@ -12,7 +12,7 @@
         <div class="hero-content">
           <p class="eyebrow">Implementation · common/grasp.py</p>
           <h1>common/grasp.py — Grasp Backend</h1>
-          <p class="subtitle">Abstract grasp interface and kinematic-attachment implementation: teleport-welds the cylinder to the palm, disables its collisions, and zeroes its velocity every physics step to prevent drift.</p>
+          <p class="subtitle">Abstract grasp interface and kinematic-attachment implementation: now documented as a hybrid path where contact/cage evidence gates when kinematic transport is allowed.</p>
         </div>
       </header>
 
@@ -56,6 +56,7 @@
               <p><strong>Lines:</strong> ~137</p>
               <p>The grasp backend isolates "is the object held?" from the FSM. <code>GraspBackend</code> is an ABC; <code>KinematicAttachment</code> implements it as a physics shortcut — no contact forces, just position teleportation every step.</p>
               <p><strong>Step 24 note:</strong> the grasp module now documents two backend roles: the reliable kinematic attachment baseline and a contact-aware physical observer backend used for honest contact/lift experiments.</p>
+              <p><strong>Latest update — Hybrid Contact-Gated Grasp:</strong> The grasp module is now used in two ways: contact-aware observation for deciding when the hand has reached/caged the object, and kinematic attachment for stable transport after confirmation. This is intentionally hybrid: physical contact is used as a gate, while kinematic attachment handles the lift/transport phase.</p>
             </div>
             <nav class="code-section">
               <h2>Contents</h2>
@@ -151,7 +152,7 @@
               <div class="code-deep-notes">
                 <h4>Intent</h4><p>Evaluate one physics step. If not attached and grip closed and palm close enough → attach. If attached and grip opened → release. If attached and grip still closed → update pose.</p>
                 <h4>Inputs / Outputs</h4><p><strong>In:</strong> <code>grip_closed</code> bool from controller state. <strong>Returns:</strong> current <code>_is_attached</code>.</p>
-                <h4>Invariants</h4><p>Attach fires when <code>‖palm − obj‖ ≤ 0.13 m</code> AND <code>grip_closed = True</code>. The reacher's ~12 cm accuracy floor means the palm typically stops at exactly 12–13 cm — matching the threshold by design.</p>
+                <h4>Invariants</h4><p>Original behavior attached when <code>‖palm − obj‖ ≤ 0.13 m</code> AND <code>grip_closed = True</code>. In the latest hybrid strategy this proximity path is no longer used blindly at the start of grasp; transport attachment is triggered after contact/cage confirmation.</p>
                 <h4>Failure modes</h4><p>If palm never gets within 0.13 m when grip closes, attachment never fires. The FSM's <code>CLOSE_GRIP_TIMEOUT = 100</code> ticks handles this case by advancing anyway.</p>
                 <h4>Why it matters</h4><p>The three-branch structure is intentionally simple. All coordination complexity lives in the FSM.</p>
               </div>
@@ -183,6 +184,7 @@
 
             <section class="code-section" id="attach">
               <h3>_attach() — snap and collision disable</h3>
+              <p><strong>Hybrid update:</strong> The original kinematic attachment was blind/proximity-based. The latest hybrid strategy makes this less arbitrary by activating transport only after contact/cage confirmation.</p>
               <div class="code-deep-notes">
                 <h4>Intent</h4><p>Compute palm-local offset, clamp it to SNAP_DIST so the cylinder sits visually in the hand, disable cylinder collisions to prevent contact impulses, then teleport the cylinder into position immediately.</p>
                 <h4>Inputs / Outputs</h4><p><strong>In:</strong> <code>palm_pos</code>, <code>obj_pos</code> already read in <code>tick()</code>. <strong>Side effects:</strong> sets <code>_local_offset</code>, zeroes contype/conaffinity for all cylinder geoms, sets <code>_is_attached = True</code>, calls <code>_update_pose()</code>.</p>

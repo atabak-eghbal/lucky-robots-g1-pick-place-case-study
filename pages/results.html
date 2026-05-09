@@ -146,6 +146,12 @@
           <td>Continuous grip fraction, caging plan, metrics, and grasp-run comparison tooling added; 97/97 tests reported passing.</td>
           <td>Near pickup is repeatable, but cylinder can still slip during lift.</td>
         </tr>
+        <tr>
+          <td>Step 27 — Hybrid Contact-Gated Grasp</td>
+          <td><span class="status-badge status-verified">Working hybrid result; contact/probe gate before attachment; transport no longer slips.</span></td>
+          <td>Added a two-phase grasp strategy: staged contact/cage probe followed by kinematic transport.</td>
+          <td>Not pure physical dexterous grasp; still a simulation shortcut during transport.</td>
+        </tr>
       </tbody>
     </table>
     <p style="margin-top: 1rem;">
@@ -153,6 +159,13 @@
       The correct result is that the robot now approaches the object and nearly lifts it using more
       physically honest contact/caging logic, but slip during lift remains unresolved. This is a
       useful engineering result because it isolates the remaining failure mode.
+    </p>
+    <p>
+      Step 27 changes the grasp story. Earlier physical-grasp experiments were honest but unreliable:
+      the cylinder could be contacted or nearly caged, but it could slip during lift. The hybrid
+      strategy keeps the honest contact/probe gate and then switches to kinematic transport. This
+      gives the project a more reliable teacher path while preserving an explicit caveat about the
+      simulation shortcut.
     </p>
     <p>
       We also keep the evidence labels strict: "implemented," "validated by tests," and
