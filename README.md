@@ -35,6 +35,17 @@ Step 23A added a scripted keyboard teacher as a second teacher source. The goal 
 
 Step 24 introduced a contact-aware physical grasp backend that observes real MuJoCo finger-object contacts without teleporting the cylinder. Step 25 used that backend to build a contact-guided grasp policy, exposing a key failure mode: direct or binary finger closure can push the small cylinder away before it is secured. Step 26 responded by adding continuous grip-fraction control, a table-assisted caging script, object-motion metrics, and a grasp-run comparison tool. The result is meaningful progress toward a physical grasp: the robot can approach and nearly pick up the cylinder, but the object can still slip during lift. Therefore the physical grasp path is documented as an active research branch, while the kinematic/FSM teacher remains the reliable data-generation baseline.
 
+## Video evidence
+
+- **Work 1 — FSM baseline (reliable completed baseline):**
+  https://youtu.be/4FKgn35iU-Y?si=TiO-xRAxPQBCLsaj
+- **Work 2 — Scripted keyboard teacher (teacher-generation infrastructure):**
+  https://youtu.be/Lw88uj7FiFo?si=Bw5gZGO6kQ3KBkY4
+- **Work 3 — Physical grasp experiment (current experiment):**
+  https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ
+
+Work 3 is reported as video evidence of current physical-grasp progress (near pickup / slipping during lift), not as a fully solved grasp result.
+
 ## Terminology used in this report
 
 | Term | Meaning |
@@ -62,3 +73,4 @@ Open `index.html` directly in a browser, or run a simple local server:
 
 ```bash
 python -m http.server
+```
