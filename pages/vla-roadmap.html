@@ -43,7 +43,7 @@
           <div class="code-note">
             <ul class="bullet-list">
               <li><strong>Status:</strong> Active research branch with validated infrastructure milestones</li>
-              <li><strong>Current implementation status:</strong> Steps 24–27 implemented; Step 27 is a working hybrid contact-gated grasp with contact-verified kinematic transport</li>
+              <li><strong>Current implementation status:</strong> Step 27 is the current best working result: hybrid contact-guided grasp with contact/probe evidence first and kinematic transport after confirmation.</li>
               <li><strong>Purpose:</strong> Research branch for evaluating whether OpenVLA-style policies
                 can augment or replace parts of the FSM pipeline while keeping physical-grasp reporting honest</li>
               <li><strong>Safety principle:</strong> The existing FSM remains the teacher, fallback,
@@ -53,7 +53,8 @@
               Related demo recordings:
               <a href="https://youtu.be/4FKgn35iU-Y?si=TiO-xRAxPQBCLsaj" target="_blank" rel="noopener noreferrer">Work 1 — FSM baseline</a>,
               <a href="https://youtu.be/Lw88uj7FiFo?si=Bw5gZGO6kQ3KBkY4" target="_blank" rel="noopener noreferrer">Work 2 — scripted keyboard teacher</a>,
-              <a href="https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ" target="_blank" rel="noopener noreferrer">Work 3 — physical grasp experiment</a>.
+              <a href="https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ" target="_blank" rel="noopener noreferrer">Work 3 — physical grasp experiment</a>,
+              <a href="https://www.youtube.com/watch?v=rhKuY6O_H5o" target="_blank" rel="noopener noreferrer">Work 4 — Hybrid contact-guided grasp</a>.
             </p>
           </div>
         </section>
@@ -2125,9 +2126,31 @@ Scripted recorder             : PASS — demo.jsonl, summary.json, frames produc
             This is the strongest practical grasp result so far. It is not a full dexterous physical grasp, but it is a credible engineering solution for this challenge because it combines contact verification with reliable transport.
           </p>
 
+          <h3>Latest video evidence</h3>
+          <p>
+            The latest recording shows the current working hybrid contact-guided approach:
+            staged physical probe/cage first, then kinematic transport for reliable lift and placement.
+          </p>
+          <p>
+            <a href="https://www.youtube.com/watch?v=rhKuY6O_H5o" target="_blank" rel="noopener noreferrer">
+              Watch Work 4 — Hybrid contact-guided grasp →
+            </a>
+          </p>
+          <div class="code-note">
+            <strong>Honest caveat:</strong> Not pure physical grasp; kinematic transport remains.
+          </div>
+
           <h3>7. Next step</h3>
           <p>
             Next: record and audit hybrid-grasp demonstrations, compare them against FSM/kinematic and physical-only runs, and decide whether hybrid-grasp data should become the new preferred teacher source for the VLA dataset.
+          </p>
+
+          <h3>Where this leaves the project</h3>
+          <p>
+            This is a reasonable pause point. The project now has a reliable FSM baseline, a VLA-style data pipeline,
+            scripted-teacher infrastructure, physical grasp diagnostics, and a working hybrid contact-guided grasp.
+            The next major decision is whether to continue toward pure physical dexterous grasping, learned grasp policy,
+            or use the hybrid method as the practical teacher while focusing on perception/VLA integration.
           </p>
         </section>
 

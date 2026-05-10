@@ -85,6 +85,29 @@
             </ol>
           </div>
         </section>
+
+        <section>
+          <h2>Current Limitation: Kinematic Transport Still Remains</h2>
+          <p>
+            The latest hybrid contact-guided grasp still uses kinematic attachment during transport.
+            This means the cylinder is locked to the palm after the contact/cage confirmation stage.
+            That makes the task reliable, but it is not a pure physical dexterous grasp.
+          </p>
+          <p>
+            This was an intentional engineering tradeoff. Multiple physical-only attempts produced useful contact and caging diagnostics,
+            but the cylinder could still slip during lift. Instead of hiding that failure mode, the project preserves the physical-only branch
+            as research evidence and uses the hybrid method as the current practical task-completion path.
+          </p>
+          <ul class="bullet-list">
+            <li><strong>Option 1 — Continue physical-only grasp:</strong> tune friction/contact geometry, require multi-finger contact, add micro-lift validation, and explore learned grasp policy.</li>
+            <li><strong>Option 2 — Use hybrid as teacher:</strong> record more hybrid demonstrations and export them through the existing VLA data pipeline.</li>
+            <li><strong>Option 3 — Return to perception/VLA:</strong> keep the hybrid grasp fixed and focus on replacing ground-truth object pose with vision or VLA-style action prediction.</li>
+          </ul>
+          <p>
+            My current recommendation is to treat the hybrid grasp as the reliable engineering baseline, while keeping the pure physical grasp
+            as a separate research track rather than blocking the entire project on dexterous contact physics.
+          </p>
+        </section>
       </main>
     </div>
     <script src="../script.js"></script>
