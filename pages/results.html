@@ -61,7 +61,7 @@
   <section>
     <h2>Video evidence</h2>
     <p>
-      The recordings below map directly to the three major work streams and should be interpreted
+      The recordings below map directly to the main work streams and should be interpreted
       with the same evidence labels used throughout this page.
     </p>
     <ul class="bullet-list">
@@ -76,6 +76,11 @@
       <li>
         <strong>Work 3 — Physical grasp experiment:</strong> current experiment with near pickup / slipping during lift.
         <a href="https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ" target="_blank" rel="noopener noreferrer">Watch demo recording →</a>
+      </li>
+      <li>
+        <strong>Work 4 — Hybrid contact-guided grasp:</strong> latest working result with contact/probe evidence first, then kinematic transport after confirmation.
+        <a href="https://www.youtube.com/watch?v=rhKuY6O_H5o" target="_blank" rel="noopener noreferrer">Watch demo recording →</a>
+        <strong>Not pure physical grasp; kinematic transport remains.</strong>
       </li>
     </ul>
   </section>
@@ -147,10 +152,10 @@
           <td>Near pickup is repeatable, but cylinder can still slip during lift.</td>
         </tr>
         <tr>
-          <td>Step 27 — Hybrid Contact-Gated Grasp</td>
-          <td><span class="status-badge status-verified">Working hybrid result; contact/probe gate before attachment; transport no longer slips.</span></td>
-          <td>Added a two-phase grasp strategy: staged contact/cage probe followed by kinematic transport.</td>
-          <td>Not pure physical dexterous grasp; still a simulation shortcut during transport.</td>
+          <td>Step 27 — Hybrid contact-guided grasp</td>
+          <td><span class="status-badge status-verified">Working latest result</span></td>
+          <td>Contact/probe evidence first, then kinematic transport. Solves practical lift/transport reliability, with latest evidence in <a href="https://www.youtube.com/watch?v=rhKuY6O_H5o" target="_blank" rel="noopener noreferrer">Video</a>.</td>
+          <td>Clearly labeled simulation shortcut remains during transport.</td>
         </tr>
       </tbody>
     </table>
@@ -166,6 +171,12 @@
       strategy keeps the honest contact/probe gate and then switches to kinematic transport. This
       gives the project a more reliable teacher path while preserving an explicit caveat about the
       simulation shortcut.
+    </p>
+    <p>
+      The current best result is the hybrid contact-guided grasp. It is not the most physically pure solution,
+      but it is the most reliable working solution after testing physical-only caging and contact-guided closure.
+      The engineering value is in the staged progression: observe contact, attempt physical caging, measure slip,
+      then use a controlled kinematic transport fallback when full physical grasp remains unreliable.
     </p>
     <p>
       We also keep the evidence labels strict: "implemented," "validated by tests," and

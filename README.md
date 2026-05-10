@@ -19,7 +19,7 @@ the Visual Oracle appendix; the implementation is out of scope for this submissi
 The report is evidence-first. Known simulation-only caveats and implementation gaps are stated
 explicitly throughout.
 
-The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the Step 12 research scaffold, validated Step 13 action adapter, validated Step 14 FSM Demonstration Recorder, validated Step 15 replay harness, validated Step 16 Hybrid Replay / Schema Upgrade, validated Step 17 G1-Native VLA Dataset Exporter, validated Step 18 Dataset Audit + Train/Validation Split, validated Step 19 Dataset Filtering / Sample Weighting / Training Views, validated Step 20 Multi-Demo Collection + Batch Manifest, validated Step 21 Combined Batch Dataset Exporter, partially validated Step 22 Scenario Perturbations / Multi-Seed Demo Diversity, partially validated Step 23A Scripted Keyboard Teacher MVP, Step 24 Contact-Aware Physical Grasp MVP, Step 25 Contact-Guided Grasp Policy, Step 26 Table-Assisted Caging Grasp, and Step 27 Hybrid Contact-Gated Grasp.
+The report includes a VLA Roadmap page that is updated as the research branch evolves. It now documents the full progression from the FSM baseline and VLA data pipeline through scripted keyboard teachers, contact-aware physical grasping, table-assisted caging, and the current hybrid contact-guided grasp result.
 
 Step 19 created safer derived training views without modifying the original exported dataset. It produced a full view with 2665 records, a filtered no-idle view with 2516 records, and a sample-weight manifest with 2665 weights. The filtered view reduced idle-heavy records from 159 to 10 while preserving the rare `CLOSE_GRIP` and `OPEN_GRIP` transitions. The sample weights are normalized to mean 1.0 and capped at 20.0.
 
@@ -35,7 +35,7 @@ Step 23A added a scripted keyboard teacher as a second teacher source. The goal 
 
 Step 24 introduced a contact-aware physical grasp backend that observes real MuJoCo finger-object contacts without teleporting the cylinder. Step 25 used that backend to build a contact-guided grasp policy, exposing a key failure mode: direct or binary finger closure can push the small cylinder away before it is secured. Step 26 responded by adding continuous grip-fraction control, a table-assisted caging script, object-motion metrics, and a grasp-run comparison tool. The result is meaningful progress toward a physical grasp: the robot can approach and nearly pick up the cylinder, but the object can still slip during lift. Therefore the physical grasp path is documented as an active research branch, while the kinematic/FSM teacher remains the reliable data-generation baseline.
 
-Step 27 resolved the main practical grasp bottleneck with a hybrid contact-gated strategy. The policy first performs a staged physical probe/cage using continuous grip fractions and MuJoCo contact feedback. Once the hand has made sufficient contact or completed the cage sequence, the backend activates kinematic attachment for transport. This is not a pure physical dexterous grasp, but it is a stronger engineering compromise than the earlier blind kinematic snap: the object is only locked after contact/probe evidence, and transport becomes reliable enough to support full pick-and-place demonstrations.
+Current final status for this phase: the strongest working result is a hybrid contact-guided grasp. The robot first performs a staged physical probe/cage using continuous grip fractions and contact/proximity feedback. After that confirmation stage, the object is kinematically attached to the palm for reliable transport and released back into physics at the target. This is not a pure physical dexterous grasp, but it is an honest and practical engineering compromise after multiple physical-only attempts exposed persistent slipping during lift.
 
 ## Video evidence
 
@@ -45,8 +45,12 @@ Step 27 resolved the main practical grasp bottleneck with a hybrid contact-gated
   https://youtu.be/Lw88uj7FiFo?si=Bw5gZGO6kQ3KBkY4
 - **Work 3 — Physical grasp experiment (current experiment):**
   https://youtu.be/tIisPTbTaQo?si=AseZ2_7o_rqtnKLQ
+- **Work 4 — Hybrid contact-guided grasp (latest working result):**
+  https://www.youtube.com/watch?v=rhKuY6O_H5o
 
 Work 3 is reported as video evidence of current physical-grasp progress (near pickup / slipping during lift), not as a fully solved grasp result.
+
+Work 4 is the current best result: it demonstrates the hybrid contact-guided approach that works reliably enough for the task while still carrying a clearly labeled kinematic transport shortcut.
 
 ## Terminology used in this report
 
